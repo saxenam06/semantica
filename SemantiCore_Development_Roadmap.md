@@ -38,7 +38,7 @@ Each module is a self-contained package with a clear public API.
    * Chunking strategies: sliding window, semantic chunking, structural (section-aware), table-aware splitting.
    * Preserves provenance for each chunk.
 
-6. **semantic\_extract**
+6. **semantic_extract**
 
    * Capabilities: NER, relation extraction, event detection, co-reference resolution, entity linking, triple extraction.
    * Backends: spaCy, Stanza, HuggingFace pipelines, LLM prompts (for complex relations).
@@ -47,7 +47,7 @@ Each module is a self-contained package with a clear public API.
 
    * OntologyGenerator: infer classes/properties, generate OWL/RDF, map to base ontologies (schema.org, FOAF, DC), versioning.
 
-8. **triple\_store**
+8. **triple_store**
 
    * Adapters: Blazegraph, Apache Jena, RDF4J, GraphDB, Virtuoso — export/import, bulk load.
 
@@ -57,67 +57,127 @@ Each module is a self-contained package with a clear public API.
 
 10. **embeddings**
 
-    * SemanticEmbedder: multi-modal embeddings, context windows, pooling strategies, embedding provider adapters (OpenAI, BGE, Llama‑embeddings).
+     * SemanticEmbedder: multi-modal embeddings, context windows, pooling strategies, embedding provider adapters (OpenAI, BGE, Llama‑embeddings).
 
-11. **vector\_store**
+11. **vector_store**
 
-    * Adapters: Pinecone, FAISS, Milvus, Weaviate, Qdrant. Features: namespace, metadata store, hybrid search.
+     * Adapters: Pinecone, FAISS, Milvus, Weaviate, Qdrant. Features: namespace, metadata store, hybrid search.
 
 12. **reasoning**
 
-    * Inference rules, SPARQL-based reasoning, Rete-like rule engine hooks, abductive/deductive inference.
+     * Inference rules, SPARQL-based reasoning, Rete-like rule engine hooks, abductive/deductive inference.
 
 13. **pipeline**
 
-    * PipelineBuilder, failure/retry semantics, parallelism strategies, resource scheduling.
+     * PipelineBuilder, failure/retry semantics, parallelism strategies, resource scheduling.
 
 14. **streaming**
 
-    * Integration: Kafka, Pulsar, RabbitMQ, Kinesis; exactly-once semantics where feasible; checkpoints.
+     * Integration: Kafka, Pulsar, RabbitMQ, Kinesis; exactly-once semantics where feasible; checkpoints.
 
 15. **domains**
 
-    * Domain-specific processors (cybersecurity, biomedical, finance, legal). Each provides templates, mapping rules, ontologies, and extractors.
+     * Domain-specific processors (cybersecurity, biomedical, finance, legal). Each provides templates, mapping rules, ontologies, and extractors.
 
-16. **qa\_rag**
+16. **qa_rag**
 
-    * RAG-optimised tools: semantic chunker, prompt templates, retrieval policies, answer justification, provenance-aware answer builder.
+     * RAG-optimised tools: semantic chunker, prompt templates, retrieval policies, answer justification, provenance-aware answer builder.
 
 17. **agents**
 
-    * Agent manager & orchestration for multiagent workflows, tools for tool‑use, orchestration policies, cost-awareness, sandboxing.
+     * Agent manager & orchestration for multiagent workflows, tools for tool‑use, orchestration policies, cost-awareness, sandboxing.
 
 18. **ui**
 
-    * Web dashboard components: ingestion monitor, KG viewer (graph UI), conflict resolver, analytics dashboard, pipeline editor.
+     * Web dashboard components: ingestion monitor, KG viewer (graph UI), conflict resolver, analytics dashboard, pipeline editor.
 
 19. **monitoring**
 
-    * Metrics, traces (OpenTelemetry), alerts, SLAs, data quality metrics, semantic quality score.
+     * Metrics, traces (OpenTelemetry), alerts, SLAs, data quality metrics, semantic quality score.
 
 20. **quality**
 
-    * QA, validation engine, schema validation, unit tests for extracted triples, confidence thresholds.
+     * QA, validation engine, schema validation, unit tests for extracted triples, confidence thresholds.
 
 21. **security**
 
-    * Access control (RBAC), data masking, PII redaction, audit logs, encryption helpers.
+     * Access control (RBAC), data masking, PII redaction, audit logs, encryption helpers.
 
 22. **deploy**
 
-    * K8s manifests, Helm charts, Dockerfiles, autoscaling policies, GPU scheduling guides.
+     * K8s manifests, Helm charts, Dockerfiles, autoscaling policies, GPU scheduling guides.
 
 23. **cli**
 
-    * Lightweight CLI for quick ingestion, building KB, exporting triples, running QA checks.
+     * Lightweight CLI for quick ingestion, building KB, exporting triples, running QA checks.
 
 24. **examples**
 
-    * Cookbooks and minimal reproducible examples across domains.
+     * Cookbooks and minimal reproducible examples across domains.
 
 25. **docs**
 
-    * Sphinx/ReadTheDocs-ready documentation with tutorials and API reference.
+     * Sphinx/ReadTheDocs-ready documentation with tutorials and API reference.
+
+### 🆕 **NEW MODULES TO TACKLE KNOWLEDGE GRAPH PROBLEMS**
+
+26. **template_manager**
+
+    * **Purpose:** Enforce fixed templates and predefined schemas to prevent AI from inventing entities/relationships.
+    * **Features:** 
+      - Schema validation against predefined templates
+      - Template registry with versioning
+      - Constraint enforcement (required fields, data types, relationships)
+      - Template inheritance and composition
+      - Domain-specific template libraries (finance, healthcare, legal)
+    * **Exports:** `TemplateRegistry`, `SchemaValidator`, `ConstraintEngine`, `TemplateBuilder`.
+
+27. **seed_manager**
+
+    * **Purpose:** Initialize Knowledge Graph with existing, known data to build on "foundation of truth".
+    * **Features:**
+      - Seed data import from CSV, JSON, databases
+      - Known entity registration (products, departments, employees)
+      - Seed data validation and conflict detection
+      - Incremental seed data updates
+      - Seed data provenance tracking
+    * **Exports:** `SeedManager`, `SeedValidator`, `SeedImporter`, `SeedRegistry`.
+
+28. **semantic_deduplicator**
+
+    * **Purpose:** Clean up and merge semantically similar entities to prevent graph messiness.
+    * **Features:**
+      - Semantic similarity detection using embeddings
+      - Fuzzy matching algorithms (Levenshtein, Jaro-Winkler)
+      - Entity clustering and grouping
+      - Merge strategies and conflict resolution
+      - Duplicate detection confidence scoring
+      - Batch deduplication with rollback support
+    * **Exports:** `SemanticDeduplicator`, `SimilarityEngine`, `MergeEngine`, `ClusterAnalyzer`.
+
+29. **conflict_detector**
+
+    * **Purpose:** Flag disagreements when different sources provide conflicting information.
+    * **Features:**
+      - Multi-source conflict detection
+      - Conflict severity classification (minor, moderate, critical)
+      - Source document tracking and highlighting
+      - Conflict resolution workflow
+      - Conflict history and audit trail
+      - Automated conflict alerts and notifications
+    * **Exports:** `ConflictDetector`, `ConflictResolver`, `ConflictTracker`, `AlertManager`.
+
+30. **provenance_tracker**
+
+    * **Purpose:** Track the exact source of every piece of information for transparency and investigation.
+    * **Features:**
+      - Source document linking (file, page, paragraph, line)
+      - Extraction timestamp and confidence scores
+      - Processing pipeline tracking
+      - Source credibility scoring
+      - Provenance visualization in UI
+      - Export capabilities for audit purposes
+    * **Exports:** `ProvenanceTracker`, `SourceLinker`, `CredibilityScorer`, `ProvenanceExporter`.
 
 ---
 
@@ -128,6 +188,14 @@ Each module is a self-contained package with a clear public API.
 * **As an analyst** I want a KG browser that shows provenance and conflict highlights.
 * **As an ML engineer** I want RAG-ready semantic chunks with embeddings and retrieval tuning.
 * **As a security engineer** I want PII detection and masking before storing embeddings.
+
+### 🆕 **NEW USER STORIES FOR KNOWLEDGE GRAPH PROBLEMS**
+
+* **As a knowledge engineer** I want to enforce fixed templates so the AI doesn't invent new entities or relationships.
+* **As a domain expert** I want to seed the Knowledge Graph with known data so the AI builds on existing knowledge.
+* **As a data quality analyst** I want automatic deduplication to merge semantically similar entities and keep the graph clean.
+* **As a compliance officer** I want to see exactly where conflicting information comes from so I can investigate discrepancies.
+* **As a business user** I want to trust that the Knowledge Graph represents the single source of truth without duplicates or conflicts.
 
 ---
 
@@ -144,6 +212,13 @@ Each module is a self-contained package with a clear public API.
 * Infra: Docker + Kubernetes + Helm
 * Monitoring: Prometheus + Grafana + OpenTelemetry
 * CI/CD: GitHub Actions, dependabot
+
+### 🆕 **NEW TECH STACK FOR KNOWLEDGE GRAPH MODULES**
+
+* **Template Management:** JSON Schema, Pydantic, Cerberus for validation
+* **Semantic Deduplication:** SentenceTransformers, FAISS, scikit-learn clustering
+* **Conflict Detection:** Fuzzy matching with `fuzzywuzzy`, `rapidfuzz`
+* **Provenance Tracking:** GraphQL, Neo4j Cypher, RDF/SPARQL
 
 ---
 
@@ -163,6 +238,17 @@ flowchart LR
   H --> K[Analytics / UI]
   J --> K
   I --> K
+  
+  %% NEW KNOWLEDGE GRAPH MODULES
+  L[Seed Data] --> M(Seed Manager)
+  M --> H
+  N[Template Registry] --> O(Template Manager)
+  O --> D
+  P[Conflict Detector] --> Q(Conflict Resolution)
+  Q --> H
+  R[Semantic Deduplicator] --> H
+  S[Provenance Tracker] --> T(Provenance Store)
+  T --> K
 ```
 
 ---
@@ -184,6 +270,15 @@ Q3 — Streaming & Domains
 
 Q4 — Agents & Enterprise
  - multi-agent orchestration, advanced reasoning, RBAC, production K8s charts, enterprise docs
+
+🆕 Q5 — Knowledge Graph Quality & Trust
+ - template_manager, seed_manager, semantic_deduplicator, conflict_detector
+ - provenance_tracker, advanced conflict resolution UI
+ - template libraries for common domains
+
+🆕 Q6 — Enterprise Knowledge Graph Features
+ - multi-tenant template management, advanced conflict workflows
+ - compliance reporting, audit trails, enterprise integrations
 ```
 
 ---
@@ -205,6 +300,11 @@ ontology       ██████     6
 ui             █████      5
 monitoring     █████      5
 agents         ████       4
+🆕 template_manager ████████ 8
+🆕 seed_manager     ███████  7
+🆕 semantic_deduplicator ████████ 8
+🆕 conflict_detector     ████████ 8
+🆕 provenance_tracker    ███████  7
 ```
 
 ### 7.2 Gantt-style timeline (Mermaid)
@@ -224,6 +324,12 @@ gantt
     Streaming & Domains :a6, after a5, 60d
     Monitoring & QA     :a7, after a6, 30d
     Agents & Enterprise :a8, after a7, 60d
+    🆕 section KG Quality
+    Template Manager    :a9, after a8, 45d
+    Seed Manager        :a10, after a9, 30d
+    Semantic Deduplicator :a11, after a10, 45d
+    Conflict Detector   :a12, after a11, 45d
+    Provenance Tracker  :a13, after a12, 30d
 ```
 
 ---
@@ -236,6 +342,14 @@ gantt
 * **Human-in-loop**: provide UIs for ontology review, conflict resolution, and triple acceptance.
 * **Test coverage**: unit tests for extractors, golden files for parsers, and integration tests that simulate full pipelines.
 * **Performance**: make parsing idempotent and resumable; add caching at the ingest and embedder layers.
+
+### 🆕 **NEW DESIGN PRINCIPLES FOR KNOWLEDGE GRAPH QUALITY**
+
+* **Template-first**: Define schemas before ingestion to prevent AI invention of entities/relationships.
+* **Seed-before-extract**: Always start with known data to establish foundation of truth.
+* **Conflict-aware**: Design for conflict detection from day one, not as an afterthought.
+* **Provenance-everywhere**: Track source of every piece of information for transparency.
+* **Deduplication-continuous**: Implement semantic deduplication as a continuous process, not just during ingestion.
 
 ---
 
@@ -267,6 +381,12 @@ gantt
 /infra/k8s/
 /helm/semanticore/
 /.github/workflows/
+
+🆕 /packages/template_manager/
+🆕 /packages/seed_manager/
+🆕 /packages/semantic_deduplicator/
+🆕 /packages/conflict_detector/
+🆕 /packages/provenance_tracker/
 ```
 
 ---
@@ -279,6 +399,14 @@ gantt
 4. Implement `split` with structural and sliding-window modes.
 5. Implement `SemanticEmbedder` with local huggingface mini-embedding and persist to FAISS.
 6. Add basic unit tests and a demo notebook that shows E2E from PDF -> embeddings -> search.
+
+### 🆕 **NEW STARTER TASKS FOR KNOWLEDGE GRAPH QUALITY**
+
+7. Implement `template_manager` with basic JSON schema validation.
+8. Create `seed_manager` for importing known entities from CSV/JSON.
+9. Build `semantic_deduplicator` using sentence transformers for similarity detection.
+10. Develop `conflict_detector` to identify source disagreements.
+11. Add `provenance_tracker` to link all information to source documents.
 
 ---
 
@@ -297,6 +425,52 @@ kb = core.build_knowledge_base(["./sample_docs/"])
 print(kb.search("key trends"))
 ```
 
+### 🆕 **NEW API EXAMPLES FOR KNOWLEDGE GRAPH QUALITY**
+
+```python
+from semanticore import SemantiCore
+from semanticore.template_manager import TemplateRegistry
+from semanticore.seed_manager import SeedManager
+from semanticore.semantic_deduplicator import SemanticDeduplicator
+from semanticore.conflict_detector import ConflictDetector
+
+# Initialize with quality modules
+core = SemantiCore(
+    config_path="./config.yaml",
+    template_manager=TemplateRegistry("./templates/"),
+    seed_manager=SeedManager("./seed_data/"),
+    deduplicator=SemanticDeduplicator(),
+    conflict_detector=ConflictDetector()
+)
+
+# Load predefined template
+template = core.template_manager.load_template("financial_report")
+
+# Seed with known data
+core.seed_manager.load_seed_data("departments.csv", "employees.json")
+
+# Build knowledge base with quality controls
+kb = core.build_knowledge_base(
+    ["./documents/"],
+    template=template,
+    enable_deduplication=True,
+    enable_conflict_detection=True
+)
+
+# Check for conflicts
+conflicts = core.conflict_detector.get_conflicts()
+for conflict in conflicts:
+    print(f"Conflict: {conflict.description}")
+    print(f"Sources: {conflict.sources}")
+    print(f"Severity: {conflict.severity}")
+
+# Get provenance for any entity
+provenance = core.provenance_tracker.get_provenance("Q1_Sales_Report")
+print(f"Source: {provenance.source_document}")
+print(f"Extracted: {provenance.extraction_timestamp}")
+print(f"Confidence: {provenance.confidence_score}")
+```
+
 ---
 
 ## 13. Next steps / how I can help
@@ -307,6 +481,12 @@ If you want, I can:
 * Generate a prioritized ticket backlog (Jira/GitHub issues format).
 * Create starter code for `core`, `file` ingestor, `pdf` parser and a demo notebook.
 
----
+### 🆕 **NEW NEXT STEPS FOR KNOWLEDGE GRAPH QUALITY**
 
-*End of file.*
+* Create detailed specifications for the 5 new Knowledge Graph quality modules.
+* Design the conflict resolution workflow and UI components.
+* Develop template libraries for common domains (finance, healthcare, legal).
+* Build integration examples showing how these modules work together.
+* Create quality metrics and validation frameworks for Knowledge Graph trustworthiness.
+
+
