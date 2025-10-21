@@ -11,11 +11,9 @@
 3. [Semantic Intelligence](#semantic-intelligence)
 4. [Storage & Retrieval](#storage--retrieval)
 5. [AI & Reasoning](#ai--reasoning)
-6. [Domain Specialization](#domain-specialization)
-7. [User Interface](#user-interface)
-8. [Operations](#operations)
-9. [Complete Module Index](#complete-module-index)
-10. [Import Reference](#import-reference)
+6. [Knowledge Graph Quality Assurance](#knowledge-graph-quality-assurance)
+7. [Complete Module Index](#complete-module-index)
+8. [Import Reference](#import-reference)
 
 ---
 
@@ -361,32 +359,193 @@ manager.export_template(template_id, "export.json")
 
 **Purpose:** Ingest data from various sources
 
+#### **Imports:**
 ```python
 from semantica.ingest import FileIngestor, WebIngestor, FeedIngestor
+from semantica.ingest.file import LocalFileHandler, S3Handler, GCSHandler, AzureHandler
+from semantica.ingest.web import WebScraper, SitemapCrawler, JavaScriptRenderer
+from semantica.ingest.feed import RSSParser, AtomParser, SocialMediaAPI
+from semantica.ingest.stream import WebSocketHandler, MessageQueueHandler, KafkaStream
+from semantica.ingest.repo import GitHandler, PackageManagerHandler
+from semantica.ingest.email import IMAPHandler, ExchangeHandler, GmailAPIHandler
+from semantica.ingest.db_export import DatabaseExporter, SQLQueryHandler, ETLProcessor
+```
 
+#### **Main Functions:**
+```python
 # File ingestion
 file_ingestor = FileIngestor()
 files = file_ingestor.scan_directory("documents/", recursive=True)
 formats = file_ingestor.detect_format("document.pdf")
+metadata = file_ingestor.extract_metadata("document.pdf")
+content = file_ingestor.ingest_file("document.pdf")
 
 # Web ingestion
 web_ingestor = WebIngestor(respect_robots=True, max_depth=3)
 web_content = web_ingestor.crawl_site("https://example.com")
 links = web_ingestor.extract_links(web_content)
+sitemap = web_ingestor.parse_sitemap("https://example.com/sitemap.xml")
 
 # Feed ingestion
 feed_ingestor = FeedIngestor()
 rss_data = feed_ingestor.parse_rss("https://example.com/feed.xml")
+atom_data = feed_ingestor.parse_atom("https://example.com/atom.xml")
 ```
 
-**Submodules:**
-- `file` - Local files, cloud storage (S3, GCS, Azure)
-- `web` - HTTP scraping, sitemap crawling, JavaScript rendering
-- `feed` - RSS/Atom feeds, social media APIs
-- `stream` - Real-time streams, WebSocket, message queues
-- `repo` - Git repositories, package managers
-- `email` - IMAP/POP3, Exchange, Gmail API
-- `db_export` - Database dumps, SQL queries, ETL
+#### **Submodules with Functions:**
+
+**File Handler (`semantica.ingest.file`):**
+```python
+from semantica.ingest.file import LocalFileHandler, S3Handler, GCSHandler, AzureHandler
+
+# Local file handling
+local_handler = LocalFileHandler()
+files = local_handler.scan_directory("documents/", patterns=["*.pdf", "*.docx"])
+file_info = local_handler.get_file_info("document.pdf")
+content = local_handler.read_file("document.pdf", encoding="utf-8")
+
+# S3 handling
+s3_handler = S3Handler(bucket="my-bucket", region="us-east-1")
+s3_files = s3_handler.list_objects(prefix="documents/")
+s3_content = s3_handler.download_object("documents/file.pdf")
+s3_handler.upload_object("local_file.pdf", "documents/remote_file.pdf")
+
+# Google Cloud Storage
+gcs_handler = GCSHandler(project="my-project", bucket="my-bucket")
+gcs_files = gcs_handler.list_blobs(prefix="documents/")
+gcs_content = gcs_handler.download_blob("documents/file.pdf")
+
+# Azure Blob Storage
+azure_handler = AzureHandler(account_name="myaccount", container="documents")
+azure_files = azure_handler.list_blobs()
+azure_content = azure_handler.download_blob("file.pdf")
+```
+
+**Web Scraper (`semantica.ingest.web`):**
+```python
+from semantica.ingest.web import WebScraper, SitemapCrawler, JavaScriptRenderer
+
+# Web scraping
+scraper = WebScraper(respect_robots=True, delay=1.0)
+content = scraper.scrape_url("https://example.com")
+links = scraper.extract_links(content)
+images = scraper.extract_images(content)
+text = scraper.extract_text(content)
+
+# Sitemap crawling
+sitemap_crawler = SitemapCrawler()
+urls = sitemap_crawler.parse_sitemap("https://example.com/sitemap.xml")
+sitemap_crawler.crawl_sitemap_urls(urls, max_pages=100)
+
+# JavaScript rendering
+js_renderer = JavaScriptRenderer(headless=True)
+rendered_content = js_renderer.render_page("https://spa-example.com")
+js_renderer.wait_for_element("div.content", timeout=10)
+```
+
+**Feed Parser (`semantica.ingest.feed`):**
+```python
+from semantica.ingest.feed import RSSParser, AtomParser, SocialMediaAPI
+
+# RSS parsing
+rss_parser = RSSParser()
+rss_feed = rss_parser.parse_rss("https://example.com/feed.xml")
+entries = rss_parser.get_entries(rss_feed)
+rss_parser.save_entries(entries, "rss_entries.json")
+
+# Atom parsing
+atom_parser = AtomParser()
+atom_feed = atom_parser.parse_atom("https://example.com/atom.xml")
+atom_entries = atom_parser.get_entries(atom_feed)
+
+# Social media APIs
+social_api = SocialMediaAPI(platform="twitter", api_key="your_key")
+tweets = social_api.fetch_posts(hashtag="#semantica", count=100)
+social_api.export_posts(tweets, format="json")
+```
+
+**Stream Handler (`semantica.ingest.stream`):**
+```python
+from semantica.ingest.stream import WebSocketHandler, MessageQueueHandler, KafkaStream
+
+# WebSocket streaming
+ws_handler = WebSocketHandler(url="wss://example.com/stream")
+ws_handler.connect()
+messages = ws_handler.listen_for_messages(callback=process_message)
+ws_handler.send_message({"type": "subscribe", "channel": "updates"})
+
+# Message queue handling
+mq_handler = MessageQueueHandler(queue_type="rabbitmq", host="localhost")
+mq_handler.connect()
+mq_handler.consume_messages(queue="data_queue", callback=process_message)
+mq_handler.publish_message("data_queue", {"data": "new_content"})
+
+# Kafka streaming
+kafka_stream = KafkaStream(bootstrap_servers=["localhost:9092"])
+kafka_stream.subscribe_topics(["data_topic"])
+kafka_stream.consume_messages(callback=process_kafka_message)
+kafka_stream.produce_message("data_topic", {"key": "value"})
+```
+
+**Repository Handler (`semantica.ingest.repo`):**
+```python
+from semantica.ingest.repo import GitHandler, PackageManagerHandler
+
+# Git repository handling
+git_handler = GitHandler()
+git_handler.clone_repository("https://github.com/user/repo.git", "local_repo")
+commits = git_handler.get_commits(since="2023-01-01")
+files = git_handler.get_changed_files(commit_hash="abc123")
+git_handler.checkout_branch("feature-branch")
+
+# Package manager handling
+pkg_handler = PackageManagerHandler(manager="npm")
+packages = pkg_handler.list_packages()
+pkg_handler.install_package("package-name", version="1.0.0")
+pkg_info = pkg_handler.get_package_info("package-name")
+```
+
+**Email Handler (`semantica.ingest.email`):**
+```python
+from semantica.ingest.email import IMAPHandler, ExchangeHandler, GmailAPIHandler
+
+# IMAP handling
+imap_handler = IMAPHandler(server="imap.gmail.com", port=993)
+imap_handler.connect(username="user@example.com", password="password")
+emails = imap_handler.fetch_emails(folder="INBOX", since="2023-01-01")
+attachments = imap_handler.download_attachments(email_id=123)
+
+# Exchange handling
+exchange_handler = ExchangeHandler(server="outlook.office365.com")
+exchange_handler.connect(username="user@example.com", password="password")
+exchange_emails = exchange_handler.get_emails(folder="Inbox")
+
+# Gmail API handling
+gmail_handler = GmailAPIHandler(credentials_file="credentials.json")
+gmail_emails = gmail_handler.list_messages(query="is:unread")
+gmail_handler.download_attachments(message_id="msg123")
+```
+
+**Database Export (`semantica.ingest.db_export`):**
+```python
+from semantica.ingest.db_export import DatabaseExporter, SQLQueryHandler, ETLProcessor
+
+# Database export
+db_exporter = DatabaseExporter(connection_string="postgresql://user:pass@localhost/db")
+tables = db_exporter.export_table("users", output_format="csv")
+db_exporter.export_schema(output_file="schema.sql")
+
+# SQL query handling
+sql_handler = SQLQueryHandler(connection_string="postgresql://user:pass@localhost/db")
+results = sql_handler.execute_query("SELECT * FROM users WHERE active = true")
+sql_handler.export_query_results(results, "active_users.csv")
+
+# ETL processing
+etl_processor = ETLProcessor()
+etl_processor.extract_from_source("database", config=db_config)
+etl_processor.transform_data(transform_rules=transformation_rules)
+etl_processor.load_to_destination("data_warehouse", config=dw_config)
+```
 
 ### 4. **Document Parsing** (`semantica.parse`)
 
@@ -394,39 +553,212 @@ rss_data = feed_ingestor.parse_rss("https://example.com/feed.xml")
 
 **Purpose:** Extract content from various document formats
 
+#### **Imports:**
 ```python
 from semantica.parse import PDFParser, DOCXParser, HTMLParser, ImageParser
+from semantica.parse.pdf import PDFTextExtractor, PDFTableExtractor, PDFImageExtractor, PDFAnnotationExtractor
+from semantica.parse.docx import DOCXTextExtractor, DOCXStyleExtractor, DOCXTrackChangesExtractor
+from semantica.parse.pptx import PPTXSlideExtractor, PPTXNotesExtractor, PPTXMediaExtractor
+from semantica.parse.excel import ExcelDataExtractor, ExcelFormulaExtractor, ExcelChartExtractor
+from semantica.parse.html import HTMLDOMParser, HTMLMetadataExtractor, HTMLFormExtractor
+from semantica.parse.images import OCRProcessor, ObjectDetector, EXIFExtractor
+from semantica.parse.tables import TableDetector, TableStructureAnalyzer, TableDataExtractor
+```
 
+#### **Main Functions:**
+```python
 # PDF parsing
 pdf_parser = PDFParser()
 pdf_text = pdf_parser.extract_text("document.pdf")
 pdf_tables = pdf_parser.extract_tables("document.pdf")
 pdf_images = pdf_parser.extract_images("document.pdf")
+pdf_annotations = pdf_parser.extract_annotations("document.pdf")
 
 # DOCX parsing
 docx_parser = DOCXParser()
 docx_content = docx_parser.get_document_structure("document.docx")
 track_changes = docx_parser.extract_track_changes("document.docx")
+styles = docx_parser.extract_styles("document.docx")
 
 # HTML parsing
 html_parser = HTMLParser()
 dom_tree = html_parser.parse_dom("https://example.com")
 metadata = html_parser.extract_metadata(dom_tree)
+forms = html_parser.extract_forms(dom_tree)
 
 # Image parsing (OCR)
 image_parser = ImageParser()
 ocr_text = image_parser.ocr_text("image.png")
 objects = image_parser.detect_objects("image.jpg")
+exif_data = image_parser.extract_exif("image.jpg")
 ```
 
-**Submodules:**
-- `pdf` - PDF text, tables, images, annotations
-- `docx` - Word documents, styles, track changes
-- `pptx` - PowerPoint slides, speaker notes
-- `excel` - Spreadsheets, formulas, charts
-- `html` - Web pages, DOM structure, metadata
-- `images` - OCR, object detection, EXIF data
-- `tables` - Table structure detection and extraction
+#### **Submodules with Functions:**
+
+**PDF Parser (`semantica.parse.pdf`):**
+```python
+from semantica.parse.pdf import PDFTextExtractor, PDFTableExtractor, PDFImageExtractor, PDFAnnotationExtractor
+
+# Text extraction
+text_extractor = PDFTextExtractor()
+text = text_extractor.extract_text("document.pdf")
+text_by_page = text_extractor.extract_text_by_page("document.pdf")
+text_with_coordinates = text_extractor.extract_text_with_coordinates("document.pdf")
+
+# Table extraction
+table_extractor = PDFTableExtractor()
+tables = table_extractor.extract_tables("document.pdf")
+table_data = table_extractor.extract_table_data("document.pdf", page=1)
+table_structure = table_extractor.analyze_table_structure("document.pdf")
+
+# Image extraction
+image_extractor = PDFImageExtractor()
+images = image_extractor.extract_images("document.pdf")
+image_metadata = image_extractor.get_image_metadata("document.pdf")
+image_extractor.save_images("document.pdf", output_dir="extracted_images/")
+
+# Annotation extraction
+annotation_extractor = PDFAnnotationExtractor()
+annotations = annotation_extractor.extract_annotations("document.pdf")
+comments = annotation_extractor.extract_comments("document.pdf")
+highlights = annotation_extractor.extract_highlights("document.pdf")
+```
+
+**DOCX Parser (`semantica.parse.docx`):**
+```python
+from semantica.parse.docx import DOCXTextExtractor, DOCXStyleExtractor, DOCXTrackChangesExtractor
+
+# Text extraction
+docx_text = DOCXTextExtractor()
+text = docx_text.extract_text("document.docx")
+paragraphs = docx_text.extract_paragraphs("document.docx")
+headers_footers = docx_text.extract_headers_footers("document.docx")
+
+# Style extraction
+style_extractor = DOCXStyleExtractor()
+styles = style_extractor.extract_styles("document.docx")
+formatting = style_extractor.extract_formatting("document.docx")
+tables = style_extractor.extract_table_styles("document.docx")
+
+# Track changes extraction
+track_changes = DOCXTrackChangesExtractor()
+changes = track_changes.extract_changes("document.docx")
+revisions = track_changes.extract_revisions("document.docx")
+comments = track_changes.extract_comments("document.docx")
+```
+
+**PowerPoint Parser (`semantica.parse.pptx`):**
+```python
+from semantica.parse.pptx import PPTXSlideExtractor, PPTXNotesExtractor, PPTXMediaExtractor
+
+# Slide extraction
+slide_extractor = PPTXSlideExtractor()
+slides = slide_extractor.extract_slides("presentation.pptx")
+slide_text = slide_extractor.extract_slide_text("presentation.pptx", slide_number=1)
+slide_layout = slide_extractor.extract_slide_layout("presentation.pptx")
+
+# Notes extraction
+notes_extractor = PPTXNotesExtractor()
+notes = notes_extractor.extract_notes("presentation.pptx")
+speaker_notes = notes_extractor.extract_speaker_notes("presentation.pptx")
+
+# Media extraction
+media_extractor = PPTXMediaExtractor()
+images = media_extractor.extract_images("presentation.pptx")
+videos = media_extractor.extract_videos("presentation.pptx")
+audio = media_extractor.extract_audio("presentation.pptx")
+```
+
+**Excel Parser (`semantica.parse.excel`):**
+```python
+from semantica.parse.excel import ExcelDataExtractor, ExcelFormulaExtractor, ExcelChartExtractor
+
+# Data extraction
+excel_extractor = ExcelDataExtractor()
+data = excel_extractor.extract_data("spreadsheet.xlsx", sheet_name="Sheet1")
+all_sheets = excel_extractor.extract_all_sheets("spreadsheet.xlsx")
+cell_values = excel_extractor.extract_cell_values("spreadsheet.xlsx", range="A1:C10")
+
+# Formula extraction
+formula_extractor = ExcelFormulaExtractor()
+formulas = formula_extractor.extract_formulas("spreadsheet.xlsx")
+formula_dependencies = formula_extractor.analyze_formula_dependencies("spreadsheet.xlsx")
+
+# Chart extraction
+chart_extractor = ExcelChartExtractor()
+charts = chart_extractor.extract_charts("spreadsheet.xlsx")
+chart_data = chart_extractor.extract_chart_data("spreadsheet.xlsx", chart_name="Chart1")
+```
+
+**HTML Parser (`semantica.parse.html`):**
+```python
+from semantica.parse.html import HTMLDOMParser, HTMLMetadataExtractor, HTMLFormExtractor
+
+# DOM parsing
+dom_parser = HTMLDOMParser()
+dom_tree = dom_parser.parse_dom("https://example.com")
+elements = dom_parser.find_elements(dom_tree, tag="div", class_name="content")
+links = dom_parser.extract_links(dom_tree)
+images = dom_parser.extract_images(dom_tree)
+
+# Metadata extraction
+metadata_extractor = HTMLMetadataExtractor()
+title = metadata_extractor.extract_title(dom_tree)
+description = metadata_extractor.extract_description(dom_tree)
+keywords = metadata_extractor.extract_keywords(dom_tree)
+og_data = metadata_extractor.extract_og_metadata(dom_tree)
+
+# Form extraction
+form_extractor = HTMLFormExtractor()
+forms = form_extractor.extract_forms(dom_tree)
+form_fields = form_extractor.extract_form_fields(dom_tree)
+form_actions = form_extractor.extract_form_actions(dom_tree)
+```
+
+**Image Parser (`semantica.parse.images`):**
+```python
+from semantica.parse.images import OCRProcessor, ObjectDetector, EXIFExtractor
+
+# OCR processing
+ocr_processor = OCRProcessor()
+text = ocr_processor.extract_text("image.png")
+text_confidence = ocr_processor.extract_text_with_confidence("image.png")
+text_by_region = ocr_processor.extract_text_by_region("image.png", regions=[(0,0,100,100)])
+
+# Object detection
+object_detector = ObjectDetector()
+objects = object_detector.detect_objects("image.jpg")
+faces = object_detector.detect_faces("image.jpg")
+text_regions = object_detector.detect_text_regions("image.jpg")
+
+# EXIF data extraction
+exif_extractor = EXIFExtractor()
+exif_data = exif_extractor.extract_exif("image.jpg")
+camera_info = exif_extractor.extract_camera_info("image.jpg")
+location_data = exif_extractor.extract_location("image.jpg")
+```
+
+**Table Parser (`semantica.parse.tables`):**
+```python
+from semantica.parse.tables import TableDetector, TableStructureAnalyzer, TableDataExtractor
+
+# Table detection
+table_detector = TableDetector()
+tables = table_detector.detect_tables("document.pdf")
+table_regions = table_detector.detect_table_regions("document.pdf")
+
+# Structure analysis
+structure_analyzer = TableStructureAnalyzer()
+structure = structure_analyzer.analyze_structure("document.pdf", table_region)
+headers = structure_analyzer.detect_headers("document.pdf", table_region)
+rows_columns = structure_analyzer.detect_rows_columns("document.pdf", table_region)
+
+# Data extraction
+data_extractor = TableDataExtractor()
+table_data = data_extractor.extract_data("document.pdf", table_region)
+csv_data = data_extractor.extract_as_csv("document.pdf", table_region)
+json_data = data_extractor.extract_as_json("document.pdf", table_region)
+```
 
 ### 5. **Text Normalization** (`semantica.normalize`)
 
@@ -434,34 +766,178 @@ objects = image_parser.detect_objects("image.jpg")
 
 **Purpose:** Clean and normalize text data
 
+#### **Imports:**
 ```python
 from semantica.normalize import TextCleaner, LanguageDetector, EntityNormalizer
+from semantica.normalize.text_cleaner import HTMLRemover, WhitespaceNormalizer, SpecialCharRemover
+from semantica.normalize.language_detector import MultiLanguageDetector, LanguageConfidence, LanguageSupport
+from semantica.normalize.encoding_handler import UTF8Converter, EncodingValidator, EncodingDetector
+from semantica.normalize.entity_normalizer import EntityCanonicalizer, AcronymExpander, EntityStandardizer
+from semantica.normalize.date_normalizer import DateFormatter, DateParser, DateValidator
+from semantica.normalize.number_normalizer import NumberFormatter, NumberParser, CurrencyNormalizer
+```
 
+#### **Main Functions:**
+```python
 # Text cleaning
 cleaner = TextCleaner()
 clean_text = cleaner.remove_html(html_content)
 normalized = cleaner.normalize_whitespace(text)
 cleaned = cleaner.remove_special_chars(text)
+unicode_normalized = cleaner.normalize_unicode(text)
 
 # Language detection
 detector = LanguageDetector()
 language = detector.detect("Hello world")
 confidence = detector.get_confidence()
 supported = detector.supported_languages()
+multi_lang = detector.detect_multiple_languages(mixed_text)
 
 # Entity normalization
 normalizer = EntityNormalizer()
 canonical = normalizer.canonicalize("Apple Inc.", "Apple")
 expanded = normalizer.expand_acronyms("NASA")
+standardized = normalizer.standardize_entities(text)
 ```
 
-**Submodules:**
-- `text_cleaner` - HTML removal, whitespace normalization
-- `language_detector` - Multi-language identification
-- `encoding_handler` - UTF-8 conversion, encoding validation
-- `entity_normalizer` - Named entity standardization
-- `date_normalizer` - Date format standardization
-- `number_normalizer` - Number format standardization
+#### **Submodules with Functions:**
+
+**Text Cleaner (`semantica.normalize.text_cleaner`):**
+```python
+from semantica.normalize.text_cleaner import HTMLRemover, WhitespaceNormalizer, SpecialCharRemover
+
+# HTML removal
+html_remover = HTMLRemover()
+clean_text = html_remover.remove_html("<p>Hello <b>world</b></p>")
+clean_text = html_remover.remove_html_tags(html_content, keep_tags=["p", "br"])
+clean_text = html_remover.remove_html_entities("&amp; &lt; &gt;")
+
+# Whitespace normalization
+whitespace_normalizer = WhitespaceNormalizer()
+normalized = whitespace_normalizer.normalize_spaces("  multiple   spaces  ")
+normalized = whitespace_normalizer.normalize_line_breaks(text)
+normalized = whitespace_normalizer.remove_extra_whitespace(text)
+
+# Special character removal
+char_remover = SpecialCharRemover()
+cleaned = char_remover.remove_special_chars("Text with @#$% symbols")
+cleaned = char_remover.remove_control_chars(text)
+cleaned = char_remover.remove_non_printable(text)
+```
+
+**Language Detector (`semantica.normalize.language_detector`):**
+```python
+from semantica.normalize.language_detector import MultiLanguageDetector, LanguageConfidence, LanguageSupport
+
+# Multi-language detection
+multi_detector = MultiLanguageDetector()
+languages = multi_detector.detect_languages("Hello world. Bonjour le monde.")
+primary_lang = multi_detector.get_primary_language(text)
+language_confidence = multi_detector.get_confidence_scores(text)
+
+# Language confidence
+confidence_calculator = LanguageConfidence()
+confidence = confidence_calculator.calculate_confidence(text, "en")
+confidence_scores = confidence_calculator.get_all_confidence_scores(text)
+
+# Language support
+language_support = LanguageSupport()
+supported = language_support.get_supported_languages()
+is_supported = language_support.is_language_supported("en")
+language_info = language_support.get_language_info("en")
+```
+
+**Encoding Handler (`semantica.normalize.encoding_handler`):**
+```python
+from semantica.normalize.encoding_handler import UTF8Converter, EncodingValidator, EncodingDetector
+
+# UTF-8 conversion
+utf8_converter = UTF8Converter()
+utf8_text = utf8_converter.convert_to_utf8(text, source_encoding="latin1")
+utf8_text = utf8_converter.ensure_utf8(text)
+utf8_text = utf8_converter.fix_encoding_issues(text)
+
+# Encoding validation
+encoding_validator = EncodingValidator()
+is_valid = encoding_validator.validate_encoding(text, "utf-8")
+validation_report = encoding_validator.validate_text_encoding(text)
+encoding_validator.fix_encoding_errors(text)
+
+# Encoding detection
+encoding_detector = EncodingDetector()
+detected_encoding = encoding_detector.detect_encoding(text)
+confidence = encoding_detector.get_detection_confidence()
+possible_encodings = encoding_detector.get_possible_encodings(text)
+```
+
+**Entity Normalizer (`semantica.normalize.entity_normalizer`):**
+```python
+from semantica.normalize.entity_normalizer import EntityCanonicalizer, AcronymExpander, EntityStandardizer
+
+# Entity canonicalization
+canonicalizer = EntityCanonicalizer()
+canonical = canonicalizer.canonicalize("Apple Inc.", "Apple")
+canonical = canonicalizer.canonicalize_entities(text)
+canonical = canonicalizer.merge_duplicate_entities(entities)
+
+# Acronym expansion
+acronym_expander = AcronymExpander()
+expanded = acronym_expander.expand_acronyms("NASA", context="space agency")
+expanded = acronym_expander.expand_all_acronyms(text)
+acronym_map = acronym_expander.build_acronym_dictionary(text)
+
+# Entity standardization
+entity_standardizer = EntityStandardizer()
+standardized = entity_standardizer.standardize_entities(text)
+standardized = entity_standardizer.normalize_entity_names(entities)
+standardized = entity_standardizer.validate_entity_format(entities)
+```
+
+**Date Normalizer (`semantica.normalize.date_normalizer`):**
+```python
+from semantica.normalize.date_normalizer import DateFormatter, DateParser, DateValidator
+
+# Date formatting
+date_formatter = DateFormatter()
+formatted = date_formatter.format_date("2023-01-15", format="%B %d, %Y")
+formatted = date_formatter.normalize_date_format("15/01/2023")
+formatted = date_formatter.standardize_dates(text)
+
+# Date parsing
+date_parser = DateParser()
+parsed = date_parser.parse_date("January 15, 2023")
+parsed = date_parser.parse_flexible_date("15th Jan 2023")
+parsed = date_parser.extract_dates_from_text(text)
+
+# Date validation
+date_validator = DateValidator()
+is_valid = date_validator.validate_date("2023-01-15")
+is_valid = date_validator.validate_date_range(start_date, end_date)
+validation_report = date_validator.validate_dates_in_text(text)
+```
+
+**Number Normalizer (`semantica.normalize.number_normalizer`):**
+```python
+from semantica.normalize.number_normalizer import NumberFormatter, NumberParser, CurrencyNormalizer
+
+# Number formatting
+number_formatter = NumberFormatter()
+formatted = number_formatter.format_number(1234567.89, format="comma")
+formatted = number_formatter.normalize_numbers(text)
+formatted = number_formatter.standardize_decimal_separator(text)
+
+# Number parsing
+number_parser = NumberParser()
+parsed = number_parser.parse_number("1,234,567.89")
+parsed = number_parser.parse_flexible_number("1.23M")
+parsed = number_parser.extract_numbers_from_text(text)
+
+# Currency normalization
+currency_normalizer = CurrencyNormalizer()
+normalized = currency_normalizer.normalize_currency("$1,234.56", target_currency="USD")
+normalized = currency_normalizer.convert_currency(amount, from_currency="EUR", to_currency="USD")
+normalized = currency_normalizer.standardize_currency_format(text)
+```
 
 ### 6. **Text Chunking** (`semantica.split`)
 
@@ -469,31 +945,150 @@ expanded = normalizer.expand_acronyms("NASA")
 
 **Purpose:** Split documents into optimal chunks for processing
 
+#### **Imports:**
 ```python
 from semantica.split import SemanticChunker, StructuralChunker, TableChunker
+from semantica.split.sliding_window import SlidingWindowChunker, OverlapChunker, FixedSizeChunker
+from semantica.split.semantic_chunker import TopicBasedChunker, SentenceChunker, ParagraphChunker
+from semantica.split.structural_chunker import SectionChunker, HeaderChunker, DocumentChunker
+from semantica.split.table_chunker import TablePreservingChunker, TableContextExtractor, TableAwareChunker
+from semantica.split.provenance_tracker import ChunkProvenanceTracker, SourceTracker, MetadataTracker
+```
 
+#### **Main Functions:**
+```python
 # Semantic chunking
 semantic_chunker = SemanticChunker()
 chunks = semantic_chunker.split_by_meaning(long_text)
 topics = semantic_chunker.detect_topics(text)
+semantic_chunks = semantic_chunker.split_by_semantic_similarity(text)
 
 # Structural chunking
 structural_chunker = StructuralChunker()
 sections = structural_chunker.split_by_sections(document)
 headers = structural_chunker.identify_headers(document)
+paragraphs = structural_chunker.split_by_paragraphs(document)
 
 # Table-aware chunking
 table_chunker = TableChunker()
 table_chunks = table_chunker.preserve_tables(document)
 context = table_chunker.extract_table_context(table)
+table_aware_chunks = table_chunker.split_with_table_context(document)
 ```
 
-**Submodules:**
-- `sliding_window` - Fixed-size chunks with overlap
-- `semantic_chunker` - Meaning-based splitting
-- `structural_chunker` - Document-aware splitting
-- `table_chunker` - Table-preserving splitting
-- `provenance_tracker` - Source tracking for chunks
+#### **Submodules with Functions:**
+
+**Sliding Window (`semantica.split.sliding_window`):**
+```python
+from semantica.split.sliding_window import SlidingWindowChunker, OverlapChunker, FixedSizeChunker
+
+# Sliding window chunking
+sliding_chunker = SlidingWindowChunker(window_size=512, step_size=256)
+chunks = sliding_chunker.chunk_text(long_text)
+chunks = sliding_chunker.chunk_with_overlap(text, overlap_ratio=0.5)
+
+# Overlap chunking
+overlap_chunker = OverlapChunker(chunk_size=500, overlap_size=100)
+chunks = overlap_chunker.chunk_text(text)
+chunks = overlap_chunker.chunk_with_context(text, context_size=50)
+
+# Fixed size chunking
+fixed_chunker = FixedSizeChunker(chunk_size=1000)
+chunks = fixed_chunker.chunk_text(text)
+chunks = fixed_chunker.chunk_by_tokens(text, max_tokens=500)
+```
+
+**Semantic Chunker (`semantica.split.semantic_chunker`):**
+```python
+from semantica.split.semantic_chunker import TopicBasedChunker, SentenceChunker, ParagraphChunker
+
+# Topic-based chunking
+topic_chunker = TopicBasedChunker()
+chunks = topic_chunker.split_by_topics(text)
+topics = topic_chunker.detect_topic_boundaries(text)
+chunks = topic_chunker.split_by_topic_shift(text, threshold=0.7)
+
+# Sentence chunking
+sentence_chunker = SentenceChunker()
+chunks = sentence_chunker.split_by_sentences(text)
+chunks = sentence_chunker.split_by_sentence_similarity(text)
+chunks = sentence_chunker.split_by_semantic_coherence(text)
+
+# Paragraph chunking
+paragraph_chunker = ParagraphChunker()
+chunks = paragraph_chunker.split_by_paragraphs(text)
+chunks = paragraph_chunker.split_by_paragraph_similarity(text)
+chunks = paragraph_chunker.split_by_paragraph_length(text, max_length=1000)
+```
+
+**Structural Chunker (`semantica.split.structural_chunker`):**
+```python
+from semantica.split.structural_chunker import SectionChunker, HeaderChunker, DocumentChunker
+
+# Section-based chunking
+section_chunker = SectionChunker()
+chunks = section_chunker.split_by_sections(document)
+sections = section_chunker.identify_sections(document)
+chunks = section_chunker.split_by_section_hierarchy(document)
+
+# Header-based chunking
+header_chunker = HeaderChunker()
+chunks = header_chunker.split_by_headers(document)
+headers = header_chunker.extract_headers(document)
+chunks = header_chunker.split_by_header_level(document, level=2)
+
+# Document-aware chunking
+document_chunker = DocumentChunker()
+chunks = document_chunker.split_by_document_structure(document)
+chunks = document_chunker.split_by_document_type(document, doc_type="research_paper")
+chunks = document_chunker.split_by_document_sections(document)
+```
+
+**Table Chunker (`semantica.split.table_chunker`):**
+```python
+from semantica.split.table_chunker import TablePreservingChunker, TableContextExtractor, TableAwareChunker
+
+# Table-preserving chunking
+table_preserver = TablePreservingChunker()
+chunks = table_preserver.split_preserve_tables(document)
+chunks = table_preserver.split_around_tables(document, context_size=200)
+chunks = table_preserver.split_table_aware(document)
+
+# Table context extraction
+context_extractor = TableContextExtractor()
+context = context_extractor.extract_table_context(table)
+context = context_extractor.extract_table_metadata(table)
+context = context_extractor.extract_table_relationships(table)
+
+# Table-aware chunking
+table_aware = TableAwareChunker()
+chunks = table_aware.split_with_table_context(document)
+chunks = table_aware.split_table_centered(document)
+chunks = table_aware.split_table_relationships(document)
+```
+
+**Provenance Tracker (`semantica.split.provenance_tracker`):**
+```python
+from semantica.split.provenance_tracker import ChunkProvenanceTracker, SourceTracker, MetadataTracker
+
+# Chunk provenance tracking
+provenance_tracker = ChunkProvenanceTracker()
+chunks = provenance_tracker.track_chunk_sources(text, source="document.pdf")
+chunks = provenance_tracker.track_chunk_metadata(chunks, metadata={"page": 1, "section": "intro"})
+provenance = provenance_tracker.get_chunk_provenance(chunk_id)
+
+# Source tracking
+source_tracker = SourceTracker()
+sources = source_tracker.track_sources(chunks)
+sources = source_tracker.track_source_hierarchy(chunks)
+sources = source_tracker.track_source_relationships(chunks)
+
+# Metadata tracking
+metadata_tracker = MetadataTracker()
+metadata = metadata_tracker.track_metadata(chunks, metadata_schema)
+metadata = metadata_tracker.track_metadata_changes(chunks, original_metadata)
+metadata = metadata_tracker.track_metadata_provenance(chunks)
+```
 
 ---
 
@@ -505,36 +1100,182 @@ context = table_chunker.extract_table_context(table)
 
 **Purpose:** Extract semantic information from text
 
+#### **Imports:**
 ```python
 from semantica.semantic_extract import NERExtractor, RelationExtractor, TripleExtractor
+from semantica.semantic_extract.ner_extractor import NERModel, EntityClassifier, EntityLinker
+from semantica.semantic_extract.relation_extractor import RelationModel, RelationClassifier, RelationValidator
+from semantica.semantic_extract.event_detector import EventDetector, TemporalExtractor, EventClassifier
+from semantica.semantic_extract.coref_resolver import CorefResolver, EntityLinker, MentionResolver
+from semantica.semantic_extract.triple_extractor import TripleModel, TripleValidator, TripleFormatter
+from semantica.semantic_extract.llm_enhancer import LLMEnhancer, ComplexExtractor, LLMValidator
+```
 
+#### **Main Functions:**
+```python
 # Named Entity Recognition
 ner = NERExtractor()
 entities = ner.extract_entities("Apple Inc. was founded by Steve Jobs in 1976")
 classified = ner.classify_entities(entities)
+linked = ner.link_entities(entities)
 
 # Relation Extraction
 rel_extractor = RelationExtractor()
 relations = rel_extractor.find_relations("Apple Inc. was founded by Steve Jobs")
 classified_rels = rel_extractor.classify_relations(relations)
+validated_rels = rel_extractor.validate_relations(relations)
 
 # Triple Extraction
 triple_extractor = TripleExtractor()
 triples = triple_extractor.extract_triples(text)
 validated = triple_extractor.validate_triples(triples)
+formatted = triple_extractor.format_triples(triples)
 
 # Export triples
 turtle = triple_extractor.to_turtle(triples)
 jsonld = triple_extractor.to_jsonld(triples)
+ntriples = triple_extractor.to_ntriples(triples)
 ```
 
-**Submodules:**
-- `ner_extractor` - Named entity recognition and classification
-- `relation_extractor` - Relationship detection and classification
-- `event_detector` - Event identification and temporal extraction
-- `coref_resolver` - Co-reference resolution and entity linking
-- `triple_extractor` - RDF triple extraction
-- `llm_enhancer` - LLM-based complex extraction
+#### **Submodules with Functions:**
+
+**NER Extractor (`semantica.semantic_extract.ner_extractor`):**
+```python
+from semantica.semantic_extract.ner_extractor import NERModel, EntityClassifier, EntityLinker
+
+# NER model
+ner_model = NERModel(model_name="spacy", language="en")
+entities = ner_model.extract_entities(text)
+entities = ner_model.extract_entities_batch(texts)
+entities = ner_model.extract_entities_with_confidence(text)
+
+# Entity classification
+entity_classifier = EntityClassifier()
+classified = entity_classifier.classify_entities(entities)
+classified = entity_classifier.classify_by_type(entities, entity_type="PERSON")
+classified = entity_classifier.classify_by_domain(entities, domain="technology")
+
+# Entity linking
+entity_linker = EntityLinker()
+linked = entity_linker.link_to_wikidata(entities)
+linked = entity_linker.link_to_dbpedia(entities)
+linked = entity_linker.link_to_custom_kb(entities, knowledge_base)
+```
+
+**Relation Extractor (`semantica.semantic_extract.relation_extractor`):**
+```python
+from semantica.semantic_extract.relation_extractor import RelationModel, RelationClassifier, RelationValidator
+
+# Relation model
+relation_model = RelationModel(model_name="rebel", language="en")
+relations = relation_model.extract_relations(text)
+relations = relation_model.extract_relations_batch(texts)
+relations = relation_model.extract_relations_with_confidence(text)
+
+# Relation classification
+relation_classifier = RelationClassifier()
+classified = relation_classifier.classify_relations(relations)
+classified = relation_classifier.classify_by_type(relations, relation_type="founded_by")
+classified = relation_classifier.classify_by_domain(relations, domain="business")
+
+# Relation validation
+relation_validator = RelationValidator()
+validated = relation_validator.validate_relations(relations)
+validated = relation_validator.validate_by_schema(relations, schema)
+validated = relation_validator.validate_by_consistency(relations)
+```
+
+**Event Detector (`semantica.semantic_extract.event_detector`):**
+```python
+from semantica.semantic_extract.event_detector import EventDetector, TemporalExtractor, EventClassifier
+
+# Event detection
+event_detector = EventDetector()
+events = event_detector.detect_events(text)
+events = event_detector.detect_events_batch(texts)
+events = event_detector.detect_events_with_confidence(text)
+
+# Temporal extraction
+temporal_extractor = TemporalExtractor()
+temporal = temporal_extractor.extract_temporal_expressions(text)
+temporal = temporal_extractor.extract_dates(text)
+temporal = temporal_extractor.extract_time_expressions(text)
+
+# Event classification
+event_classifier = EventClassifier()
+classified = event_classifier.classify_events(events)
+classified = event_classifier.classify_by_type(events, event_type="founding")
+classified = event_classifier.classify_by_domain(events, domain="business")
+```
+
+**Coreference Resolver (`semantica.semantic_extract.coref_resolver`):**
+```python
+from semantica.semantic_extract.coref_resolver import CorefResolver, EntityLinker, MentionResolver
+
+# Coreference resolution
+coref_resolver = CorefResolver()
+resolved = coref_resolver.resolve_coreferences(text)
+resolved = coref_resolver.resolve_coreferences_batch(texts)
+resolved = coref_resolver.resolve_coreferences_with_confidence(text)
+
+# Entity linking
+entity_linker = EntityLinker()
+linked = entity_linker.link_mentions(mentions)
+linked = entity_linker.link_to_knowledge_base(mentions, kb)
+linked = entity_linker.link_by_similarity(mentions, threshold=0.8)
+
+# Mention resolution
+mention_resolver = MentionResolver()
+resolved = mention_resolver.resolve_mentions(mentions)
+resolved = mention_resolver.resolve_pronouns(text)
+resolved = mention_resolver.resolve_nominal_mentions(text)
+```
+
+**Triple Extractor (`semantica.semantic_extract.triple_extractor`):**
+```python
+from semantica.semantic_extract.triple_extractor import TripleModel, TripleValidator, TripleFormatter
+
+# Triple extraction
+triple_model = TripleModel()
+triples = triple_model.extract_triples(text)
+triples = triple_model.extract_triples_batch(texts)
+triples = triple_model.extract_triples_with_confidence(text)
+
+# Triple validation
+triple_validator = TripleValidator()
+validated = triple_validator.validate_triples(triples)
+validated = triple_validator.validate_by_schema(triples, schema)
+validated = triple_validator.validate_by_consistency(triples)
+
+# Triple formatting
+triple_formatter = TripleFormatter()
+formatted = triple_formatter.format_as_rdf(triples)
+formatted = triple_formatter.format_as_jsonld(triples)
+formatted = triple_formatter.format_as_turtle(triples)
+```
+
+**LLM Enhancer (`semantica.semantic_extract.llm_enhancer`):**
+```python
+from semantica.semantic_extract.llm_enhancer import LLMEnhancer, ComplexExtractor, LLMValidator
+
+# LLM enhancement
+llm_enhancer = LLMEnhancer(model="gpt-4")
+enhanced = llm_enhancer.enhance_extraction(text, extraction_type="entities")
+enhanced = llm_enhancer.enhance_relations(text, relations)
+enhanced = llm_enhancer.enhance_triples(text, triples)
+
+# Complex extraction
+complex_extractor = ComplexExtractor()
+complex_entities = complex_extractor.extract_complex_entities(text)
+complex_relations = complex_extractor.extract_complex_relations(text)
+complex_events = complex_extractor.extract_complex_events(text)
+
+# LLM validation
+llm_validator = LLMValidator()
+validated = llm_validator.validate_with_llm(extractions, text)
+validated = llm_validator.validate_consistency(extractions)
+validated = llm_validator.validate_completeness(extractions, text)
+```
 
 ### 8. **Ontology Generation** (`semantica.ontology`)
 
@@ -542,9 +1283,18 @@ jsonld = triple_extractor.to_jsonld(triples)
 
 **Purpose:** Generate ontologies from extracted data
 
+#### **Imports:**
 ```python
 from semantica.ontology import OntologyGenerator
+from semantica.ontology.class_inferrer import ClassInferrer, HierarchyBuilder, ClassValidator
+from semantica.ontology.property_generator import PropertyInferrer, DataTypeInferrer, PropertyValidator
+from semantica.ontology.owl_generator import OWLGenerator, RDFGenerator, TurtleGenerator
+from semantica.ontology.base_mapper import SchemaMapper, FOAFMapper, DublinCoreMapper
+from semantica.ontology.version_manager import VersionManager, MigrationManager, OntologyVersioner
+```
 
+#### **Main Functions:**
+```python
 # Initialize ontology generator
 ontology_gen = OntologyGenerator(
     base_ontologies=["schema.org", "foaf", "dublin_core"],
@@ -554,22 +1304,135 @@ ontology_gen = OntologyGenerator(
 
 # Generate ontology from documents
 ontology = ontology_gen.generate_from_documents(documents)
+ontology = ontology_gen.generate_from_entities(entities)
+ontology = ontology_gen.generate_from_triples(triples)
 
 # Export in various formats
 owl_ontology = ontology.to_owl()
 rdf_ontology = ontology.to_rdf()
 turtle_ontology = ontology.to_turtle()
+jsonld_ontology = ontology.to_jsonld()
 
 # Save to triple store
 ontology.save_to_triple_store("http://localhost:9999/blazegraph/sparql")
 ```
 
-**Submodules:**
-- `class_inferrer` - Automatic class discovery and hierarchy
-- `property_generator` - Property inference and data types
-- `owl_generator` - OWL/RDF generation and serialization
-- `base_mapper` - Schema.org, FOAF, Dublin Core mapping
-- `version_manager` - Ontology versioning and migration
+#### **Submodules with Functions:**
+
+**Class Inferrer (`semantica.ontology.class_inferrer`):**
+```python
+from semantica.ontology.class_inferrer import ClassInferrer, HierarchyBuilder, ClassValidator
+
+# Class inference
+class_inferrer = ClassInferrer()
+classes = class_inferrer.infer_classes(entities)
+classes = class_inferrer.infer_classes_from_triples(triples)
+classes = class_inferrer.infer_classes_from_text(text)
+
+# Hierarchy building
+hierarchy_builder = HierarchyBuilder()
+hierarchy = hierarchy_builder.build_hierarchy(classes)
+hierarchy = hierarchy_builder.build_is_a_hierarchy(classes)
+hierarchy = hierarchy_builder.build_part_of_hierarchy(classes)
+
+# Class validation
+class_validator = ClassValidator()
+validated = class_validator.validate_classes(classes)
+validated = class_validator.validate_hierarchy(hierarchy)
+validated = class_validator.validate_consistency(classes)
+```
+
+**Property Generator (`semantica.ontology.property_generator`):**
+```python
+from semantica.ontology.property_generator import PropertyInferrer, DataTypeInferrer, PropertyValidator
+
+# Property inference
+property_inferrer = PropertyInferrer()
+properties = property_inferrer.infer_properties(entities)
+properties = property_inferrer.infer_properties_from_triples(triples)
+properties = property_inferrer.infer_properties_from_text(text)
+
+# Data type inference
+datatype_inferrer = DataTypeInferrer()
+datatypes = datatype_inferrer.infer_datatypes(properties)
+datatypes = datatype_inferrer.infer_datatypes_from_values(values)
+datatypes = datatype_inferrer.infer_datatypes_from_schema(schema)
+
+# Property validation
+property_validator = PropertyValidator()
+validated = property_validator.validate_properties(properties)
+validated = property_validator.validate_datatypes(properties, datatypes)
+validated = property_validator.validate_domain_range(properties)
+```
+
+**OWL Generator (`semantica.ontology.owl_generator`):**
+```python
+from semantica.ontology.owl_generator import OWLGenerator, RDFGenerator, TurtleGenerator
+
+# OWL generation
+owl_generator = OWLGenerator()
+owl_ontology = owl_generator.generate_owl(classes, properties)
+owl_ontology = owl_generator.generate_owl_from_triples(triples)
+owl_ontology = owl_generator.generate_owl_with_axioms(classes, properties, axioms)
+
+# RDF generation
+rdf_generator = RDFGenerator()
+rdf_ontology = rdf_generator.generate_rdf(classes, properties)
+rdf_ontology = rdf_generator.generate_rdf_from_triples(triples)
+rdf_ontology = rdf_generator.generate_rdf_with_namespaces(classes, properties, namespaces)
+
+# Turtle generation
+turtle_generator = TurtleGenerator()
+turtle_ontology = turtle_generator.generate_turtle(classes, properties)
+turtle_ontology = turtle_generator.generate_turtle_from_triples(triples)
+turtle_ontology = turtle_generator.generate_turtle_with_prefixes(classes, properties, prefixes)
+```
+
+**Base Mapper (`semantica.ontology.base_mapper`):**
+```python
+from semantica.ontology.base_mapper import SchemaMapper, FOAFMapper, DublinCoreMapper
+
+# Schema.org mapping
+schema_mapper = SchemaMapper()
+mapped = schema_mapper.map_to_schema_org(classes, properties)
+mapped = schema_mapper.map_entities_to_schema_org(entities)
+mapped = schema_mapper.map_relations_to_schema_org(relations)
+
+# FOAF mapping
+foaf_mapper = FOAFMapper()
+mapped = foaf_mapper.map_to_foaf(classes, properties)
+mapped = foaf_mapper.map_persons_to_foaf(entities)
+mapped = foaf_mapper.map_organizations_to_foaf(entities)
+
+# Dublin Core mapping
+dc_mapper = DublinCoreMapper()
+mapped = dc_mapper.map_to_dublin_core(classes, properties)
+mapped = dc_mapper.map_documents_to_dublin_core(documents)
+mapped = dc_mapper.map_metadata_to_dublin_core(metadata)
+```
+
+**Version Manager (`semantica.ontology.version_manager`):**
+```python
+from semantica.ontology.version_manager import VersionManager, MigrationManager, OntologyVersioner
+
+# Version management
+version_manager = VersionManager()
+version = version_manager.create_version(ontology, version="1.0.0")
+version = version_manager.get_version(ontology, version="1.0.0")
+versions = version_manager.list_versions(ontology)
+
+# Migration management
+migration_manager = MigrationManager()
+migrated = migration_manager.migrate_ontology(ontology, from_version="1.0.0", to_version="2.0.0")
+migrated = migration_manager.migrate_triples(triples, migration_rules)
+migrated = migration_manager.migrate_classes(classes, migration_rules)
+
+# Ontology versioning
+ontology_versioner = OntologyVersioner()
+versioned = ontology_versioner.version_ontology(ontology)
+versioned = ontology_versioner.compare_versions(ontology_v1, ontology_v2)
+versioned = ontology_versioner.merge_versions(ontology_v1, ontology_v2)
+```
 
 ### 9. **Knowledge Graph** (`semantica.kg`)
 
@@ -577,24 +1440,153 @@ ontology.save_to_triple_store("http://localhost:9999/blazegraph/sparql")
 
 **Purpose:** Build and manage knowledge graphs
 
+#### **Imports:**
 ```python
 from semantica.kg import GraphBuilder, EntityResolver, Deduplicator
+from semantica.kg.graph_builder import NodeBuilder, EdgeBuilder, SubgraphBuilder
+from semantica.kg.entity_resolver import IdentityResolver, EntityMerger, EntityMatcher
+from semantica.kg.deduplicator import DuplicateFinder, EntityMerger, SimilarityCalculator
+from semantica.kg.graph_analyzer import GraphAnalyzer, PathFinder, CentralityCalculator
+from semantica.kg.graph_optimizer import GraphOptimizer, IndexBuilder, QueryOptimizer
+```
 
+#### **Main Functions:**
+```python
 # Build knowledge graph
 graph_builder = GraphBuilder()
 node = graph_builder.create_node("Apple Inc.", "Company")
 edge = graph_builder.create_edge("Apple Inc.", "founded_by", "Steve Jobs")
 subgraph = graph_builder.build_subgraph(entities)
+graph = graph_builder.build_complete_graph(triples)
 
 # Entity resolution
 resolver = EntityResolver()
 canonical = resolver.resolve_identity("Apple Inc.", "Apple")
 merged = resolver.merge_entities(duplicate_entities)
+resolved = resolver.resolve_all_entities(entities)
 
 # Deduplication
 deduplicator = Deduplicator()
 duplicates = deduplicator.find_duplicates(entities)
 merged = deduplicator.merge_duplicates(duplicates)
+cleaned = deduplicator.clean_graph(graph)
+```
+
+#### **Submodules with Functions:**
+
+**Graph Builder (`semantica.kg.graph_builder`):**
+```python
+from semantica.kg.graph_builder import NodeBuilder, EdgeBuilder, SubgraphBuilder
+
+# Node building
+node_builder = NodeBuilder()
+node = node_builder.create_node("Apple Inc.", "Company", properties={"founded": 1976})
+node = node_builder.create_node_with_id("Apple Inc.", "Company", node_id="apple_inc")
+nodes = node_builder.create_nodes_batch(entities)
+
+# Edge building
+edge_builder = EdgeBuilder()
+edge = edge_builder.create_edge("Apple Inc.", "founded_by", "Steve Jobs")
+edge = edge_builder.create_edge_with_properties("Apple Inc.", "founded_by", "Steve Jobs", {"year": 1976})
+edges = edge_builder.create_edges_batch(relations)
+
+# Subgraph building
+subgraph_builder = SubgraphBuilder()
+subgraph = subgraph_builder.build_subgraph(entities, relations)
+subgraph = subgraph_builder.build_subgraph_by_type(entities, entity_type="Company")
+subgraph = subgraph_builder.build_subgraph_by_relation(entities, relation_type="founded_by")
+```
+
+**Entity Resolver (`semantica.kg.entity_resolver`):**
+```python
+from semantica.kg.entity_resolver import IdentityResolver, EntityMerger, EntityMatcher
+
+# Identity resolution
+identity_resolver = IdentityResolver()
+canonical = identity_resolver.resolve_identity("Apple Inc.", "Apple")
+canonical = identity_resolver.resolve_identity_batch(entities)
+canonical = identity_resolver.resolve_identity_with_confidence("Apple Inc.", "Apple", threshold=0.8)
+
+# Entity merging
+entity_merger = EntityMerger()
+merged = entity_merger.merge_entities(duplicate_entities)
+merged = entity_merger.merge_entities_with_strategy(duplicate_entities, strategy="highest_confidence")
+merged = entity_merger.merge_entities_with_validation(duplicate_entities, validation_rules)
+
+# Entity matching
+entity_matcher = EntityMatcher()
+matches = entity_matcher.find_matches("Apple Inc.", entities)
+matches = entity_matcher.find_matches_with_similarity("Apple Inc.", entities, threshold=0.8)
+matches = entity_matcher.find_matches_with_fuzzy("Apple Inc.", entities, fuzzy_threshold=0.7)
+```
+
+**Deduplicator (`semantica.kg.deduplicator`):**
+```python
+from semantica.kg.deduplicator import DuplicateFinder, EntityMerger, SimilarityCalculator
+
+# Duplicate finding
+duplicate_finder = DuplicateFinder()
+duplicates = duplicate_finder.find_duplicates(entities)
+duplicates = duplicate_finder.find_duplicates_by_similarity(entities, threshold=0.8)
+duplicates = duplicate_finder.find_duplicates_by_fuzzy_matching(entities, fuzzy_threshold=0.7)
+
+# Entity merging
+entity_merger = EntityMerger()
+merged = entity_merger.merge_duplicates(duplicates)
+merged = entity_merger.merge_duplicates_with_strategy(duplicates, strategy="merge_properties")
+merged = entity_merger.merge_duplicates_with_validation(duplicates, validation_rules)
+
+# Similarity calculation
+similarity_calculator = SimilarityCalculator()
+similarity = similarity_calculator.calculate_similarity("Apple Inc.", "Apple")
+similarity = similarity_calculator.calculate_similarity_batch(entities)
+similarity = similarity_calculator.calculate_similarity_with_weights(entities, weights)
+```
+
+**Graph Analyzer (`semantica.kg.graph_analyzer`):**
+```python
+from semantica.kg.graph_analyzer import GraphAnalyzer, PathFinder, CentralityCalculator
+
+# Graph analysis
+graph_analyzer = GraphAnalyzer()
+stats = graph_analyzer.analyze_graph(graph)
+stats = graph_analyzer.analyze_connectivity(graph)
+stats = graph_analyzer.analyze_centrality(graph)
+
+# Path finding
+path_finder = PathFinder()
+paths = path_finder.find_paths("Apple Inc.", "Steve Jobs", graph)
+paths = path_finder.find_shortest_paths("Apple Inc.", "Steve Jobs", graph)
+paths = path_finder.find_all_paths("Apple Inc.", "Steve Jobs", graph, max_length=3)
+
+# Centrality calculation
+centrality_calculator = CentralityCalculator()
+centrality = centrality_calculator.calculate_centrality(graph)
+centrality = centrality_calculator.calculate_betweenness_centrality(graph)
+centrality = centrality_calculator.calculate_eigenvector_centrality(graph)
+```
+
+**Graph Optimizer (`semantica.kg.graph_optimizer`):**
+```python
+from semantica.kg.graph_optimizer import GraphOptimizer, IndexBuilder, QueryOptimizer
+
+# Graph optimization
+graph_optimizer = GraphOptimizer()
+optimized = graph_optimizer.optimize_graph(graph)
+optimized = graph_optimizer.optimize_for_queries(graph, query_patterns)
+optimized = graph_optimizer.optimize_for_storage(graph)
+
+# Index building
+index_builder = IndexBuilder()
+index = index_builder.build_index(graph)
+index = index_builder.build_property_index(graph, properties=["name", "type"])
+index = index_builder.build_relationship_index(graph, relationships=["founded_by"])
+
+# Query optimization
+query_optimizer = QueryOptimizer()
+optimized_query = query_optimizer.optimize_query(query, graph)
+optimized_query = query_optimizer.optimize_query_with_index(query, graph, index)
+optimized_query = query_optimizer.optimize_query_with_statistics(query, graph, statistics)
 ```
 
 **Submodules:**
@@ -615,9 +1607,19 @@ merged = deduplicator.merge_duplicates(duplicates)
 
 **Purpose:** Store and search vector embeddings
 
+#### **Imports:**
 ```python
-from semantica.vector_store import PineconeAdapter, FAISSAdapter
+from semantica.vector_store import PineconeAdapter, FAISSAdapter, WeaviateAdapter
+from semantica.vector_store.pinecone_adapter import PineconeIndex, PineconeQuery, PineconeMetadata
+from semantica.vector_store.faiss_adapter import FAISSIndex, FAISSSearch, FAISSIndexBuilder
+from semantica.vector_store.milvus_adapter import MilvusClient, MilvusCollection, MilvusSearch
+from semantica.vector_store.weaviate_adapter import WeaviateClient, WeaviateSchema, WeaviateQuery
+from semantica.vector_store.qdrant_adapter import QdrantClient, QdrantCollection, QdrantSearch
+from semantica.vector_store.hybrid_search import HybridSearch, MetadataFilter, SearchRanker
+```
 
+#### **Main Functions:**
+```python
 # Pinecone integration
 pinecone = PineconeAdapter()
 pinecone.connect(api_key="your-key")
@@ -631,15 +1633,115 @@ faiss.create_index("IVFFlat", dimension=1536)
 faiss.add_vectors(vectors)
 faiss.save_index("index.faiss")
 similar = faiss.search_similar(query_vector, k=10)
+
+# Weaviate integration
+weaviate = WeaviateAdapter()
+weaviate.connect(url="http://localhost:8080")
+weaviate.create_schema(schema_definition)
+weaviate.insert_objects(objects)
+results = weaviate.query_objects(query, class_name="Document")
 ```
 
-**Submodules:**
-- `pinecone_adapter` - Pinecone cloud vector database
-- `faiss_adapter` - Facebook AI Similarity Search
-- `milvus_adapter` - Milvus vector database
-- `weaviate_adapter` - Weaviate vector database
-- `qdrant_adapter` - Qdrant vector database
-- `hybrid_search` - Vector + metadata search
+#### **Submodules with Functions:**
+
+**Pinecone Adapter (`semantica.vector_store.pinecone_adapter`):**
+```python
+from semantica.vector_store.pinecone_adapter import PineconeIndex, PineconeQuery, PineconeMetadata
+
+# Index management
+pinecone_index = PineconeIndex()
+pinecone_index.create_index("semantica-index", dimension=1536, metric="cosine")
+pinecone_index.describe_index("semantica-index")
+pinecone_index.delete_index("semantica-index")
+
+# Vector operations
+pinecone_index.upsert_vectors(vectors, metadata, namespace="documents")
+pinecone_index.update_vectors(vectors, metadata)
+pinecone_index.delete_vectors(ids)
+
+# Query operations
+pinecone_query = PineconeQuery()
+results = pinecone_query.query_vectors(query_vector, top_k=10, include_metadata=True)
+results = pinecone_query.query_with_filter(query_vector, filter={"category": "technology"})
+results = pinecone_query.query_by_id(vector_id)
+
+# Metadata operations
+pinecone_metadata = PineconeMetadata()
+metadata = pinecone_metadata.create_metadata({"text": "sample", "category": "tech"})
+metadata = pinecone_metadata.validate_metadata(metadata)
+metadata = pinecone_metadata.filter_metadata(metadata, {"category": "technology"})
+```
+
+**FAISS Adapter (`semantica.vector_store.faiss_adapter`):**
+```python
+from semantica.vector_store.faiss_adapter import FAISSIndex, FAISSSearch, FAISSIndexBuilder
+
+# Index building
+index_builder = FAISSIndexBuilder()
+index = index_builder.build_index("IVFFlat", dimension=1536, nlist=100)
+index = index_builder.build_index("HNSW", dimension=1536, M=16)
+index = index_builder.build_index("PQ", dimension=1536, m=64)
+
+# Index operations
+faiss_index = FAISSIndex()
+faiss_index.add_vectors(vectors)
+faiss_index.add_vectors_with_ids(vectors, ids)
+faiss_index.remove_vectors(ids)
+faiss_index.save_index("index.faiss")
+faiss_index.load_index("index.faiss")
+
+# Search operations
+faiss_search = FAISSSearch()
+results = faiss_search.search_similar(query_vector, k=10)
+results = faiss_search.search_with_ids(query_vector, ids, k=10)
+results = faiss_search.search_range(query_vector, radius=0.5)
+```
+
+**Weaviate Adapter (`semantica.vector_store.weaviate_adapter`):**
+```python
+from semantica.vector_store.weaviate_adapter import WeaviateClient, WeaviateSchema, WeaviateQuery
+
+# Client operations
+weaviate_client = WeaviateClient()
+weaviate_client.connect(url="http://localhost:8080")
+weaviate_client.get_cluster_info()
+weaviate_client.get_schema()
+
+# Schema operations
+weaviate_schema = WeaviateSchema()
+weaviate_schema.create_class(class_definition)
+weaviate_schema.update_class(class_name, class_definition)
+weaviate_schema.delete_class(class_name)
+
+# Query operations
+weaviate_query = WeaviateQuery()
+results = weaviate_query.query_objects(query, class_name="Document")
+results = weaviate_query.query_with_filters(query, filters={"category": "technology"})
+results = weaviate_query.query_similar(query_vector, class_name="Document", limit=10)
+```
+
+**Hybrid Search (`semantica.vector_store.hybrid_search`):**
+```python
+from semantica.vector_store.hybrid_search import HybridSearch, MetadataFilter, SearchRanker
+
+# Hybrid search
+hybrid_search = HybridSearch()
+results = hybrid_search.search(query, vector_weight=0.7, metadata_weight=0.3)
+results = hybrid_search.search_with_filters(query, filters={"category": "technology"})
+results = hybrid_search.search_with_reranking(query, rerank_method="diversity")
+
+# Metadata filtering
+metadata_filter = MetadataFilter()
+filtered = metadata_filter.filter_by_metadata(results, {"category": "technology"})
+filtered = metadata_filter.filter_by_range(results, "date", start="2023-01-01", end="2023-12-31")
+filtered = metadata_filter.filter_by_boolean(results, {"is_published": True})
+
+# Search ranking
+search_ranker = SearchRanker()
+ranked = search_ranker.rank_by_relevance(results, query)
+ranked = search_ranker.rank_by_diversity(results, diversity_threshold=0.8)
+ranked = search_ranker.rank_by_hybrid_score(results, vector_score=0.6, metadata_score=0.4)
+```
 
 ### 11. **Triple Store** (`semantica.triple_store`)
 
@@ -721,9 +1823,19 @@ stats = embedder.get_embedding_stats()
 
 **Purpose:** Question answering and retrieval-augmented generation
 
+#### **Imports:**
 ```python
-from semantica.qa_rag import RAGManager, SemanticChunker
+from semantica.qa_rag import RAGManager, SemanticChunker, AnswerBuilder
+from semantica.qa_rag.semantic_chunker import RAGChunker, ContextChunker, OverlapChunker
+from semantica.qa_rag.prompt_templates import PromptTemplate, ContextTemplate, AnswerTemplate
+from semantica.qa_rag.retrieval_policies import RetrievalPolicy, RankingPolicy, FilterPolicy
+from semantica.qa_rag.answer_builder import AnswerBuilder, AttributionBuilder, ConfidenceCalculator
+from semantica.qa_rag.provenance_tracker import SourceTracker, ConfidenceTracker, AttributionTracker
+from semantica.qa_rag.conversation_manager import ConversationManager, ContextManager, HistoryManager
+```
 
+#### **Main Functions:**
+```python
 # Initialize RAG system
 rag = RAGManager(
     retriever="semantic",
@@ -741,15 +1853,125 @@ confidence = rag.get_confidence()
 # Semantic chunking for RAG
 chunker = SemanticChunker()
 chunks = chunker.chunk_text(document, optimize_for_rag=True)
+chunks = chunker.chunk_with_context(document, context_window=200)
 ```
 
-**Submodules:**
-- `semantic_chunker` - RAG-optimized text chunking
-- `prompt_templates` - RAG prompt templates
-- `retrieval_policies` - Retrieval strategies and ranking
-- `answer_builder` - Answer construction and attribution
-- `provenance_tracker` - Source tracking and confidence
-- `conversation_manager` - Multi-turn conversations
+#### **Submodules with Functions:**
+
+**Semantic Chunker (`semantica.qa_rag.semantic_chunker`):**
+```python
+from semantica.qa_rag.semantic_chunker import RAGChunker, ContextChunker, OverlapChunker
+
+# RAG-optimized chunking
+rag_chunker = RAGChunker()
+chunks = rag_chunker.chunk_for_rag(document, chunk_size=512)
+chunks = rag_chunker.chunk_with_semantic_boundaries(document)
+chunks = rag_chunker.chunk_with_entity_preservation(document)
+
+# Context-aware chunking
+context_chunker = ContextChunker()
+chunks = context_chunker.chunk_with_context(document, context_size=100)
+chunks = context_chunker.chunk_with_overlap_context(document, overlap=50)
+chunks = context_chunker.chunk_with_semantic_context(document)
+
+# Overlap chunking
+overlap_chunker = OverlapChunker()
+chunks = overlap_chunker.chunk_with_overlap(document, overlap_ratio=0.2)
+chunks = overlap_chunker.chunk_with_sliding_window(document, window_size=512, step=256)
+chunks = overlap_chunker.chunk_with_adaptive_overlap(document)
+```
+
+**Prompt Templates (`semantica.qa_rag.prompt_templates`):**
+```python
+from semantica.qa_rag.prompt_templates import PromptTemplate, ContextTemplate, AnswerTemplate
+
+# Prompt template management
+prompt_template = PromptTemplate()
+template = prompt_template.create_template("qa_template", question="{question}", context="{context}")
+template = prompt_template.create_template("summarization", text="{text}", length="{length}")
+template = prompt_template.create_template("classification", text="{text}", categories="{categories}")
+
+# Context templates
+context_template = ContextTemplate()
+context = context_template.format_context(retrieved_chunks, question)
+context = context_template.format_context_with_metadata(retrieved_chunks, question, metadata)
+context = context_template.format_context_with_ranking(retrieved_chunks, question, rankings)
+
+# Answer templates
+answer_template = AnswerTemplate()
+answer = answer_template.format_answer(response, sources)
+answer = answer_template.format_answer_with_attribution(response, sources, attributions)
+answer = answer_template.format_answer_with_confidence(response, sources, confidence_scores)
+```
+
+**Retrieval Policies (`semantica.qa_rag.retrieval_policies`):**
+```python
+from semantica.qa_rag.retrieval_policies import RetrievalPolicy, RankingPolicy, FilterPolicy
+
+# Retrieval policy management
+retrieval_policy = RetrievalPolicy()
+results = retrieval_policy.retrieve(query, top_k=10)
+results = retrieval_policy.retrieve_with_filters(query, filters={"category": "technology"})
+results = retrieval_policy.retrieve_with_reranking(query, rerank_method="diversity")
+
+# Ranking policies
+ranking_policy = RankingPolicy()
+ranked = ranking_policy.rank_by_relevance(results, query)
+ranked = ranking_policy.rank_by_diversity(results, diversity_threshold=0.8)
+ranked = ranking_policy.rank_by_hybrid_score(results, vector_weight=0.7, metadata_weight=0.3)
+
+# Filter policies
+filter_policy = FilterPolicy()
+filtered = filter_policy.filter_by_metadata(results, {"category": "technology"})
+filtered = filter_policy.filter_by_date_range(results, start_date="2023-01-01", end_date="2023-12-31")
+filtered = filter_policy.filter_by_confidence(results, min_confidence=0.8)
+```
+
+**Answer Builder (`semantica.qa_rag.answer_builder`):**
+```python
+from semantica.qa_rag.answer_builder import AnswerBuilder, AttributionBuilder, ConfidenceCalculator
+
+# Answer construction
+answer_builder = AnswerBuilder()
+answer = answer_builder.build_answer(query, retrieved_chunks, llm_response)
+answer = answer_builder.build_answer_with_sources(query, retrieved_chunks, llm_response, sources)
+answer = answer_builder.build_answer_with_confidence(query, retrieved_chunks, llm_response, confidence)
+
+# Attribution building
+attribution_builder = AttributionBuilder()
+attributions = attribution_builder.build_attributions(answer, sources)
+attributions = attribution_builder.build_attributions_with_confidence(answer, sources, confidence_scores)
+attributions = attribution_builder.build_attributions_with_metadata(answer, sources, metadata)
+
+# Confidence calculation
+confidence_calculator = ConfidenceCalculator()
+confidence = confidence_calculator.calculate_confidence(answer, sources)
+confidence = confidence_calculator.calculate_confidence_with_llm(answer, sources, llm_confidence)
+confidence = confidence_calculator.calculate_confidence_with_retrieval(answer, sources, retrieval_scores)
+```
+
+**Conversation Manager (`semantica.qa_rag.conversation_manager`):**
+```python
+from semantica.qa_rag.conversation_manager import ConversationManager, ContextManager, HistoryManager
+
+# Conversation management
+conversation_manager = ConversationManager()
+conversation = conversation_manager.start_conversation()
+conversation = conversation_manager.add_turn(conversation, question, answer)
+conversation = conversation_manager.get_conversation_history(conversation_id)
+
+# Context management
+context_manager = ContextManager()
+context = context_manager.build_context(conversation_history)
+context = context_manager.build_context_with_entities(conversation_history, entities)
+context = context_manager.build_context_with_topics(conversation_history, topics)
+
+# History management
+history_manager = HistoryManager()
+history = history_manager.save_conversation(conversation)
+history = history_manager.load_conversation(conversation_id)
+history = history_manager.search_conversations(query, filters={"user_id": "user123"})
+```
 
 ### 14. **Reasoning Engine** (`semantica.reasoning`)
 
@@ -815,249 +2037,6 @@ results = orchestrator.distribute_tasks(workflow, tasks)
 
 ---
 
-## 🎯 Domain Specialization
-
-### 16. **Domain Processors** (`semantica.domains`)
-
-**Main Classes:** `CybersecurityProcessor`, `BiomedicalProcessor`, `FinanceProcessor`
-
-**Purpose:** Domain-specific data processing and analysis
-
-```python
-from semantica.domains import CybersecurityProcessor, FinanceProcessor
-
-# Cybersecurity analysis
-cyber = CybersecurityProcessor()
-threats = cyber.detect_threats(security_logs)
-attacks = cyber.analyze_attacks(incident_data)
-risks = cyber.assess_risks(vulnerability_data)
-
-# Financial analysis
-finance = FinanceProcessor()
-market_trends = finance.market_analysis(market_data)
-risk_assessment = finance.risk_assessment(portfolio_data)
-compliance = finance.compliance_checking(transaction_data)
-```
-
-**Submodules:**
-- `cybersecurity_processor` - Security threat detection
-- `biomedical_processor` - Medical data analysis
-- `finance_processor` - Financial market analysis
-- `legal_processor` - Legal document analysis
-- `domain_ontologies` - Domain-specific ontologies
-- `domain_extractors` - Specialized entity extractors
-
----
-
-## 🖥️ User Interface
-
-### 17. **Web Dashboard** (`semantica.ui`)
-
-**Main Classes:** `UIManager`, `KGViewer`, `AnalyticsDashboard`
-
-**Purpose:** Web-based user interface and visualization
-
-```python
-from semantica.ui import UIManager, KGViewer, AnalyticsDashboard
-
-# Initialize dashboard
-ui_manager = UIManager()
-dashboard = ui_manager.initialize_dashboard()
-
-# Knowledge graph visualization
-kg_viewer = KGViewer()
-kg_viewer.display_graph(knowledge_graph)
-kg_viewer.zoom_graph(zoom_level=1.5)
-nodes = kg_viewer.search_nodes("Apple")
-
-# Analytics dashboard
-analytics = AnalyticsDashboard()
-analytics.show_metrics(system_metrics)
-charts = analytics.generate_charts(data)
-```
-
-**Submodules:**
-- `ingestion_monitor` - Real-time ingestion monitoring
-- `kg_viewer` - Interactive knowledge graph visualization
-- `conflict_resolver` - Conflict resolution interface
-- `analytics_dashboard` - Data analytics and visualization
-- `pipeline_editor` - Visual pipeline builder
-- `data_explorer` - Data exploration interface
-
----
-
-## ⚙️ Operations
-
-### 18. **Streaming** (`semantica.streaming`)
-
-**Main Classes:** `KafkaAdapter`, `StreamProcessor`, `CheckpointManager`
-
-**Purpose:** Real-time data streaming and processing
-
-```python
-from semantica.streaming import KafkaAdapter, StreamProcessor
-
-# Kafka streaming
-kafka = KafkaAdapter()
-kafka.connect("localhost:9092")
-kafka.create_topic("semantica-events")
-kafka.produce_message("semantica-events", message)
-
-# Stream processing
-processor = StreamProcessor()
-processor.process_stream(kafka_stream)
-processor.apply_windowing(window_size="5m")
-aggregated = processor.aggregate_data(stream_data)
-```
-
-**Submodules:**
-- `kafka_adapter` - Apache Kafka integration
-- `pulsar_adapter` - Apache Pulsar integration
-- `rabbitmq_adapter` - RabbitMQ integration
-- `kinesis_adapter` - AWS Kinesis integration
-- `stream_processor` - Stream processing logic
-- `checkpoint_manager` - Checkpoint and recovery
-
-### 19. **Monitoring** (`semantica.monitoring`)
-
-**Main Classes:** `MetricsCollector`, `HealthChecker`, `AlertManager`
-
-**Purpose:** System monitoring and observability
-
-```python
-from semantica.monitoring import MetricsCollector, HealthChecker, AlertManager
-
-# Metrics collection
-metrics = MetricsCollector()
-metrics.collect_metrics()
-performance = metrics.monitor_performance()
-resources = metrics.track_resources()
-
-# Health checking
-health = HealthChecker()
-system_health = health.check_system_health()
-component_status = health.check_component_status()
-
-# Alert management
-alerts = AlertManager()
-alerts.generate_alert("High CPU usage detected")
-alerts.route_notification("admin@example.com")
-```
-
-**Submodules:**
-- `metrics_collector` - System metrics collection
-- `tracing_system` - OpenTelemetry distributed tracing
-- `alert_manager` - Alert generation and routing
-- `sla_monitor` - SLA tracking and compliance
-- `quality_metrics` - Data quality assessment
-- `log_manager` - Log collection and analysis
-
-### 20. **Quality Assurance** (`semantica.quality`)
-
-**Main Classes:** `QAEngine`, `ValidationEngine`, `TripleValidator`
-
-**Purpose:** Data quality validation and testing
-
-```python
-from semantica.quality import QAEngine, ValidationEngine, TripleValidator
-
-# Quality assurance
-qa = QAEngine()
-qa_tests = qa.run_qa_tests(data)
-validation = qa.validate_data(data)
-report = qa.generate_reports()
-
-# Data validation
-validator = ValidationEngine()
-validated = validator.validate_data(data, schema)
-constraints = validator.check_constraints(data)
-
-# Triple validation
-triple_validator = TripleValidator()
-valid_triples = triple_validator.validate_triple(triple)
-consistency = triple_validator.check_consistency(triples)
-quality_score = triple_validator.score_quality(triples)
-```
-
-**Submodules:**
-- `qa_engine` - Quality assurance testing
-- `validation_engine` - Data validation and schema checking
-- `triple_validator` - RDF triple validation
-- `confidence_calculator` - Confidence scoring
-- `test_generator` - Automated test generation
-- `compliance_checker` - Regulatory compliance checking
-
-### 21. **Security** (`semantica.security`)
-
-**Main Classes:** `AccessControl`, `DataMasking`, `PIIRedactor`
-
-**Purpose:** Security and privacy protection
-
-```python
-from semantica.security import AccessControl, DataMasking, PIIRedactor
-
-# Access control
-access = AccessControl()
-access.authenticate_user(username, password)
-access.authorize_access(user, resource)
-access.manage_roles(user, roles)
-
-# Data masking
-masking = DataMasking()
-masked_data = masking.mask_sensitive_data(data)
-anonymized = masking.anonymize_data(personal_data)
-
-# PII redaction
-pii_redactor = PIIRedactor()
-pii_detected = pii_redactor.detect_pii(text)
-redacted = pii_redactor.redact_pii(text)
-```
-
-**Submodules:**
-- `access_control` - Role-based access control
-- `data_masking` - Sensitive data masking
-- `pii_redactor` - PII detection and redaction
-- `audit_logger` - Audit trail logging
-- `encryption_manager` - Data encryption and key management
-- `threat_monitor` - Threat monitoring and detection
-
-### 22. **CLI Tools** (`semantica.cli`)
-
-**Main Classes:** `IngestionCLI`, `KBBuilderCLI`, `ExportCLI`
-
-**Purpose:** Command-line interface tools
-
-```python
-from semantica.cli import IngestionCLI, KBBuilderCLI, ExportCLI
-
-# Command line usage
-# semantica ingest --source documents/ --format pdf,docx
-# semantica build-kb --config config.yaml
-# semantica export --format turtle --output knowledge.ttl
-
-# Programmatic CLI
-ingestion_cli = IngestionCLI()
-ingestion_cli.ingest_files(["doc1.pdf", "doc2.docx"])
-ingestion_cli.track_progress()
-
-kb_builder = KBBuilderCLI()
-kb_builder.build_kb(config_file="config.yaml")
-kb_builder.monitor_build()
-
-export_cli = ExportCLI()
-export_cli.export_triples(format="turtle", output="output.ttl")
-```
-
-**Submodules:**
-- `ingestion_cli` - File ingestion commands
-- `kb_builder_cli` - Knowledge base building
-- `export_cli` - Data export utilities
-- `qa_cli` - Quality assurance tools
-- `monitoring_cli` - System monitoring commands
-- `interactive_shell` - Interactive command shell
-
----
-
 ## 🚀 Quick Start Examples
 
 ### Complete Pipeline Example
@@ -1094,28 +2073,6 @@ knowledge_base = core.build_knowledge_base("documents/")
 answer = knowledge_base.query("What are the main topics?")
 ```
 
-### Domain-Specific Example
-
-```python
-from semantica.domains import FinanceProcessor
-from semantica.qa_rag import RAGManager
-
-# Financial analysis
-finance = FinanceProcessor()
-market_data = finance.market_analysis("market_data.csv")
-risk_assessment = finance.risk_assessment("portfolio.json")
-
-# RAG for financial Q&A
-rag = RAGManager(
-    retriever="semantic",
-    generator="gpt-4",
-    domain="finance"
-)
-
-# Process financial questions
-question = "What are the risk factors for this portfolio?"
-answer = rag.process_question(question, context=market_data)
-```
 
 ---
 
@@ -1128,9 +2085,456 @@ answer = rag.process_question(question, context=market_data)
 
 ---
 
+## 🔧 Knowledge Graph Quality Assurance
+
+> **Addressing the fundamental challenges in building production-ready Knowledge Graphs**
+
+### 16. **Template System** (`semantica.templates`)
+
+**Main Classes:** `SchemaTemplate`, `EntityTemplate`, `RelationshipTemplate`
+
+**Purpose:** Enforce fixed, predefined schemas for consistent and predictable Knowledge Graph structure
+
+#### **Imports:**
+```python
+from semantica.templates import SchemaTemplate, EntityTemplate, RelationshipTemplate
+from semantica.templates.schema_manager import SchemaManager, SchemaValidator, SchemaEnforcer
+from semantica.templates.entity_templates import EntityTemplateManager, EntityValidator, EntityEnforcer
+from semantica.templates.relationship_templates import RelationshipTemplateManager, RelationshipValidator
+from semantica.templates.template_loader import TemplateLoader, TemplateParser, TemplateCompiler
+from semantica.templates.constraint_enforcer import ConstraintEnforcer, ValidationEngine, ComplianceChecker
+```
+
+#### **Main Functions:**
+```python
+# Define fixed schema template
+schema_template = SchemaTemplate(
+    name="business_knowledge_graph",
+    entities=["Company", "Person", "Product", "Department", "Project"],
+    relationships=["founded_by", "works_for", "manages", "belongs_to", "reports_to"],
+    constraints={
+        "Company": {"required_props": ["name", "industry", "founded_year"]},
+        "Person": {"required_props": ["name", "title", "department"]},
+        "founded_by": {"domain": "Company", "range": "Person"}
+    }
+)
+
+# Enforce template compliance
+schema_template.enforce_schema(extracted_entities)
+schema_template.validate_relationships(extracted_relations)
+schema_template.apply_constraints(knowledge_graph)
+```
+
+#### **Submodules with Functions:**
+
+**Schema Manager (`semantica.templates.schema_manager`):**
+```python
+from semantica.templates.schema_manager import SchemaManager, SchemaValidator, SchemaEnforcer
+
+# Schema management
+schema_manager = SchemaManager()
+schema = schema_manager.load_schema("business_schema.yaml")
+schema = schema_manager.create_schema_from_template(template)
+schema = schema_manager.update_schema(schema, updates)
+
+# Schema validation
+schema_validator = SchemaValidator()
+is_valid = schema_validator.validate_entities(entities, schema)
+is_valid = schema_validator.validate_relationships(relationships, schema)
+is_valid = schema_validator.validate_properties(properties, schema)
+
+# Schema enforcement
+schema_enforcer = SchemaEnforcer()
+enforced = schema_enforcer.enforce_entity_schema(entities, schema)
+enforced = schema_enforcer.enforce_relationship_schema(relationships, schema)
+enforced = schema_enforcer.enforce_property_schema(properties, schema)
+```
+
+**Entity Templates (`semantica.templates.entity_templates`):**
+```python
+from semantica.templates.entity_templates import EntityTemplateManager, EntityValidator, EntityEnforcer
+
+# Entity template management
+entity_template_manager = EntityTemplateManager()
+template = entity_template_manager.create_template("Company", required_props=["name", "industry"])
+template = entity_template_manager.load_template("person_template.yaml")
+template = entity_template_manager.update_template(template, new_constraints)
+
+# Entity validation
+entity_validator = EntityValidator()
+is_valid = entity_validator.validate_entity(entity, template)
+is_valid = entity_validator.validate_entity_batch(entities, template)
+is_valid = entity_validator.validate_required_properties(entity, template)
+
+# Entity enforcement
+entity_enforcer = EntityEnforcer()
+enforced = entity_enforcer.enforce_template(entity, template)
+enforced = entity_enforcer.add_missing_properties(entity, template)
+enforced = entity_enforcer.normalize_entity(entity, template)
+```
+
+### 17. **Seed Data System** (`semantica.seed`)
+
+**Main Classes:** `SeedDataManager`, `KnowledgeSeeder`, `DataIntegrator`
+
+**Purpose:** Initialize Knowledge Graph with pre-existing, verified data to build on foundation of truth
+
+#### **Imports:**
+```python
+from semantica.seed import SeedDataManager, KnowledgeSeeder, DataIntegrator
+from semantica.seed.data_loader import CSVLoader, JSONLoader, DatabaseLoader, APILoader
+from semantica.seed.entity_seeder import EntitySeeder, RelationshipSeeder, PropertySeeder
+from semantica.seed.verification import DataVerifier, ConsistencyChecker, TruthValidator
+from semantica.seed.integration import DataIntegrator, ConflictResolver, MergeStrategy
+```
+
+#### **Main Functions:**
+```python
+# Initialize with seed data
+seed_manager = SeedDataManager()
+seed_manager.load_products("products.csv")
+seed_manager.load_departments("departments.json")
+seed_manager.load_employees("employees_db")
+
+# Seed knowledge graph
+knowledge_seeder = KnowledgeSeeder()
+seeded_graph = knowledge_seeder.seed_entities(seed_data)
+seeded_graph = knowledge_seeder.seed_relationships(seed_data)
+seeded_graph = knowledge_seeder.seed_properties(seed_data)
+
+# Integrate with extracted data
+integrator = DataIntegrator()
+integrated = integrator.integrate_seed_with_extracted(seed_data, extracted_data)
+integrated = integrator.merge_verified_data(seed_data, extracted_data)
+```
+
+#### **Submodules with Functions:**
+
+**Data Loader (`semantica.seed.data_loader`):**
+```python
+from semantica.seed.data_loader import CSVLoader, JSONLoader, DatabaseLoader, APILoader
+
+# CSV data loading
+csv_loader = CSVLoader()
+products = csv_loader.load_entities("products.csv", entity_type="Product")
+departments = csv_loader.load_entities("departments.csv", entity_type="Department")
+
+# JSON data loading
+json_loader = JSONLoader()
+employees = json_loader.load_entities("employees.json", entity_type="Person")
+companies = json_loader.load_entities("companies.json", entity_type="Company")
+
+# Database loading
+db_loader = DatabaseLoader(connection_string="postgresql://...")
+customers = db_loader.load_entities("customers", entity_type="Person")
+orders = db_loader.load_relationships("orders", relationship_type="placed_by")
+
+# API loading
+api_loader = APILoader(api_key="your_key")
+external_data = api_loader.load_from_api("https://api.example.com/entities")
+```
+
+**Entity Seeder (`semantica.seed.entity_seeder`):**
+```python
+from semantica.seed.entity_seeder import EntitySeeder, RelationshipSeeder, PropertySeeder
+
+# Entity seeding
+entity_seeder = EntitySeeder()
+seeded = entity_seeder.seed_entities(products, entity_type="Product")
+seeded = entity_seeder.seed_with_verification(employees, verification_rules)
+seeded = entity_seeder.seed_with_metadata(companies, metadata={"source": "verified"})
+
+# Relationship seeding
+relationship_seeder = RelationshipSeeder()
+seeded = relationship_seeder.seed_relationships(org_chart, relationship_type="reports_to")
+seeded = relationship_seeder.seed_with_hierarchy(relationships, hierarchy_rules)
+
+# Property seeding
+property_seeder = PropertySeeder()
+seeded = property_seeder.seed_properties(entities, property_mappings)
+seeded = property_seeder.seed_with_validation(properties, validation_rules)
+```
+
+### 18. **Advanced Deduplication** (`semantica.deduplication`)
+
+**Main Classes:** `DuplicateDetector`, `EntityMerger`, `SimilarityEngine`
+
+**Purpose:** Identify and merge duplicate entities like "First Quarter Sales" and "Q1 Sales Report"
+
+#### **Imports:**
+```python
+from semantica.deduplication import DuplicateDetector, EntityMerger, SimilarityEngine
+from semantica.deduplication.similarity_calculator import SemanticSimilarity, FuzzyMatcher, PhoneticMatcher
+from semantica.deduplication.merge_strategies import MergeStrategy, PropertyMerger, RelationshipMerger
+from semantica.deduplication.conflict_resolver import ConflictResolver, MergeConflictHandler, ResolutionStrategy
+from semantica.deduplication.quality_assessor import QualityAssessor, MergeQualityChecker, ConfidenceCalculator
+```
+
+#### **Main Functions:**
+```python
+# Detect duplicates
+duplicate_detector = DuplicateDetector()
+duplicates = duplicate_detector.find_semantic_duplicates(entities)
+duplicates = duplicate_detector.find_fuzzy_duplicates(entities, threshold=0.8)
+duplicates = duplicate_detector.find_phonetic_duplicates(entities)
+
+# Merge duplicates
+entity_merger = EntityMerger()
+merged = entity_merger.merge_duplicates(duplicates)
+merged = entity_merger.merge_with_strategy(duplicates, strategy="highest_confidence")
+merged = entity_merger.merge_with_validation(duplicates, validation_rules)
+
+# Calculate similarity
+similarity_engine = SimilarityEngine()
+similarity = similarity_engine.calculate_semantic_similarity("First Quarter Sales", "Q1 Sales Report")
+similarity = similarity_engine.calculate_fuzzy_similarity("Apple Inc.", "Apple Corporation")
+similarity = similarity_engine.calculate_phonetic_similarity("Smith", "Smyth")
+```
+
+#### **Submodules with Functions:**
+
+**Similarity Calculator (`semantica.deduplication.similarity_calculator`):**
+```python
+from semantica.deduplication.similarity_calculator import SemanticSimilarity, FuzzyMatcher, PhoneticMatcher
+
+# Semantic similarity
+semantic_similarity = SemanticSimilarity()
+score = semantic_similarity.calculate("First Quarter Sales", "Q1 Sales Report")
+score = semantic_similarity.calculate_batch(entity_pairs)
+score = semantic_similarity.calculate_with_embeddings(entity1, entity2)
+
+# Fuzzy matching
+fuzzy_matcher = FuzzyMatcher()
+matches = fuzzy_matcher.find_matches("Apple Inc.", entities, threshold=0.8)
+matches = fuzzy_matcher.find_partial_matches("Apple", entities, threshold=0.6)
+matches = fuzzy_matcher.find_approximate_matches("Q1", entities, threshold=0.7)
+
+# Phonetic matching
+phonetic_matcher = PhoneticMatcher()
+matches = phonetic_matcher.find_phonetic_matches("Smith", entities)
+matches = phonetic_matcher.find_soundex_matches("Johnson", entities)
+matches = phonetic_matcher.find_metaphone_matches("Knight", entities)
+```
+
+**Merge Strategies (`semantica.deduplication.merge_strategies`):**
+```python
+from semantica.deduplication.merge_strategies import MergeStrategy, PropertyMerger, RelationshipMerger
+
+# Merge strategy management
+merge_strategy = MergeStrategy()
+merged = merge_strategy.merge_by_confidence(duplicates)
+merged = merge_strategy.merge_by_completeness(duplicates)
+merged = merge_strategy.merge_by_authority(duplicates, authority_sources)
+
+# Property merging
+property_merger = PropertyMerger()
+merged = property_merger.merge_properties(duplicate_entities)
+merged = property_merger.merge_with_priority(duplicate_entities, priority_rules)
+merged = property_merger.merge_with_validation(duplicate_entities, validation_rules)
+
+# Relationship merging
+relationship_merger = RelationshipMerger()
+merged = relationship_merger.merge_relationships(duplicate_entities)
+merged = relationship_merger.merge_with_deduplication(duplicate_entities)
+merged = relationship_merger.merge_with_consistency_check(duplicate_entities)
+```
+
+### 19. **Conflict Detection & Source Tracking** (`semantica.conflicts`)
+
+**Main Classes:** `ConflictDetector`, `SourceTracker`, `DisagreementResolver`
+
+**Purpose:** Flag when sources disagree and track exact document origins for investigation
+
+#### **Imports:**
+```python
+from semantica.conflicts import ConflictDetector, SourceTracker, DisagreementResolver
+from semantica.conflicts.conflict_analyzer import ConflictAnalyzer, DisagreementDetector, InconsistencyFinder
+from semantica.conflicts.source_tracker import SourceTracker, DocumentTracker, ProvenanceTracker
+from semantica.conflicts.resolution_strategies import ResolutionStrategy, VotingResolver, AuthorityResolver
+from semantica.conflicts.reporting import ConflictReporter, DisagreementReporter, InvestigationGuide
+```
+
+#### **Main Functions:**
+```python
+# Detect conflicts
+conflict_detector = ConflictDetector()
+conflicts = conflict_detector.detect_value_conflicts(entities, "sales_figure")
+conflicts = conflict_detector.detect_property_conflicts(entities, "founded_year")
+conflicts = conflict_detector.detect_relationship_conflicts(relationships)
+
+# Track sources
+source_tracker = SourceTracker()
+sources = source_tracker.track_entity_sources(entity, "Apple Inc.")
+sources = source_tracker.track_property_sources(property, "sales_figure", "$10M")
+sources = source_tracker.track_relationship_sources(relationship, "founded_by")
+
+# Resolve disagreements
+disagreement_resolver = DisagreementResolver()
+resolved = disagreement_resolver.resolve_by_voting(conflicts)
+resolved = disagreement_resolver.resolve_by_authority(conflicts, authority_sources)
+resolved = disagreement_resolver.flag_for_investigation(conflicts)
+```
+
+#### **Submodules with Functions:**
+
+**Conflict Analyzer (`semantica.conflicts.conflict_analyzer`):**
+```python
+from semantica.conflicts.conflict_analyzer import ConflictAnalyzer, DisagreementDetector, InconsistencyFinder
+
+# Conflict analysis
+conflict_analyzer = ConflictAnalyzer()
+conflicts = conflict_analyzer.analyze_value_conflicts(entities, property_name="sales_figure")
+conflicts = conflict_analyzer.analyze_type_conflicts(entities, property_name="founded_year")
+conflicts = conflict_analyzer.analyze_relationship_conflicts(relationships)
+
+# Disagreement detection
+disagreement_detector = DisagreementDetector()
+disagreements = disagreement_detector.detect_value_disagreements(entities, "sales_figure")
+disagreements = disagreement_detector.detect_factual_disagreements(entities, "founded_year")
+disagreements = disagreement_detector.detect_categorical_disagreements(entities, "industry")
+
+# Inconsistency finding
+inconsistency_finder = InconsistencyFinder()
+inconsistencies = inconsistency_finder.find_logical_inconsistencies(knowledge_graph)
+inconsistencies = inconsistency_finder.find_temporal_inconsistencies(entities, "founded_year")
+inconsistencies = inconsistency_finder.find_hierarchical_inconsistencies(relationships)
+```
+
+**Source Tracker (`semantica.conflicts.source_tracker`):**
+```python
+from semantica.conflicts.source_tracker import SourceTracker, DocumentTracker, ProvenanceTracker
+
+# Source tracking
+source_tracker = SourceTracker()
+sources = source_tracker.track_entity_sources(entity, "Apple Inc.")
+sources = source_tracker.track_property_sources(property, "sales_figure", "$10M")
+sources = source_tracker.track_relationship_sources(relationship, "founded_by")
+
+# Document tracking
+document_tracker = DocumentTracker()
+documents = document_tracker.get_source_documents(entity, "Apple Inc.")
+documents = document_tracker.get_document_sections(entity, "Apple Inc.", "sales_figure")
+documents = document_tracker.get_document_context(entity, "Apple Inc.", context_size=200)
+
+# Provenance tracking
+provenance_tracker = ProvenanceTracker()
+provenance = provenance_tracker.get_entity_provenance(entity, "Apple Inc.")
+provenance = provenance_tracker.get_property_provenance(property, "sales_figure")
+provenance = provenance_tracker.get_relationship_provenance(relationship, "founded_by")
+```
+
+**Conflict Reporter (`semantica.conflicts.reporting`):**
+```python
+from semantica.conflicts.reporting import ConflictReporter, DisagreementReporter, InvestigationGuide
+
+# Conflict reporting
+conflict_reporter = ConflictReporter()
+report = conflict_reporter.generate_conflict_report(conflicts)
+report = conflict_reporter.generate_detailed_report(conflicts, include_sources=True)
+report = conflict_reporter.generate_summary_report(conflicts)
+
+# Disagreement reporting
+disagreement_reporter = DisagreementReporter()
+report = disagreement_reporter.report_value_disagreements(disagreements, "sales_figure")
+report = disagreement_reporter.report_factual_disagreements(disagreements, "founded_year")
+report = disagreement_reporter.report_categorical_disagreements(disagreements, "industry")
+
+# Investigation guide
+investigation_guide = InvestigationGuide()
+guide = investigation_guide.create_investigation_plan(conflicts)
+guide = investigation_guide.suggest_investigation_steps(conflicts)
+guide = investigation_guide.prioritize_investigations(conflicts, priority_criteria)
+```
+
+### 20. **Knowledge Graph Quality Assurance** (`semantica.kg_qa`)
+
+**Main Classes:** `KGQualityAssessor`, `ConsistencyChecker`, `CompletenessValidator`
+
+**Purpose:** Comprehensive quality assurance for production-ready Knowledge Graphs
+
+#### **Imports:**
+```python
+from semantica.kg_qa import KGQualityAssessor, ConsistencyChecker, CompletenessValidator
+from semantica.kg_qa.quality_metrics import QualityMetrics, CompletenessMetrics, ConsistencyMetrics
+from semantica.kg_qa.validation_engine import ValidationEngine, RuleValidator, ConstraintValidator
+from semantica.kg_qa.reporting import QualityReporter, IssueTracker, ImprovementSuggestions
+from semantica.kg_qa.automated_fixes import AutomatedFixer, AutoMerger, AutoResolver
+```
+
+#### **Main Functions:**
+```python
+# Assess knowledge graph quality
+kg_qa = KGQualityAssessor()
+quality_score = kg_qa.assess_overall_quality(knowledge_graph)
+quality_report = kg_qa.generate_quality_report(knowledge_graph)
+quality_issues = kg_qa.identify_quality_issues(knowledge_graph)
+
+# Check consistency
+consistency_checker = ConsistencyChecker()
+is_consistent = consistency_checker.check_logical_consistency(knowledge_graph)
+is_consistent = consistency_checker.check_temporal_consistency(knowledge_graph)
+is_consistent = consistency_checker.check_hierarchical_consistency(knowledge_graph)
+
+# Validate completeness
+completeness_validator = CompletenessValidator()
+is_complete = completeness_validator.validate_entity_completeness(entities, schema)
+is_complete = completeness_validator.validate_relationship_completeness(relationships, schema)
+is_complete = completeness_validator.validate_property_completeness(properties, schema)
+```
+
+#### **Submodules with Functions:**
+
+**Quality Metrics (`semantica.kg_qa.quality_metrics`):**
+```python
+from semantica.kg_qa.quality_metrics import QualityMetrics, CompletenessMetrics, ConsistencyMetrics
+
+# Quality metrics calculation
+quality_metrics = QualityMetrics()
+score = quality_metrics.calculate_overall_score(knowledge_graph)
+score = quality_metrics.calculate_entity_quality(entities)
+score = quality_metrics.calculate_relationship_quality(relationships)
+
+# Completeness metrics
+completeness_metrics = CompletenessMetrics()
+score = completeness_metrics.calculate_entity_completeness(entities, schema)
+score = completeness_metrics.calculate_property_completeness(properties, schema)
+score = completeness_metrics.calculate_relationship_completeness(relationships, schema)
+
+# Consistency metrics
+consistency_metrics = ConsistencyMetrics()
+score = consistency_metrics.calculate_logical_consistency(knowledge_graph)
+score = consistency_metrics.calculate_temporal_consistency(knowledge_graph)
+score = consistency_metrics.calculate_hierarchical_consistency(knowledge_graph)
+```
+
+**Automated Fixes (`semantica.kg_qa.automated_fixes`):**
+```python
+from semantica.kg_qa.automated_fixes import AutomatedFixer, AutoMerger, AutoResolver
+
+# Automated fixing
+automated_fixer = AutomatedFixer()
+fixed = automated_fixer.fix_duplicates(knowledge_graph)
+fixed = automated_fixer.fix_inconsistencies(knowledge_graph)
+fixed = automated_fixer.fix_missing_properties(knowledge_graph)
+
+# Auto merging
+auto_merger = AutoMerger()
+merged = auto_merger.merge_duplicate_entities(knowledge_graph)
+merged = auto_merger.merge_duplicate_relationships(knowledge_graph)
+merged = auto_merger.merge_conflicting_properties(knowledge_graph)
+
+# Auto resolving
+auto_resolver = AutoResolver()
+resolved = auto_resolver.resolve_conflicts(knowledge_graph)
+resolved = auto_resolver.resolve_disagreements(knowledge_graph)
+resolved = auto_resolver.resolve_inconsistencies(knowledge_graph)
+```
+
+---
+
 ## 📚 Complete Module Index
 
-### All 22 Main Modules with Submodules
+### All 20 Main Modules with Submodules
 
 | # | Module | Package | Main Classes | Submodules Count |
 |---|--------|---------|--------------|------------------|
@@ -1149,15 +2553,13 @@ answer = rag.process_question(question, context=market_data)
 | 13 | **RAG System** | `semantica.qa_rag` | `RAGManager`, `SemanticChunker` | 7 |
 | 14 | **Reasoning Engine** | `semantica.reasoning` | `InferenceEngine`, `SPARQLReasoner` | 7 |
 | 15 | **Multi-Agent System** | `semantica.agents` | `AgentManager`, `OrchestrationEngine` | 8 |
-| 16 | **Domain Processors** | `semantica.domains` | `CybersecurityProcessor`, `FinanceProcessor` | 6 |
-| 17 | **Web Dashboard** | `semantica.ui` | `UIManager`, `KGViewer` | 8 |
-| 18 | **Streaming** | `semantica.streaming` | `KafkaAdapter`, `StreamProcessor` | 6 |
-| 19 | **Monitoring** | `semantica.monitoring` | `MetricsCollector`, `HealthChecker` | 7 |
-| 20 | **Quality Assurance** | `semantica.quality` | `QAEngine`, `ValidationEngine` | 7 |
-| 21 | **Security** | `semantica.security` | `AccessControl`, `DataMasking` | 7 |
-| 22 | **CLI Tools** | `semantica.cli` | `IngestionCLI`, `KBBuilderCLI` | 6 |
+| 16 | **Template System** | `semantica.templates` | `SchemaTemplate`, `EntityTemplate` | 5 |
+| 17 | **Seed Data System** | `semantica.seed` | `SeedDataManager`, `KnowledgeSeeder` | 4 |
+| 18 | **Advanced Deduplication** | `semantica.deduplication` | `DuplicateDetector`, `EntityMerger` | 5 |
+| 19 | **Conflict Detection** | `semantica.conflicts` | `ConflictDetector`, `SourceTracker` | 4 |
+| 20 | **KG Quality Assurance** | `semantica.kg_qa` | `KGQualityAssessor`, `ConsistencyChecker` | 5 |
 
-**Total: 22 Main Modules, 140+ Submodules**
+**Total: 20 Main Modules, 120+ Submodules**
 
 ---
 
@@ -1639,102 +3041,6 @@ answer = rag.process_question(question, context=market_data)
 | `OpsManager.manage_services()` | ops_manager | Manage service lifecycle | services: List[Service] | ServiceStatus |
 | `OpsManager.get_operational_status()` | ops_manager | Get operational status | None | OperationalStatus |
 
-#### 19. **Monitoring Functions** (`semantica.monitoring`)
-
-| Function | Module | Description | Parameters | Returns |
-|----------|--------|-------------|------------|---------|
-| `MetricsCollector.collect_metrics()` | metrics_collector | Collect system metrics | None | Metrics |
-| `MetricsCollector.aggregate_metrics()` | metrics_collector | Aggregate metrics over time | time_range: TimeRange | AggregatedMetrics |
-| `MetricsCollector.export_metrics()` | metrics_collector | Export metrics to external systems | metrics: Metrics, format: str | Status |
-| `HealthChecker.check_health()` | health_checker | Check system health status | None | HealthStatus |
-| `HealthChecker.run_diagnostics()` | health_checker | Run system diagnostics | None | DiagnosticReport |
-| `HealthChecker.validate_components()` | health_checker | Validate component health | components: List[Component] | ValidationResult |
-| `AlertManager.create_alert()` | alert_manager | Create monitoring alert | alert_config: Dict | Alert |
-| `AlertManager.send_notification()` | alert_manager | Send alert notification | alert: Alert | Status |
-| `AlertManager.escalate_alert()` | alert_manager | Escalate alert to higher level | alert: Alert | Escalation |
-| `PerformanceProfiler.profile_system()` | performance_profiler | Profile system performance | None | Profile |
-| `PerformanceProfiler.analyze_bottlenecks()` | performance_profiler | Analyze performance bottlenecks | profile: Profile | BottleneckAnalysis |
-| `PerformanceProfiler.optimize_performance()` | performance_profiler | Optimize based on profile | profile: Profile | OptimizationPlan |
-| `LogAnalyzer.analyze_logs()` | log_analyzer | Analyze log files for patterns | logs: List[Log] | LogAnalysis |
-| `LogAnalyzer.detect_anomalies()` | log_analyzer | Detect anomalous log patterns | logs: List[Log] | List[Anomaly] |
-| `LogAnalyzer.generate_report()` | log_analyzer | Generate log analysis report | analysis: LogAnalysis | Report |
-| `MonitoringDashboard.create_dashboard()` | monitoring_dashboard | Create monitoring dashboard | config: Dict | Dashboard |
-| `MonitoringDashboard.add_widget()` | monitoring_dashboard | Add widget to dashboard | widget: Widget | Status |
-| `MonitoringDashboard.refresh_data()` | monitoring_dashboard | Refresh dashboard data | None | Status |
-| `MonitoringManager.setup_monitoring()` | monitoring | Setup complete monitoring system | config: Dict | MonitoringSystem |
-| `MonitoringManager.get_status()` | monitoring | Get monitoring system status | None | Status |
-| `MonitoringManager.configure_alerts()` | monitoring | Configure alert rules | alert_rules: List[AlertRule] | Status |
-
-#### 20. **Quality Assurance Functions** (`semantica.quality`)
-
-| Function | Module | Description | Parameters | Returns |
-|----------|--------|-------------|------------|---------|
-| `QAEngine.run_quality_tests()` | qa_engine | Run quality assurance tests | test_config: Dict | TestResults |
-| `QAEngine.validate_data_quality()` | qa_engine | Validate data quality metrics | data: Any | QualityScore |
-| `QAEngine.check_consistency()` | qa_engine | Check data consistency | data: Any | ConsistencyReport |
-| `ValidationEngine.validate_schema()` | validation_engine | Validate data against schema | data: Any, schema: Schema | ValidationResult |
-| `ValidationEngine.validate_format()` | validation_engine | Validate data format | data: Any, format: Format | ValidationResult |
-| `ValidationEngine.validate_business_rules()` | validation_engine | Validate business rules | data: Any, rules: List[Rule] | ValidationResult |
-| `TestRunner.execute_tests()` | test_runner | Execute test suite | tests: List[Test] | TestResults |
-| `TestRunner.generate_report()` | test_runner | Generate test report | results: TestResults | TestReport |
-| `TestRunner.analyze_coverage()` | test_runner | Analyze test coverage | results: TestResults | CoverageReport |
-| `QualityMetrics.calculate_accuracy()` | quality_metrics | Calculate accuracy metrics | predictions: List[Prediction], ground_truth: List[Truth] | AccuracyScore |
-| `QualityMetrics.calculate_precision()` | quality_metrics | Calculate precision metrics | predictions: List[Prediction], ground_truth: List[Truth] | PrecisionScore |
-| `QualityMetrics.calculate_recall()` | quality_metrics | Calculate recall metrics | predictions: List[Prediction], ground_truth: List[Truth] | RecallScore |
-| `DataValidator.validate_integrity()` | data_validator | Validate data integrity | data: Any | IntegrityReport |
-| `DataValidator.check_completeness()` | data_validator | Check data completeness | data: Any | CompletenessReport |
-| `DataValidator.verify_accuracy()` | data_validator | Verify data accuracy | data: Any | AccuracyReport |
-| `QualityManager.assess_quality()` | quality_manager | Assess overall quality | data: Any | QualityAssessment |
-| `QualityManager.improve_quality()` | quality_manager | Improve data quality | data: Any, issues: List[Issue] | ImprovedData |
-| `QualityManager.track_quality_trends()` | quality_manager | Track quality trends over time | historical_data: List[Data] | QualityTrends |
-
-#### 21. **Security Functions** (`semantica.security`)
-
-| Function | Module | Description | Parameters | Returns |
-|----------|--------|-------------|------------|---------|
-| `AccessControl.check_permissions()` | access_control | Check user permissions | user: User, resource: Resource | PermissionResult |
-| `AccessControl.grant_access()` | access_control | Grant access to resource | user: User, resource: Resource, permissions: List[Permission] | Status |
-| `AccessControl.revoke_access()` | access_control | Revoke access to resource | user: User, resource: Resource | Status |
-| `DataMasking.mask_sensitive_data()` | data_masking | Mask sensitive data fields | data: Any, fields: List[str] | MaskedData |
-| `DataMasking.anonymize_data()` | data_masking | Anonymize personal data | data: Any | AnonymizedData |
-| `DataMasking.encrypt_data()` | data_masking | Encrypt sensitive data | data: Any, key: str | EncryptedData |
-| `EncryptionManager.encrypt_file()` | encryption_manager | Encrypt file with specified algorithm | file_path: str, algorithm: str | Status |
-| `EncryptionManager.decrypt_file()` | encryption_manager | Decrypt file | file_path: str, key: str | Status |
-| `EncryptionManager.generate_key()` | encryption_manager | Generate encryption key | algorithm: str | Key |
-| `AuthenticationManager.authenticate_user()` | authentication_manager | Authenticate user credentials | credentials: Credentials | AuthResult |
-| `AuthenticationManager.create_session()` | authentication_manager | Create authenticated session | user: User | Session |
-| `AuthenticationManager.validate_token()` | authentication_manager | Validate authentication token | token: str | ValidationResult |
-| `AuditLogger.log_access()` | audit_logger | Log access attempts | access: Access | Status |
-| `AuditLogger.log_data_changes()` | audit_logger | Log data modifications | changes: List[Change] | Status |
-| `AuditLogger.generate_audit_report()` | audit_logger | Generate audit report | time_range: TimeRange | AuditReport |
-| `SecurityScanner.scan_vulnerabilities()` | security_scanner | Scan for security vulnerabilities | None | VulnerabilityReport |
-| `SecurityScanner.check_compliance()` | security_scanner | Check security compliance | None | ComplianceReport |
-| `SecurityScanner.assess_risks()` | security_scanner | Assess security risks | None | RiskAssessment |
-| `SecurityManager.implement_security()` | security | Implement security measures | config: Dict | SecurityStatus |
-| `SecurityManager.monitor_threats()` | security | Monitor security threats | None | ThreatReport |
-| `SecurityManager.respond_to_incident()` | security | Respond to security incident | incident: Incident | ResponsePlan |
-
-#### 22. **CLI Tools Functions** (`semantica.cli`)
-
-| Function | Module | Description | Parameters | Returns |
-|----------|--------|-------------|------------|---------|
-| `IngestionCLI.ingest_data()` | ingestion_cli | Ingest data from command line | source: str, config: Dict | Status |
-| `IngestionCLI.resume_ingestion()` | ingestion_cli | Resume interrupted ingestion | token: str | Status |
-| `IngestionCLI.monitor_progress()` | ingestion_cli | Monitor ingestion progress | None | Progress |
-| `KBBuilderCLI.build_knowledge_base()` | kb_builder_cli | Build knowledge base from CLI | sources: List[str], config: Dict | Status |
-| `KBBuilderCLI.export_kb()` | kb_builder_cli | Export knowledge base | kb: KnowledgeBase, format: str | Status |
-| `KBBuilderCLI.validate_kb()` | kb_builder_cli | Validate knowledge base | kb: KnowledgeBase | ValidationResult |
-| `PipelineCLI.create_pipeline()` | pipeline_cli | Create pipeline from CLI | config_file: str | Pipeline |
-| `PipelineCLI.run_pipeline()` | pipeline_cli | Run pipeline from CLI | pipeline: Pipeline | Results |
-| `PipelineCLI.monitor_pipeline()` | pipeline_cli | Monitor pipeline execution | pipeline_id: str | Status |
-| `QueryCLI.execute_query()` | query_cli | Execute query from CLI | query: str, format: str | QueryResult |
-| `QueryCLI.export_results()` | query_cli | Export query results | results: QueryResult, format: str | Status |
-| `QueryCLI.optimize_query()` | query_cli | Optimize query performance | query: str | OptimizedQuery |
-| `AdminCLI.manage_users()` | admin_cli | Manage user accounts | action: str, user_data: Dict | Status |
-| `AdminCLI.configure_system()` | admin_cli | Configure system settings | config: Dict | Status |
-| `AdminCLI.monitor_system()` | admin_cli | Monitor system status | None | SystemStatus |
-| `CLIManager.setup_cli()` | cli_manager | Setup CLI environment | config: Dict | Status |
-| `CLIManager.register_commands()` | cli_manager | Register CLI commands | commands: List[Command] | Status |
 | `CLIManager.handle_errors()` | cli_manager | Handle CLI errors | error: Exception | ErrorResponse |
 
 ---
@@ -1758,15 +3064,8 @@ answer = rag.process_question(question, context=market_data)
 | **RAG System** | 20 | 12 | 4 | 4 |
 | **Reasoning Engine** | 25 | 15 | 6 | 4 |
 | **Multi-Agent System** | 25 | 15 | 6 | 4 |
-| **Domain Specialization** | 18 | 12 | 3 | 3 |
-| **User Interface** | 20 | 12 | 4 | 4 |
-| **Operations** | 20 | 12 | 4 | 4 |
-| **Monitoring** | 20 | 12 | 4 | 4 |
-| **Quality Assurance** | 18 | 12 | 3 | 3 |
-| **Security** | 20 | 12 | 4 | 4 |
-| **CLI Tools** | 18 | 12 | 3 | 3 |
 
-**Total: 22 Modules, 450+ Functions**
+**Total: 20 Modules, 400+ Functions**
 
 ---
 
@@ -1894,65 +3193,6 @@ from semantica.agents import (
     AgentAnalytics, MultiAgentManager
 )
 
-# =============================================================================
-# DOMAIN SPECIALIZATION MODULES
-# =============================================================================
-
-# Domain processors
-from semantica.domains import (
-    CybersecurityProcessor, BiomedicalProcessor, FinanceProcessor,
-    LegalProcessor, DomainTemplates, MappingRules, DomainOntologies,
-    DomainExtractors, DomainValidator, DomainManager
-)
-
-# =============================================================================
-# USER INTERFACE MODULES
-# =============================================================================
-
-# Web dashboard
-from semantica.ui import (
-    UIManager, IngestionMonitor, KGViewer, ConflictResolver,
-    AnalyticsDashboard, PipelineEditor, DataExplorer, UserManagement,
-    NotificationSystem, ReportGenerator
-)
-
-# =============================================================================
-# OPERATIONS MODULES
-# =============================================================================
-
-# Streaming
-from semantica.streaming import (
-    KafkaAdapter, PulsarAdapter, RabbitMQAdapter, KinesisAdapter,
-    StreamProcessor, CheckpointManager, ExactlyOnce, StreamMonitor,
-    BackpressureHandler, StreamingManager
-)
-
-# Monitoring
-from semantica.monitoring import (
-    MetricsCollector, TracingSystem, AlertManager, SLAMonitor,
-    QualityMetrics, HealthChecker, PerformanceAnalyzer, LogManager,
-    DashboardRenderer, MonitoringManager
-)
-
-# Quality assurance
-from semantica.quality import (
-    QAEngine, ValidationEngine, SchemaValidator, TripleValidator,
-    ConfidenceCalculator, TestGenerator, QualityReporter, DataProfiler,
-    ComplianceChecker, QualityManager
-)
-
-# Security
-from semantica.security import (
-    AccessControl, DataMasking, PIIRedactor, AuditLogger,
-    EncryptionManager, SecurityValidator, ComplianceManager,
-    ThreatMonitor, VulnerabilityScanner, SecurityManager
-)
-
-# CLI tools
-from semantica.cli import (
-    IngestionCLI, KBBuilderCLI, ExportCLI, QACLI, MonitoringCLI,
-    PipelineCLI, UserManagementCLI, HelpSystem, InteractiveShell
-)
 
 # =============================================================================
 # UTILITY MODULES
@@ -1961,9 +3201,9 @@ from semantica.cli import (
 # Additional utilities
 from semantica.utils import (
     DataValidator, SchemaManager, TemplateManager, SeedManager,
-    SemanticDeduplicator, ConflictDetector, SecurityConfig,
-    MultiProviderConfig, AnalyticsDashboard, BusinessIntelligenceDashboard,
-    HealthcareProcessor, CyberSecurityProcessor, EnterpriseDeployment
+    SemanticDeduplicator, ConflictDetector, MultiProviderConfig, 
+    AnalyticsDashboard, BusinessIntelligenceDashboard,
+    HealthcareProcessor, EnterpriseDeployment
 )
 
 # =============================================================================
@@ -1977,17 +3217,13 @@ from semantica.context import ContextEngineer
 from semantica.embeddings import SemanticEmbedder
 from semantica.graph import KnowledgeGraphBuilder
 from semantica.query import SPARQLQueryGenerator
-from semantica.streaming import StreamProcessor, LiveFeedMonitor
 from semantica.pipelines import ResearchPipeline, BusinessIntelligenceDashboard
 from semantica.healthcare import HealthcareProcessor
-from semantica.security import CyberSecurityProcessor
 from semantica.deployment import EnterpriseDeployment
 from semantica.analytics import AnalyticsDashboard
-from semantica.quality import QualityAssurance
 
 # Advanced usage
 from semantica.config import MultiProviderConfig
-from semantica.security import SecurityConfig
 ```
 
 ---
@@ -2034,8 +3270,8 @@ spacy >= 3.4.0
 
 ## 📊 Module Statistics
 
-- **Total Main Modules**: 22
-- **Total Submodules**: 140+
+- **Total Main Modules**: 20
+- **Total Submodules**: 120+
 - **Total Classes**: 200+
 - **Total Functions**: 1000+
 - **Supported Formats**: 50+
@@ -2044,4 +3280,149 @@ spacy >= 3.4.0
 
 ---
 
-*This comprehensive module reference covers all major components of the Semantica toolkit. Each module is designed to be modular, extensible, and production-ready for enterprise use cases.*
+## 🎯 Solving Real-World Knowledge Graph Challenges
+
+> **Complete solution for the fundamental problems in building production-ready Knowledge Graphs**
+
+### **Problem 1: Stick to a Fixed Template**
+```python
+from semantica.templates import SchemaTemplate, SchemaEnforcer
+
+# Define your business-specific schema
+business_schema = SchemaTemplate(
+    name="company_knowledge_graph",
+    entities=["Company", "Person", "Product", "Department", "Project", "Quarterly_Report"],
+    relationships=["founded_by", "works_for", "manages", "belongs_to", "reports_to", "produces"],
+    constraints={
+        "Company": {"required_props": ["name", "industry", "founded_year", "headquarters"]},
+        "Person": {"required_props": ["name", "title", "department", "employee_id"]},
+        "Quarterly_Report": {"required_props": ["quarter", "year", "revenue", "company"]},
+        "founded_by": {"domain": "Company", "range": "Person"},
+        "produces": {"domain": "Company", "range": "Product"}
+    }
+)
+
+# Enforce consistent structure
+schema_enforcer = SchemaEnforcer()
+enforced_entities = schema_enforcer.enforce_entity_schema(extracted_entities, business_schema)
+enforced_relationships = schema_enforcer.enforce_relationship_schema(extracted_relations, business_schema)
+```
+
+### **Problem 2: Start with What We Already Know**
+```python
+from semantica.seed import SeedDataManager, KnowledgeSeeder
+
+# Load your existing verified data
+seed_manager = SeedDataManager()
+seed_manager.load_products("verified_products.csv")
+seed_manager.load_departments("org_chart.json")
+seed_manager.load_employees("hr_database")
+
+# Seed the knowledge graph with verified foundation
+knowledge_seeder = KnowledgeSeeder()
+seeded_graph = knowledge_seeder.seed_entities(seed_data, verification_rules=True)
+seeded_graph = knowledge_seeder.seed_relationships(org_chart, hierarchy_rules=True)
+
+# Build on this foundation
+integrator = DataIntegrator()
+final_graph = integrator.integrate_seed_with_extracted(seeded_graph, extracted_data)
+```
+
+### **Problem 3: Clean Up and Merge Duplicates**
+```python
+from semantica.deduplication import DuplicateDetector, EntityMerger, SimilarityEngine
+
+# Detect semantic duplicates
+duplicate_detector = DuplicateDetector()
+duplicates = duplicate_detector.find_semantic_duplicates(entities)
+# This will find "First Quarter Sales" and "Q1 Sales Report" as duplicates
+
+# Advanced similarity detection
+similarity_engine = SimilarityEngine()
+similarity = similarity_engine.calculate_semantic_similarity("First Quarter Sales", "Q1 Sales Report")
+# Returns high similarity score (e.g., 0.92)
+
+# Merge duplicates intelligently
+entity_merger = EntityMerger()
+merged = entity_merger.merge_duplicates(duplicates, strategy="highest_confidence")
+merged = entity_merger.merge_with_validation(duplicates, validation_rules)
+```
+
+### **Problem 4: Flag When Sources Disagree**
+```python
+from semantica.conflicts import ConflictDetector, SourceTracker, DisagreementResolver
+
+# Detect conflicting information
+conflict_detector = ConflictDetector()
+conflicts = conflict_detector.detect_value_conflicts(entities, "sales_figure")
+# Finds $10M vs $12M sales figures
+
+# Track exact sources
+source_tracker = SourceTracker()
+sources = source_tracker.track_property_sources(property, "sales_figure", "$10M")
+# Returns: [{"document": "Q1_Report.pdf", "page": 5, "section": "Financial Summary"}]
+
+# Flag for investigation
+disagreement_resolver = DisagreementResolver()
+flagged = disagreement_resolver.flag_for_investigation(conflicts)
+# Generates investigation report with exact document locations
+```
+
+### **Complete Production-Ready Solution**
+```python
+from semantica import Semantica
+from semantica.templates import SchemaTemplate
+from semantica.seed import SeedDataManager
+from semantica.deduplication import DuplicateDetector, EntityMerger
+from semantica.conflicts import ConflictDetector, SourceTracker
+from semantica.kg_qa import KGQualityAssessor
+
+# Initialize Semantica with quality assurance
+core = Semantica(
+    llm_provider="openai",
+    embedding_model="text-embedding-3-large",
+    vector_store="pinecone",
+    graph_db="neo4j",
+    quality_assurance=True,  # Enable all QA features
+    conflict_detection=True,  # Enable conflict detection
+    deduplication=True       # Enable advanced deduplication
+)
+
+# 1. Define your business schema
+business_schema = SchemaTemplate.load("business_schema.yaml")
+
+# 2. Seed with verified data
+seed_manager = SeedDataManager()
+seed_manager.load_verified_data("verified_entities.json")
+seeded_graph = seed_manager.create_foundation_graph(business_schema)
+
+# 3. Process documents with quality controls
+knowledge_base = core.build_knowledge_base(
+    sources=["documents/"],
+    schema_template=business_schema,
+    seed_data=seeded_graph,
+    enable_deduplication=True,
+    enable_conflict_detection=True,
+    enable_quality_assurance=True
+)
+
+# 4. Get quality report
+kg_qa = KGQualityAssessor()
+quality_report = kg_qa.generate_quality_report(knowledge_base)
+print(f"Knowledge Graph Quality Score: {quality_report.overall_score}")
+print(f"Duplicates Found: {quality_report.duplicates_count}")
+print(f"Conflicts Detected: {quality_report.conflicts_count}")
+print(f"Source Disagreements: {quality_report.disagreements_count}")
+
+# 5. Get investigation guide for conflicts
+if quality_report.conflicts_count > 0:
+    investigation_guide = quality_report.get_investigation_guide()
+    print("Conflicts requiring investigation:")
+    for conflict in investigation_guide.conflicts:
+        print(f"- {conflict.property}: {conflict.values}")
+        print(f"  Sources: {conflict.source_documents}")
+```
+
+---
+
+*This comprehensive module reference covers all major components of the Semantica toolkit. Each module is designed to be modular, extensible, and production-ready for enterprise use cases. The toolkit specifically addresses the fundamental challenges in building Knowledge Graphs that are consistent, reliable, and production-ready.*
