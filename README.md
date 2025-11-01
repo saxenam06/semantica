@@ -183,22 +183,65 @@ Process **50+ file formats** with intelligent semantic extraction:
 **Example: Multi-Source Ingestion**
 
 ```python
-from semantica.ingest import FileIngestor, WebIngestor, FeedIngestor
+from semantica.ingest import (
+    FileIngestor,
+    WebIngestor,
+    FeedIngestor,
+    DBIngestor,
+    StreamIngestor,
+    EmailIngestor
+)
 
-# Initialize ingestors
-file_ingestor = FileIngestor()
-web_ingestor = WebIngestor()
-feed_ingestor = FeedIngestor()
+# Initialize ingestors with configuration
+file_ingestor = FileIngestor(
+    recursive=True,
+    max_file_size=100 * 1024 * 1024,  # 100MB
+    supported_formats=["pdf", "docx", "xlsx", "pptx", "txt", "md"]
+)
+
+web_ingestor = WebIngestor(
+    max_depth=3,
+    respect_robots_txt=True,
+    delay_between_requests=1.0
+)
+
+feed_ingestor = FeedIngestor(
+    max_items=1000,
+    update_interval=3600  # 1 hour
+)
 
 # Ingest from multiple sources
-sources = [
-    *file_ingestor.ingest("documents/", formats=["pdf", "docx", "xlsx"]),
-    *web_ingestor.ingest("https://example.com/articles"),
-    *feed_ingestor.ingest("https://example.com/rss")
-]
+sources = []
+
+# File ingestion
+sources.extend(file_ingestor.ingest("documents/", formats=["pdf", "docx", "xlsx"]))
+sources.extend(file_ingestor.ingest("data/archive.zip", extract_archives=True))
+
+# Web ingestion
+sources.extend(web_ingestor.ingest("https://example.com/articles"))
+sources.extend(web_ingestor.ingest("https://blog.company.com", patterns=["*.html"]))
+
+# Feed ingestion
+sources.extend(feed_ingestor.ingest("https://example.com/rss"))
+sources.extend(feed_ingestor.ingest("https://news.ycombinator.com/rss"))
+
+# Database ingestion
+db_ingestor = DBIngestor(connection_string="postgresql://user:pass@localhost/db")
+sources.extend(db_ingestor.ingest(
+    query="SELECT title, content, author FROM articles",
+    metadata={"source": "articles_db", "version": "1.0"}
+))
 
 print(f"✅ Ingested {len(sources)} sources")
-# Output: ✅ Ingested 1,247 sources
+for source in sources[:5]:
+    print(f"  - {source.filename} ({source.format}, {source.size} bytes)")
+# Output:
+# ✅ Ingested 1,247 sources
+#   - document1.pdf (pdf, 245678 bytes)
+#   - report.docx (docx, 156789 bytes)
+#   - article.html (html, 89456 bytes)
+#   - feed_item.xml (rss, 12345 bytes)
+#   - db_record.json (json, 5678 bytes)
 ```
 
 ---
@@ -211,6 +254,14 @@ Transform raw text into structured semantic knowledge with state-of-the-art NLP 
 
 ```python
 from semantica import Semantica
+from semantica.semantic_extract import (
+    NamedEntityRecognizer,
+    RelationExtractor,
+    EventDetector,
+    TripleExtractor,
+    CoreferenceResolver,
+    SemanticAnalyzer
+)
 
 # Sample text
 text = """
@@ -220,74 +271,165 @@ of Beats, joined Apple's executive team. The acquisition included Beats Music
 streaming service and Beats Electronics hardware.
 """
 
-# Initialize and extract
-core = Semantica()
+# Option 1: High-level API (recommended for quick start)
+core = Semantica(
+    ner_model="transformer",
+    relation_strategy="hybrid",
+    enable_coreference=True
+)
 results = core.extract_semantics(text)
+
+# Option 2: Low-level API (for fine-grained control)
+ner = NamedEntityRecognizer(model="transformer", lang="en")
+rel_extractor = RelationExtractor(strategy="hybrid", confidence_threshold=0.7)
+event_detector = EventDetector()
+triple_extractor = TripleExtractor()
+coreference_resolver = CoreferenceResolver()
+semantic_analyzer = SemanticAnalyzer()
+
+# Extract with full pipeline
+entities = ner.extract(text)
+entities = coreference_resolver.resolve(text, entities)
+relationships = rel_extractor.extract(text, entities)
+events = event_detector.detect(text, entities)
+triples = triple_extractor.extract(text, entities, relationships, events)
+semantic_analysis = semantic_analyzer.analyze_semantics(text, entities, relationships)
 
 # === EXTRACTED ENTITIES ===
 print(f"Entities found: {len(results.entities)}\n")
 for entity in results.entities:
-    print(f"- {entity.text} ({entity.type}, {entity.confidence:.2f})")
+    print(f"- {entity.text} ({entity.type}, confidence={entity.confidence:.2f}, "
+          f"span=({entity.start}, {entity.end}))")
 
 # Output:
-# - Apple Inc. (Organization, 0.98)
-# - Steve Jobs (Person, 0.97)
-# - 1976 (Date, 1.00)
-# - Beats Electronics (Organization, 0.95)
-# - $3 billion (Money, 0.99)
-# - May 28, 2014 (Date, 0.98)
-# - Dr. Dre (Person, 0.97)
-# - Jimmy Iovine (Person, 0.94)
+# - Apple Inc. (Organization, confidence=0.98, span=(0, 10))
+# - Steve Jobs (Person, confidence=0.97, span=(28, 38))
+# - 1976 (Date, confidence=1.00, span=(42, 46))
+# - Beats Electronics (Organization, confidence=0.95, span=(85, 102))
+# - $3 billion (Money, confidence=0.99, span=(107, 117))
+# - May 28, 2014 (Date, confidence=0.98, span=(121, 133))
+# - Dr. Dre (Person, confidence=0.97, span=(135, 142))
+# - Jimmy Iovine (Person, confidence=0.94, span=(147, 159))
 
 # === EXTRACTED RELATIONSHIPS ===
 print(f"\nRelationships found: {len(results.relationships)}\n")
 for rel in results.relationships[:3]:
-    print(f"{rel.subject} --[{rel.predicate}]--> {rel.object}")
+    print(f"{rel.subject} --[{rel.predicate}]--> {rel.object} "
+          f"(confidence={rel.confidence:.2f})")
 
 # Output:
-# Apple Inc. --[founded_by]--> Steve Jobs
-# Apple Inc. --[acquired]--> Beats Electronics
-# Dr. Dre --[co-founded]--> Beats Electronics
+# Apple Inc. --[founded_by]--> Steve Jobs (confidence=0.95)
+# Apple Inc. --[acquired]--> Beats Electronics (confidence=0.92)
+# Dr. Dre --[co-founded]--> Beats Electronics (confidence=0.89)
+
+# === DETECTED EVENTS ===
+print(f"\nEvents detected: {len(events)}\n")
+for event in events[:2]:
+    print(f"- {event.type}: {event.description} "
+          f"(participants={[p.name for p in event.participants]})")
 
 # === GENERATED TRIPLES ===
 print(f"\nTriples generated: {len(results.triples)}\n")
 for triple in results.triples[:5]:
-    print(f"  {triple}")
+    print(f"  {triple.subject} {triple.predicate} {triple.object}")
 
 # Output:
-#   (<Apple_Inc>, <founded_by>, <Steve_Jobs>)
-#   (<Apple_Inc>, <acquired>, <Beats_Electronics>)
-#   (<acquisition>, <amount>, "$3B")
-#   (<acquisition>, <date>, "2014-05-28")
-#   (<Dr_Dre>, <co-founded>, <Beats_Electronics>)
+#   <Apple_Inc> <founded_by> <Steve_Jobs>
+#   <Apple_Inc> <acquired> <Beats_Electronics>
+#   <acquisition_1> <amount> "$3B"
+#   <acquisition_1> <date> "2014-05-28"
+#   <Dr_Dre> <co-founded> <Beats_Electronics>
 ```
 
-**Advanced Extraction with Custom Models**
+**Advanced Extraction with Custom Models and Configuration**
 
 ```python
 from semantica.semantic_extract import (
     NamedEntityRecognizer,
     RelationExtractor,
     EventDetector,
-    TripleExtractor
+    TripleExtractor,
+    CoreferenceResolver,
+    SemanticAnalyzer,
+    LLMEnhancer,
+    ExtractionValidator
 )
 
-# Initialize specialized extractors
-ner = NamedEntityRecognizer(model="transformer")
-rel_extractor = RelationExtractor(strategy="hybrid")
-event_detector = EventDetector()
-triple_extractor = TripleExtractor()
+# Initialize specialized extractors with custom configuration
+ner = NamedEntityRecognizer(
+    model="transformer",  # or "spacy", "stanza", "custom"
+    lang="en",
+    entities=["PERSON", "ORG", "LOC", "DATE", "MONEY"],
+    confidence_threshold=0.7,
+    use_llm_enhancement=True
+)
+
+rel_extractor = RelationExtractor(
+    strategy="hybrid",  # "rule-based", "ml-based", "hybrid", "llm-based"
+    confidence_threshold=0.7,
+    max_relationships_per_entity=10
+)
+
+event_detector = EventDetector(
+    event_types=["ACQUISITION", "FOUNDING", "PARTNERSHIP", "ANNOUNCEMENT"],
+    min_confidence=0.75
+)
+
+triple_extractor = TripleExtractor(
+    format="rdf",  # "rdf", "property_graph", "custom"
+    validate_triples=True
+)
+
+coreference_resolver = CoreferenceResolver(
+    method="neural",  # "rule-based", "neural", "hybrid"
+    resolve_pronouns=True
+)
+
+llm_enhancer = LLMEnhancer(
+    provider="openai",
+    model="gpt-4",
+    temperature=0.1
+)
+
+validator = ExtractionValidator(
+    validate_entities=True,
+    validate_relationships=True,
+    schema_validation=True
+)
 
 # Extract with full pipeline
 entities = ner.extract(text)
+entities = coreference_resolver.resolve(text, entities)
+entities = llm_enhancer.enhance_entities(text, entities)
+
 relationships = rel_extractor.extract(text, entities)
-events = event_detector.detect(text)
+relationships = llm_enhancer.enhance_relationships(text, relationships)
+
+events = event_detector.detect(text, entities)
+
 triples = triple_extractor.extract(text, entities, relationships, events)
 
-print(f"Entities: {len(entities)}")
-print(f"Relationships: {len(relationships)}")
-print(f"Events: {len(events)}")
-print(f"Triples: {len(triples)}")
+# Validate extractions
+validation_results = validator.validate(
+    text=text,
+    entities=entities,
+    relationships=relationships,
+    triples=triples
+)
+
+# Semantic analysis
+semantic_analyzer = SemanticAnalyzer()
+analysis = semantic_analyzer.analyze_semantics(
+    text=text,
+    entities=entities,
+    relationships=relationships
+)
+
+print(f"✅ Entities: {len(entities)} (validated: {validation_results.entities_valid})")
+print(f"✅ Relationships: {len(relationships)} (validated: {validation_results.relationships_valid})")
+print(f"✅ Events: {len(events)}")
+print(f"✅ Triples: {len(triples)} (validated: {validation_results.triples_valid})")
+print(f"✅ Semantic coherence: {analysis.coherence_score:.2f}")
 ```
 
 ---
@@ -300,6 +442,14 @@ Build production-ready knowledge graphs from any data source with automatic enti
 
 ```python
 from semantica import Semantica
+from semantica.kg import (
+    GraphBuilder,
+    EntityResolver,
+    GraphAnalyzer,
+    CentralityCalculator,
+    CommunityDetector
+)
+from semantica.export import RDFExporter, JSONExporter
 
 # Sample documents
 documents = [
@@ -313,8 +463,12 @@ documents = [
     Apple expanded into services generating over $80 billion annually."""
 ]
 
-# Initialize and build graph
-core = Semantica()
+# Option 1: High-level API (recommended for quick start)
+core = Semantica(
+    graph_db="neo4j",  # or "networkx", "rdflib", "memgraph"
+    merge_entities=True,
+    resolve_conflicts=True
+)
 kg = core.build_knowledge_graph(
     sources=documents,
     merge_entities=True,
@@ -322,36 +476,72 @@ kg = core.build_knowledge_graph(
     generate_embeddings=True
 )
 
+# Option 2: Low-level API (for fine-grained control)
+graph_builder = GraphBuilder(
+    merge_entities=True,
+    entity_resolution_strategy="fuzzy",
+    resolve_conflicts=True
+)
+
+entity_resolver = EntityResolver(
+    similarity_threshold=0.85,
+    merge_strategy="highest_confidence"
+)
+
+# Build graph step by step
+kg = graph_builder.build(
+    sources=documents,
+    entity_resolver=entity_resolver
+)
+
+# Resolve entities
+kg = entity_resolver.resolve(kg)
+
 # Graph Statistics
 print("=== GRAPH STATISTICS ===")
 print(f"Nodes: {kg.node_count}")
 print(f"Edges: {kg.edge_count}")
-print(f"Entity Types: {kg.entity_types}")
-print(f"Relationship Types: {kg.relationship_types}\n")
+print(f"Entity Types: {sorted(kg.entity_types)}")
+print(f"Relationship Types: {sorted(kg.relationship_types)}")
+print(f"Graph Density: {kg.density:.3f}")
+print(f"Connected Components: {kg.connected_components}\n")
 
 # Output:
 # Nodes: 25
 # Edges: 38
-# Entity Types: ['Person', 'Organization', 'Product', 'Date', 'Location', 'Money']
-# Relationship Types: ['founded', 'acquired', 'works_for', 'headquartered_in']
+# Entity Types: ['Date', 'Location', 'Money', 'Organization', 'Person', 'Product']
+# Relationship Types: ['acquired', 'became', 'expanded_into', 'founded', 'headquartered_in', 'joined', 'works_for']
+# Graph Density: 0.127
+# Connected Components: 1
 
 # Query the graph
-result = kg.query("Who founded Apple Inc.?")
+result = kg.query(
+    "Who founded Apple Inc.?",
+    return_format="structured"
+)
 print(f"Q: Who founded Apple Inc.?")
 print(f"A: {result.answer}")
 print(f"Confidence: {result.confidence:.2f}")
-print(f"Supporting Entities: {[e.name for e in result.supporting_entities]}\n")
+print(f"Supporting Entities: {[e.name for e in result.supporting_entities]}")
+print(f"Evidence Paths: {result.evidence_paths}\n")
 
 # Output:
 # Q: Who founded Apple Inc.?
 # A: Apple Inc. was founded by Steve Jobs, Steve Wozniak, and Ronald Wayne in 1976.
 # Confidence: 0.98
 # Supporting Entities: ['Steve Jobs', 'Steve Wozniak', 'Ronald Wayne', 'Apple Inc.']
+# Evidence Paths: [['Apple Inc.', 'founded_by', 'Steve Jobs'], ...]
 
 # Export to multiple formats
-kg.export("output.ttl", format="turtle")
-kg.export("output.jsonld", format="json-ld")
+rdf_exporter = RDFExporter()
+rdf_exporter.export(kg, "output.ttl", format="turtle")
+
+json_exporter = JSONExporter()
+json_exporter.export(kg, "output.jsonld", format="json-ld")
+
+# Export to graph databases
 kg.to_neo4j("bolt://localhost:7687", "neo4j", "password")
+kg.to_memgraph("localhost", 7687, username="admin", password="password")
 
 print("✅ Graph exported to multiple formats!")
 ```
@@ -359,25 +549,49 @@ print("✅ Graph exported to multiple formats!")
 **Advanced Graph Analytics**
 
 ```python
-from semantica.kg import GraphAnalyzer
+from semantica.kg import (
+    GraphAnalyzer,
+    CentralityCalculator,
+    CommunityDetector,
+    ConnectivityAnalyzer
+)
 
 analyzer = GraphAnalyzer(kg)
 
 # Centrality analysis
-influential = analyzer.compute_centrality(methods=["pagerank", "betweenness"])
-print("\nMost Influential Entities:")
-for entity, score in influential[:5]:
+centrality_calc = CentralityCalculator(kg)
+pagerank_scores = centrality_calc.pagerank()
+betweenness_scores = centrality_calc.betweenness_centrality()
+closeness_scores = centrality_calc.closeness_centrality()
+eigenvector_scores = centrality_calc.eigenvector_centrality()
+
+print("\nMost Influential Entities (PageRank):")
+for entity, score in sorted(pagerank_scores.items(), key=lambda x: x[1], reverse=True)[:5]:
     print(f"  {entity}: {score:.3f}")
 
 # Community detection
-communities = analyzer.detect_communities(algorithm="louvain")
+community_detector = CommunityDetector(kg)
+communities = community_detector.detect(algorithm="louvain")  # or "leiden", "greedy_modularity"
 print(f"\nCommunities detected: {len(communities)}")
+for i, community in enumerate(communities[:3], 1):
+    print(f"  Community {i}: {len(community)} entities - {community[:3]}...")
 
-# Path finding
-paths = analyzer.find_shortest_paths("Apple Inc.", "Dr. Dre", max_length=3)
-print(f"\nPaths found: {len(paths)}")
-for path in paths:
-    print(f"  {' → '.join(path)}")
+# Connectivity analysis
+connectivity = ConnectivityAnalyzer(kg)
+shortest_paths = connectivity.find_shortest_paths("Apple Inc.", "Dr. Dre", max_length=3)
+all_paths = connectivity.find_all_paths("Apple Inc.", "Dr. Dre", max_length=4)
+
+print(f"\nShortest paths found: {len(shortest_paths)}")
+for path in shortest_paths[:3]:
+    print(f"  {' → '.join(str(node) for node in path)}")
+
+# Graph metrics
+metrics = analyzer.compute_metrics()
+print(f"\nGraph Metrics:")
+print(f"  Average degree: {metrics['avg_degree']:.2f}")
+print(f"  Clustering coefficient: {metrics['clustering']:.3f}")
+print(f"  Diameter: {metrics['diameter']}")
+print(f"  Average path length: {metrics['avg_path_length']:.2f}")
 ```
 
 ---
@@ -400,7 +614,15 @@ Stage 6: Symbolic Validation → HermiT/Pellet reasoning (F1 up to 0.99)
 **Example: Automatic Ontology Generation**
 
 ```python
-from semantica.ontology import OntologyGenerator, OntologyValidator
+from semantica.ontology import (
+    OntologyGenerator,
+    OntologyValidator,
+    ClassInferrer,
+    PropertyGenerator,
+    OWLGenerator,
+    OntologyEvaluator,
+    RequirementsSpec
+)
 
 # Sample domain documents
 documents = [
@@ -411,35 +633,56 @@ documents = [
     $3 billion. Acquisitions involve financial transactions and integration."""
 ]
 
-# Initialize generator
+# Step 1: Define requirements and competency questions
+requirements = RequirementsSpec()
+requirements.add_competency_question(
+    "What companies exist in the domain?",
+    category="entity_identification"
+)
+requirements.add_competency_question(
+    "What are the relationships between companies?",
+    category="relationship_modeling"
+)
+
+# Step 2: Initialize generator with full configuration
 generator = OntologyGenerator(
     llm_provider="openai",
     model="gpt-4",
-    validation_mode="hybrid"  # LLM + symbolic reasoner
+    validation_mode="hybrid",  # LLM + symbolic reasoner
+    enable_class_inference=True,
+    enable_property_generation=True,
+    quality_threshold=0.95
 )
 
-# Generate ontology
+# Step 3: Generate ontology using 6-stage pipeline
 ontology = generator.generate_from_documents(
     sources=documents,
-    quality_threshold=0.95
+    requirements=requirements,
+    quality_threshold=0.95,
+    namespace="https://example.org/ontology#",
+    prefix="ex"
 )
 
 print("=== ONTOLOGY GENERATION RESULTS ===")
 print(f"Classes: {len(ontology.classes)}")
 print(f"Properties: {len(ontology.properties)}")
 print(f"Axioms: {len(ontology.axioms)}")
-print(f"Validation Score: {ontology.validation_score:.2f}\n")
+print(f"Validation Score: {ontology.validation_score:.2f}")
+print(f"Namespace: {ontology.namespace}\n")
 
-# Display classes
+# Step 4: Display generated classes with hierarchy
 print("=== GENERATED CLASSES ===")
 for cls in ontology.classes[:5]:
-    print(f"\nClass: {cls.name}")
-    print(f"  Superclasses: {cls.superclasses or 'None'}")
+    print(f"\nClass: {cls.name} ({cls.iri})")
+    print(f"  Superclasses: {', '.join(cls.superclasses) if cls.superclasses else 'owl:Thing'}")
+    print(f"  Subclasses: {len(cls.subclasses)}")
     print(f"  Properties: {len(cls.properties)}")
     for prop in cls.properties[:3]:
         print(f"    - {prop.name} ({prop.type})")
+    if cls.annotations:
+        print(f"  Annotations: {cls.annotations}")
 
-# Display properties
+# Step 5: Display properties with domain and range
 print("\n=== GENERATED PROPERTIES ===")
 object_props = [p for p in ontology.properties if p.type == 'ObjectProperty']
 datatype_props = [p for p in ontology.properties if p.type == 'DatatypeProperty']
@@ -447,25 +690,43 @@ datatype_props = [p for p in ontology.properties if p.type == 'DatatypeProperty'
 print(f"Object Properties: {len(object_props)}")
 for prop in object_props[:3]:
     print(f"  {prop.name}: {prop.domain} → {prop.range}")
+    if prop.characteristics:
+        print(f"    Characteristics: {prop.characteristics}")
 
 print(f"\nDatatype Properties: {len(datatype_props)}")
 for prop in datatype_props[:3]:
     print(f"  {prop.name}: {prop.domain} → {prop.range}")
 
-# Validate with symbolic reasoner
-validator = OntologyValidator(reasoner="hermit")
+# Step 6: Validate with symbolic reasoner
+validator = OntologyValidator(reasoner="hermit")  # or "pellet", "fact++"
 validation_report = validator.validate(ontology)
 
 print("\n=== VALIDATION REPORT ===")
 if validation_report.is_consistent:
     print("✅ Ontology is logically consistent")
     print(f"✅ All {len(validation_report.checks)} checks passed")
-    ontology.save("domain_ontology.ttl")
+    print(f"✅ Satisfiability: {validation_report.is_satisfiable}")
+    print(f"✅ Classification: {validation_report.classification_complete}")
+    
+    # Generate OWL/Turtle file
+    owl_generator = OWLGenerator()
+    owl_generator.generate(ontology, "domain_ontology.ttl", format="turtle")
     print("\n✅ Saved to domain_ontology.ttl")
 else:
     print("❌ Inconsistencies found:")
     for issue in validation_report.issues:
         print(f"  - {issue.severity}: {issue.message}")
+        print(f"    Location: {issue.location}")
+
+# Step 7: Evaluate ontology quality
+evaluator = OntologyEvaluator()
+evaluation = evaluator.evaluate(ontology)
+print("\n=== ONTOLOGY QUALITY EVALUATION ===")
+print(f"Completeness: {evaluation.completeness:.2f}")
+print(f"Consistency: {evaluation.consistency:.2f}")
+print(f"Clarity: {evaluation.clarity:.2f}")
+print(f"Coherence: {evaluation.coherence:.2f}")
+print(f"Overall Score: {evaluation.overall_score:.2f}")
 ```
 
 ---
@@ -502,52 +763,131 @@ Formalize context as graphs to enable AI agents with memory, tools, and purpose:
 **Example: Building Context-Aware Agent**
 
 ```python
-from semantica.context import ContextGraphBuilder, AgentMemory
+from semantica.context import (
+    ContextGraphBuilder,
+    AgentMemory,
+    ContextRetriever,
+    EntityLinker
+)
 from semantica.prompting import PromptBuilder
 from semantica.agents import ToolRegistry
+from semantica.vector_store import VectorStore, PineconeAdapter
+from semantica.kg import GraphBuilder
 
 # Build context graph from conversations
-context_builder = ContextGraphBuilder()
+context_builder = ContextGraphBuilder(
+    extract_entities=True,
+    extract_relationships=True,
+    link_external_entities=True
+)
 context_graph = context_builder.build_from_conversations(
     conversations=["conv_1.json", "conv_2.json"],
     link_entities=True,
-    extract_intents=True
+    extract_intents=True,
+    extract_sentiments=True
 )
 
-# Initialize agent memory
+# Initialize vector store for memory
+vector_store = VectorStore(adapter=PineconeAdapter(
+    api_key="your-api-key",
+    index_name="agent-memory",
+    environment="us-east-1"
+))
+
+# Initialize agent memory with full configuration
 memory = AgentMemory(
-    vector_store="pinecone",
+    vector_store=vector_store,
     knowledge_graph=context_graph,
-    retention_policy="30_days"
+    retention_policy="30_days",
+    max_memory_size=10000
 )
 
-# Store context
+# Store context with metadata
 memory.store(
     content="User prefers technical documentation over tutorials",
-    metadata={"user_id": "user_123", "session": "session_456"}
+    metadata={
+        "user_id": "user_123",
+        "session": "session_456",
+        "timestamp": "2024-01-15T10:30:00Z",
+        "category": "preferences"
+    },
+    entities=["User", "Documentation", "Tutorials"],
+    relationships=[("prefers", "User", "Documentation")]
+)
+
+# Store additional context
+memory.store(
+    content="User is interested in machine learning and NLP topics",
+    metadata={"user_id": "user_123", "category": "interests"},
+    entities=["User", "Machine Learning", "NLP"]
+)
+
+# Initialize context retriever
+context_retriever = ContextRetriever(
+    memory_store=memory,
+    use_graph_expansion=True,
+    max_expansion_hops=2
 )
 
 # Retrieve relevant context
-relevant_context = memory.retrieve(
+relevant_context = context_retriever.retrieve(
     query="What are the user's learning preferences?",
     max_results=5,
-    use_graph_expansion=True
+    use_graph_expansion=True,
+    min_relevance_score=0.7
 )
 
 print("=== RETRIEVED CONTEXT ===")
 for ctx in relevant_context:
     print(f"- {ctx.content} (score: {ctx.score:.2f})")
+    if ctx.related_entities:
+        print(f"  Related: {[e.name for e in ctx.related_entities[:3]]}")
+
+# Entity linking for context
+entity_linker = EntityLinker(
+    knowledge_graph=context_graph,
+    similarity_threshold=0.8
+)
+
+linked_entities = entity_linker.link(
+    text="Create a learning plan for technical documentation",
+    context=relevant_context
+)
 
 # Build context-aware prompt
-prompt_builder = PromptBuilder()
+prompt_builder = PromptBuilder(
+    template_engine="jinja2",
+    include_context=True,
+    include_entities=True
+)
+
 prompt = prompt_builder.build(
     template="agent_task",
     context=relevant_context,
-    user_query="Create a learning plan"
+    entities=linked_entities,
+    user_query="Create a learning plan",
+    system_instructions="You are a helpful learning assistant."
 )
 
 print("\n=== GENERATED PROMPT ===")
 print(prompt)
+
+# Tool registry for agent capabilities
+tool_registry = ToolRegistry()
+tool_registry.register_tool(
+    name="create_learning_plan",
+    description="Creates a personalized learning plan",
+    parameters={"topics": "list", "preferences": "dict"}
+)
+
+# Get available tools based on context
+available_tools = tool_registry.get_relevant_tools(
+    query="Create a learning plan",
+    context=relevant_context
+)
+print(f"\n=== AVAILABLE TOOLS ===")
+for tool in available_tools:
+    print(f"- {tool.name}: {tool.description}")
 ```
 
 ---
@@ -559,13 +899,44 @@ Combine vector search speed with knowledge graph precision for 30% accuracy impr
 **Example: GraphRAG Query**
 
 ```python
-from semantica.qa_rag import HybridRetriever, GraphRAGEngine
+from semantica.qa_rag import (
+    GraphRAGEngine,
+    HybridRetriever,
+    RAGManager,
+    ContextBuilder,
+    MemoryStore
+)
+from semantica.vector_store import VectorStore, PineconeAdapter
+from semantica.kg import GraphBuilder
 
-# Initialize GraphRAG
+# Initialize components
+vector_store = VectorStore(adapter=PineconeAdapter(
+    api_key="your-api-key",
+    index_name="semantic-index",
+    environment="us-east-1"
+))
+
+kg = GraphBuilder().load_from_neo4j(
+    uri="bolt://localhost:7687",
+    username="neo4j",
+    password="password"
+)
+
+# Initialize GraphRAG with full configuration
 graphrag = GraphRAGEngine(
-    vector_store="pinecone",
-    knowledge_graph="neo4j",
-    embedding_model="text-embedding-3-large"
+    vector_store=vector_store,
+    knowledge_graph=kg,
+    embedding_model="text-embedding-3-large",
+    embedding_dimension=3072,
+    rerank_model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    max_context_length=4000
+)
+
+# Alternative: Use RAGManager for higher-level operations
+rag_manager = RAGManager(
+    graphrag_engine=graphrag,
+    context_builder=ContextBuilder(max_context_size=4000),
+    memory_store=MemoryStore(retention_days=30)
 )
 
 # User query
@@ -573,32 +944,54 @@ query = "Who founded Apple and what major acquisitions did they make?"
 
 # === STEP 1: VECTOR SEARCH ===
 print("Step 1: Vector Search")
-vector_results = graphrag.vector_search(query, top_k=20)
-print(f"✅ Found {len(vector_results)} similar chunks\n")
+vector_results = graphrag.vector_search(
+    query=query,
+    top_k=20,
+    filter_metadata={"source": "company_data"},
+    include_metadata=True
+)
+print(f"✅ Found {len(vector_results)} similar chunks")
+print(f"   Top result score: {vector_results[0].score:.3f}\n")
 
 # === STEP 2: ENTITY EXTRACTION ===
 print("Step 2: Entity Extraction")
-entities = graphrag.extract_entities(vector_results)
-print(f"✅ Extracted {len(entities)} unique entities\n")
+entities = graphrag.extract_entities(
+    vector_results,
+    min_confidence=0.7,
+    entity_types=["PERSON", "ORG"]
+)
+print(f"✅ Extracted {len(entities)} unique entities")
+print(f"   Entities: {[e.name for e in entities[:5]]}\n")
 
 # === STEP 3: GRAPH EXPANSION ===
 print("Step 3: Graph Expansion")
 expanded_context = graphrag.expand_graph(
     seed_entities=entities,
     max_hops=2,
-    relationship_types=["founded", "acquired", "co-founded"]
+    relationship_types=["founded", "acquired", "co-founded"],
+    max_nodes=100,
+    include_edge_weights=True
 )
-print(f"✅ Expanded from {len(entities)} to {len(expanded_context.nodes)} nodes\n")
+print(f"✅ Expanded from {len(entities)} to {len(expanded_context.nodes)} nodes")
+print(f"   Added {len(expanded_context.edges)} edges\n")
 
 # === STEP 4: HYBRID RETRIEVAL ===
 print("Step 4: Hybrid Retrieval")
-results = graphrag.retrieve(
+hybrid_retriever = HybridRetriever(
+    vector_store=vector_store,
+    knowledge_graph=kg,
+    rerank=True
+)
+
+results = hybrid_retriever.retrieve(
     query=query,
     vector_top_k=20,
+    graph_top_k=10,
     expand_graph=True,
     max_hops=2,
     rerank=True,
-    final_top_k=5
+    final_top_k=5,
+    fusion_method="reciprocal_rank"  # or "weighted", "rrf"
 )
 
 # === DISPLAY RESULTS ===
@@ -606,12 +999,32 @@ print("\n=== GRAPHRAG RESULTS ===\n")
 for i, result in enumerate(results, 1):
     print(f"Result {i} (Score: {result.score:.3f})")
     print(f"Text: {result.text[:150]}...")
-    print(f"\nGraph Paths:")
+    print(f"\nGraph Paths ({len(result.graph_paths)}):")
     for path in result.graph_paths[:2]:
         print(f"  {' → '.join(path)}")
     print(f"\nRelated Entities: {[e.name for e in result.related_entities[:3]]}")
-    print(f"Sources: {result.source_documents}\n")
+    print(f"Sources: {result.source_documents}")
+    print(f"Metadata: {result.metadata}\n")
     print("-" * 80 + "\n")
+
+# === STEP 5: GENERATE ANSWER (with RAG Manager) ===
+print("Step 5: Answer Generation")
+answer = rag_manager.generate_answer(
+    query=query,
+    retrieved_results=results,
+    temperature=0.1,
+    max_tokens=500
+)
+print(f"Answer: {answer.text}")
+print(f"Confidence: {answer.confidence:.2f}")
+print(f"Citations: {len(answer.citations)}")
+
+# Store in memory for future queries
+rag_manager.memory_store.store(
+    query=query,
+    answer=answer,
+    retrieved_context=results
+)
 ```
 
 **Performance Comparison:**
@@ -861,47 +1274,237 @@ print(f"  Missing properties: {report.missing_property_count}")
 **29 Production-Ready Modules Organized into Logical Layers:**
 
 #### Core & Infrastructure (5 modules)
-- `semantica.core` - Framework orchestration
-- `semantica.pipeline` - Pipeline management
-- `semantica.utils` - Shared utilities
-- `semantica.monitoring` - System monitoring
-- `semantica.security` - Access control
+
+**`semantica.core`** - Framework orchestration
+- `Semantica` - Main framework class
+- `Orchestrator` - Pipeline coordination engine
+- `ConfigManager` - Configuration management
+- `PluginRegistry` - Plugin management system
+- `LifecycleManager` - System lifecycle management
+
+**`semantica.pipeline`** - Pipeline management
+- `PipelineBuilder` - Pipeline construction DSL
+- `ExecutionEngine` - Pipeline execution engine
+- `PipelineValidator` - Pipeline validation
+- `ParallelismManager` - Parallel execution management
+- `ResourceScheduler` - Resource scheduling and allocation
+- `FailureHandler` - Error handling and recovery
+
+**`semantica.utils`** - Shared utilities
+- `Validators` - Input validation utilities
+- `Helpers` - Common helper functions
+- `Logging` - Logging utilities
+- `Exceptions` - Custom exception classes
+- `Types` - Type definitions and annotations
+- `Constants` - Framework constants
+
+**`semantica.monitoring`** - System monitoring
+- `MetricsCollector` - Metrics collection
+- `PerformanceMonitor` - Performance monitoring
+- `HealthChecker` - Health checks
+- `AlertManager` - Alert management
+- `AnalyticsDashboard` - Analytics dashboard
+- `QualityAssurance` - Quality monitoring
+
+**`semantica.security`** - Access control
+- `AccessControl` - Access control system
+- Authentication and authorization utilities
 
 #### Data Processing (5 modules)
-- `semantica.ingest` - Universal data ingestion
-- `semantica.parse` - Document parsing
-- `semantica.normalize` - Data normalization
-- `semantica.split` - Document chunking
-- `semantica.streaming` - Real-time processing
+
+**`semantica.ingest`** - Universal data ingestion
+- `FileIngestor` - Local and cloud file processing
+- `WebIngestor` - Web scraping and crawling
+- `FeedIngestor` - RSS/Atom feed processing
+- `StreamIngestor` - Real-time stream processing
+- `RepoIngestor` - Git repository processing
+- `EmailIngestor` - Email protocol handling
+- `DBIngestor` - Database export handling
+
+**`semantica.parse`** - Document parsing
+- `DocumentParser` - PDF, DOCX, PPTX parsing
+- `WebParser` - HTML, XML, XHTML parsing
+- `StructuredDataParser` - JSON, CSV, YAML parsing
+- `EmailParser` - EML, MSG, MBOX parsing
+- `CodeParser` - Source code parsing
+- `MediaParser` - Image and media parsing
+- `ExcelParser` - Excel file parsing
+
+**`semantica.normalize`** - Data normalization
+- `TextNormalizer` - Text normalization
+- `TextCleaner` - Text cleaning utilities
+- `EntityNormalizer` - Entity name normalization
+- `DateNormalizer` - Date format normalization
+- `NumberNormalizer` - Number format normalization
+- `EncodingHandler` - Character encoding handling
+- `LanguageDetector` - Language detection
+- `DataCleaner` - General data cleaning
+
+**`semantica.split`** - Document chunking
+- `SemanticChunker` - Semantic-aware chunking
+- `StructuralChunker` - Structure-based chunking
+- `SlidingWindowChunker` - Sliding window chunking
+- `TableChunker` - Table-aware chunking
+- `ChunkValidator` - Chunk validation
+- `ProvenanceTracker` - Chunk provenance tracking
+
+**`semantica.streaming`** - Real-time processing
+- `StreamProcessor` - Main streaming processor
+- `KafkaAdapter` - Kafka integration
+- `RabbitMQAdapter` - RabbitMQ integration
+- `KinesisAdapter` - AWS Kinesis integration
+- `PulsarAdapter` - Apache Pulsar integration
+- `CheckpointManager` - Stream checkpointing
+- `BackpressureHandler` - Backpressure management
+- `ExactlyOnce` - Exactly-once processing guarantees
 
 #### Semantic Intelligence (4 modules)
-- `semantica.semantic_extract` - Entity & relation extraction
-- `semantica.embeddings` - Vector embeddings
-- `semantica.ontology` - Ontology generation
-- `semantica.vocabulary` - Vocabulary management
+
+**`semantica.semantic_extract`** - Entity & relation extraction
+- `NamedEntityRecognizer` - NER with multiple models
+- `RelationExtractor` - Relationship extraction
+- `EventDetector` - Event detection and extraction
+- `CoreferenceResolver` - Coreference resolution
+- `TripleExtractor` - RDF triple extraction
+- `SemanticAnalyzer` - Semantic analysis engine
+- `NERExtractor` - Alternative NER implementation
+- `LLMEnhancer` - LLM-based extraction enhancement
+- `ExtractionValidator` - Extraction validation
+- `SemanticNetworkExtractor` - Semantic network extraction
+
+**`semantica.embeddings`** - Vector embeddings
+- `EmbeddingGenerator` - Main embedding generator
+- `TextEmbedder` - Text embedding generation
+- `ImageEmbedder` - Image embedding generation
+- `AudioEmbedder` - Audio embedding generation
+- `MultiModalEmbedder` - Multi-modal embeddings
+- `EmbeddingOptimizer` - Embedding optimization
+- `ContextManager` - Context-aware embeddings
+- `PoolingStrategies` - Embedding pooling strategies
+- `ProviderAdapters` - Provider-specific adapters
+
+**`semantica.ontology`** - Ontology generation
+- `OntologyGenerator` - 6-stage ontology generation pipeline
+- `ClassInferrer` - Class discovery and hierarchy building
+- `PropertyGenerator` - Property inference
+- `OntologyValidator` - Validation with symbolic reasoners
+- `OWLGenerator` - OWL/Turtle generation
+- `OntologyEvaluator` - Ontology quality evaluation
+- `RequirementsSpec` - Requirements specification
+- `CompetencyQuestions` - Competency question management
+- `ReuseManager` - Ontology reuse management
+- `VersionManager` - Ontology versioning
+- `NamespaceManager` - Namespace management
+- `NamingConventions` - Naming convention enforcement
+- `ModuleManager` - Ontology module management
+- `DomainOntologies` - Domain ontology management
+- `OntologyDocumentation` - Documentation generation
+
+**`semantica.vocabulary`** - Vocabulary management
+- `VocabularyManager` - Controlled vocabulary management
+- `ControlledVocabulary` - Controlled vocabulary implementation
 
 #### Knowledge Graph (3 modules)
-- `semantica.kg` - Graph construction & analysis
-- `semantica.triple_store` - RDF storage
-- `semantica.vector_store` - Vector storage
+
+**`semantica.kg`** - Graph construction & analysis
+- `GraphBuilder` - Knowledge graph construction
+- `EntityResolver` - Entity resolution and deduplication
+- `GraphAnalyzer` - Graph analytics engine
+- `CentralityCalculator` - Centrality measures
+- `CommunityDetector` - Community detection
+- `ConnectivityAnalyzer` - Connectivity analysis
+- `GraphValidator` - Graph validation
+- `Deduplicator` - Graph deduplication
+- `ProvenanceTracker` - Provenance tracking
+- `ConflictDetector` - Conflict detection in graphs
+- `SeedManager` - Seed data management for graphs
+
+**`semantica.triple_store`** - RDF storage
+- `TripleManager` - Triple store management
+- `QueryEngine` - SPARQL query engine
+- `BulkLoader` - Bulk loading utilities
+- `JenaAdapter` - Apache Jena adapter
+- `BlazegraphAdapter` - Blazegraph adapter
+- `VirtuosoAdapter` - Virtuoso adapter
+- `RDF4JAdapter` - Eclipse RDF4J adapter
+
+**`semantica.vector_store`** - Vector storage
+- `VectorStore` - Main vector store interface
+- `FAISSAdapter` - FAISS adapter
+- `PineconeAdapter` - Pinecone adapter
+- `WeaviateAdapter` - Weaviate adapter
+- `QdrantAdapter` - Qdrant adapter
+- `MilvusAdapter` - Milvus adapter
+- `HybridSearch` - Hybrid search implementation
+- `NamespaceManager` - Namespace management
+- `MetadataStore` - Metadata storage
 
 #### AI Applications (6 modules)
-- `semantica.qa_rag` - GraphRAG engine
-- `semantica.context` - Context engineering
-- `semantica.prompting` - Prompt engineering
-- `semantica.agents` - Agent infrastructure
-- `semantica.reasoning` - Reasoning & inference
-- `semantica.quality` - Quality assurance
+
+**`semantica.qa_rag`** - GraphRAG engine
+- `RAGManager` - RAG system management
+- `HybridRetriever` - Hybrid retrieval (vector + graph)
+- `ContextBuilder` - Context building for RAG
+- `MemoryStore` - Agent memory storage
+
+**`semantica.context`** - Context engineering
+- `ContextGraphBuilder` - Context graph construction
+- `AgentMemory` - Agent memory management
+- `ContextRetriever` - Context retrieval
+- `EntityLinker` - Entity linking for context
+
+**`semantica.prompting`** - Prompt engineering
+- `PromptBuilder` - Prompt construction and templating
+
+**`semantica.agents`** - Agent infrastructure
+- `ToolRegistry` - MCP-compatible tool registry
+
+**`semantica.reasoning`** - Reasoning & inference
+- `InferenceEngine` - Main inference engine
+- `DeductiveReasoner` - Deductive reasoning
+- `AbductiveReasoner` - Abductive reasoning
+- `RuleManager` - Rule management
+- `ReteEngine` - RETE algorithm implementation
+- `SPARQLReasoner` - SPARQL-based reasoning
+- `ExplanationGenerator` - Explanation generation
+
+**`semantica.quality`** - Quality assurance
+- `QualityEngine` - Quality assessment engine
 
 #### Quality Assurance (5 modules)
-- `semantica.templates` - Schema templates
-- `semantica.seed` - Seed data management
-- `semantica.deduplication` - Entity deduplication
-- `semantica.conflicts` - Conflict detection
-- `semantica.kg_qa` - Knowledge graph QA
+
+**`semantica.templates`** - Schema templates
+- `SchemaTemplate` - Schema template definition and enforcement
+
+**`semantica.seed`** - Seed data management
+- `SeedManager` - Seed data loading and management
+
+**`semantica.deduplication`** - Entity deduplication
+- `DuplicateDetector` - Duplicate detection
+- `EntityMerger` - Entity merging strategies
+- `SimilarityCalculator` - Similarity calculation
+- `ClusterBuilder` - Duplicate cluster building
+- `MergeStrategy` - Merge strategy implementations
+
+**`semantica.conflicts`** - Conflict detection
+- `ConflictDetector` - Conflict detection
+- `ConflictResolver` - Conflict resolution
+- `ConflictAnalyzer` - Conflict analysis
+- `SourceTracker` - Source tracking for conflicts
+- `InvestigationGuide` - Conflict investigation utilities
+
+**`semantica.kg_qa`** - Knowledge graph QA
+- `QualityAssessor` - Knowledge graph quality assessment
 
 #### Export & Utilities (1 module)
-- `semantica.export` - Multi-format export
+
+**`semantica.export`** - Multi-format export
+- `RDFExporter` - RDF/Turtle export
+- `JSONExporter` - JSON/JSON-LD export
+- `CSVExporter` - CSV export
+- `GraphExporter` - Graph format export
+- `YAMLExporter` - YAML export for semantic networks
+- `ReportGenerator` - Quality and analysis reports
 
 ---
 
@@ -931,73 +1534,124 @@ pip install -e ".[dev,test,docs]"
 
 ```python
 from semantica import Semantica
+from semantica.parse import DocumentParser
+from semantica.semantic_extract import NamedEntityRecognizer, RelationExtractor
 
-# Initialize
-core = Semantica()
+# Initialize with configuration
+core = Semantica(
+    ner_model="transformer",
+    relation_strategy="hybrid",
+    enable_quality_assurance=True
+)
 
 # Process document
-result = core.process("company_news.txt")
+result = core.process(
+    "company_news.txt",
+    extract_entities=True,
+    extract_relationships=True,
+    generate_triples=True
+)
 
 # Display results
 print(f"Entities: {len(result.entities)}")
 print(f"Relationships: {len(result.relationships)}")
 print(f"Triples: {len(result.triples)}")
 
-for entity in result.entities:
-    print(f"- {entity.text} ({entity.type}, {entity.confidence:.2f})")
+for entity in result.entities[:5]:
+    print(f"- {entity.text} ({entity.type}, confidence={entity.confidence:.2f})")
 
-# Export
-result.export("output.json")
+# Export results
+result.export("output.json", format="json")
+result.export("output.ttl", format="turtle")
 ```
 
 #### Example 2: Build Knowledge Graph
 
 ```python
 from semantica import Semantica
+from semantica.kg import GraphBuilder, EntityResolver
+from semantica.export import RDFExporter
 
 # Multiple documents
 documents = ["doc1.txt", "doc2.txt", "doc3.txt"]
 
-# Build graph
-core = Semantica(graph_db="neo4j")
-kg = core.build_knowledge_graph(documents)
+# Build graph with entity resolution
+core = Semantica(
+    graph_db="neo4j",
+    merge_entities=True,
+    resolve_conflicts=True
+)
+kg = core.build_knowledge_graph(
+    documents,
+    merge_entities=True,
+    resolve_conflicts=True,
+    generate_embeddings=True
+)
 
 # Statistics
 print(f"Nodes: {kg.node_count}")
 print(f"Edges: {kg.edge_count}")
+print(f"Entity Types: {sorted(kg.entity_types)}")
 
-# Query
-result = kg.query("Who founded the company?")
-print(result.answer)
+# Query with structured response
+result = kg.query(
+    "Who founded the company?",
+    return_format="structured"
+)
+print(f"Answer: {result.answer}")
+print(f"Confidence: {result.confidence:.2f}")
+
+# Export graph
+exporter = RDFExporter()
+exporter.export(kg, "output.ttl", format="turtle")
 ```
 
 #### Example 3: GraphRAG Setup
 
 ```python
 from semantica import Semantica
-from semantica.qa_rag import GraphRAGEngine
+from semantica.qa_rag import GraphRAGEngine, HybridRetriever
+from semantica.vector_store import VectorStore, PineconeAdapter
+from semantica.kg import GraphBuilder
 
 # Initialize with stores
 core = Semantica(
     vector_store="pinecone",
-    graph_db="neo4j"
+    graph_db="neo4j",
+    embedding_model="text-embedding-3-large"
 )
 
 # Build knowledge base
 kb = core.build_knowledge_base(
     sources=["documents/"],
-    generate_embeddings=True
+    generate_embeddings=True,
+    build_graph=True
 )
 
-# Initialize GraphRAG
+# Initialize GraphRAG with configuration
+vector_store = VectorStore(adapter=PineconeAdapter(
+    api_key="your-api-key",
+    index_name="knowledge-base",
+    environment="us-east-1"
+))
+
 graphrag = GraphRAGEngine(
     vector_store=kb.vector_store,
-    knowledge_graph=kb.graph
+    knowledge_graph=kb.graph,
+    embedding_model="text-embedding-3-large",
+    rerank=True
 )
 
-# Query
-response = graphrag.query("What are the main findings?")
-print(response.answer)
+# Query with hybrid retrieval
+response = graphrag.query(
+    "What are the main findings?",
+    top_k=5,
+    expand_graph=True,
+    max_hops=2
+)
+print(f"Answer: {response.answer}")
+print(f"Confidence: {response.confidence:.2f}")
+print(f"Sources: {len(response.sources)}")
 ```
 
 #### Example 4: Production Setup with QA
@@ -1005,29 +1659,68 @@ print(response.answer)
 ```python
 from semantica import Semantica
 from semantica.templates import SchemaTemplate
-from semantica.seed import SeedDataManager
+from semantica.seed import SeedManager
+from semantica.kg_qa import QualityAssessor
+from semantica.deduplication import DuplicateDetector, EntityMerger
+from semantica.conflicts import ConflictDetector, ConflictResolver
 
 # Load schema and seed data
 schema = SchemaTemplate.from_file("schema.yaml")
-seed_manager = SeedDataManager()
-seed_manager.load_from_database("postgresql://...")
+seed_manager = SeedManager()
+seed_manager.load_from_database("postgresql://user:pass@localhost/db")
+seed_manager.load_from_csv("verified_data.csv")
 foundation = seed_manager.create_foundation(schema)
 
-# Build with QA
-core = Semantica(quality_assurance=True)
+# Build with comprehensive QA
+core = Semantica(
+    quality_assurance=True,
+    merge_entities=True,
+    resolve_conflicts=True
+)
+
 kb = core.build_knowledge_base(
     sources=["data/"],
     schema_template=schema,
     foundation_graph=foundation,
-    enable_all_qa=True
+    enable_all_qa=True,
+    deduplication_threshold=0.85,
+    conflict_resolution_strategy="highest_confidence"
 )
 
-# Assess quality
-from semantica.kg_qa import QualityAssessor
+# Comprehensive quality assessment
 assessor = QualityAssessor()
-report = assessor.assess(kb)
+report = assessor.assess(
+    kb,
+    check_completeness=True,
+    check_consistency=True,
+    check_accuracy=True,
+    check_duplicates=True,
+    check_conflicts=True
+)
 
-print(f"Quality Score: {report.overall_score}/100")
+print("=== QUALITY REPORT ===")
+print(f"Overall Score: {report.overall_score}/100")
+print(f"Completeness: {report.completeness_score}/100")
+print(f"Consistency: {report.consistency_score}/100")
+print(f"Accuracy: {report.accuracy_score}/100")
+print(f"Duplicates Found: {report.duplicate_count}")
+print(f"Conflicts Found: {report.conflict_count}")
+
+# Additional QA checks
+duplicate_detector = DuplicateDetector()
+duplicates = duplicate_detector.find_duplicates(
+    entities=kb.entities,
+    similarity_threshold=0.85
+)
+
+conflict_detector = ConflictDetector()
+conflicts = conflict_detector.detect_conflicts(
+    entities=kb.entities,
+    properties=["name", "date", "value"]
+)
+
+print(f"\nDuplicates: {len(duplicates)} groups")
+print(f"Conflicts: {len(conflicts)} issues")
 ```
 
 ---
