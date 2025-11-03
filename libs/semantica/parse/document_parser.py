@@ -12,10 +12,16 @@ Key Features:
 
 Main Classes:
     - DocumentParser: Main document parsing class
-    - PDFParser: PDF-specific parser
-    - DOCXParser: DOCX-specific parser
-    - HTMLParser: HTML content parser
 """
+
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+from ..utils.exceptions import ProcessingError, ValidationError
+from ..utils.logging import get_logger
+from .pdf_parser import PDFParser
+from .docx_parser import DOCXParser
+from .html_parser import HTMLParser
 
 
 class DocumentParser:
@@ -53,9 +59,27 @@ class DocumentParser:
         • Setup error handling
         • Configure batch processing
         """
-        pass
+        self.logger = get_logger("document_parser")
+        self.config = config or {}
+        self.config.update(kwargs)
+        
+        # Initialize format-specific parsers
+        self.pdf_parser = PDFParser(**self.config.get("pdf", {}))
+        self.docx_parser = DOCXParser(**self.config.get("docx", {}))
+        self.html_parser = HTMLParser(**self.config.get("html", {}))
+        
+        # Supported formats
+        self.supported_formats = {
+            '.pdf': 'pdf',
+            '.docx': 'docx',
+            '.doc': 'docx',
+            '.html': 'html',
+            '.htm': 'html',
+            '.txt': 'text',
+            '.text': 'text'
+        }
     
-    def parse_document(self, file_path, file_type=None):
+    def parse_document(self, file_path: Union[str, Path], file_type: Optional[str] = None, **options) -> Dict[str, Any]:
         """
         Parse document of any supported format.
         
@@ -65,10 +89,42 @@ class DocumentParser:
         • Extract metadata and properties
         • Handle parsing errors gracefully
         • Return parsed document object
+        
+        Args:
+            file_path: Path to document file
+            file_type: Document type (auto-detected if None)
+            **options: Parsing options
+            
+        Returns:
+            dict: Parsed document data
         """
-        pass
+        file_path = Path(file_path)
+        
+        if not file_path.exists():
+            raise ValidationError(f"Document file not found: {file_path}")
+        
+        # Detect file type if not specified
+        if file_type is None:
+            file_type = self._detect_file_type(file_path)
+        
+        # Route to appropriate parser
+        try:
+            if file_type == 'pdf':
+                return self.pdf_parser.parse(file_path, **options)
+            elif file_type == 'docx':
+                return self.docx_parser.parse(file_path, **options)
+            elif file_type == 'html':
+                return self.html_parser.parse(file_path, **options)
+            elif file_type == 'text':
+                return self._parse_text(file_path, **options)
+            else:
+                raise ValidationError(f"Unsupported document format: {file_type}")
+                
+        except Exception as e:
+            self.logger.error(f"Failed to parse document {file_path}: {e}")
+            raise ProcessingError(f"Failed to parse document: {e}")
     
-    def extract_text(self, file_path, **options):
+    def extract_text(self, file_path: Union[str, Path], **options) -> str:
         """
         Extract text content from document.
         
@@ -78,10 +134,29 @@ class DocumentParser:
         • Handle special characters and encoding
         • Clean and normalize text
         • Return extracted text content
+        
+        Args:
+            file_path: Path to document file
+            **options: Parsing options
+            
+        Returns:
+            str: Extracted text content
         """
-        pass
+        file_path = Path(file_path)
+        file_type = self._detect_file_type(file_path)
+        
+        if file_type == 'pdf':
+            return self.pdf_parser.extract_text(file_path, **options)
+        elif file_type == 'docx':
+            return self.docx_parser.extract_text(file_path)
+        elif file_type == 'html':
+            return self.html_parser.extract_text(file_path, clean=options.get("clean", True))
+        elif file_type == 'text':
+            return self._parse_text(file_path, **options).get("text", "")
+        else:
+            raise ValidationError(f"Unsupported document format: {file_type}")
     
-    def extract_metadata(self, file_path):
+    def extract_metadata(self, file_path: Union[str, Path]) -> Dict[str, Any]:
         """
         Extract document metadata and properties.
         
@@ -90,10 +165,20 @@ class DocumentParser:
         • Get author and title information
         • Extract document statistics
         • Return metadata dictionary
+        
+        Args:
+            file_path: Path to document file
+            
+        Returns:
+            dict: Document metadata
         """
-        pass
+        file_path = Path(file_path)
+        file_type = self._detect_file_type(file_path)
+        
+        result = self.parse_document(file_path, file_type=file_type, extract_tables=False, extract_images=False)
+        return result.get("metadata", {})
     
-    def parse_batch(self, file_paths, **options):
+    def parse_batch(self, file_paths: List[Union[str, Path]], **options) -> Dict[str, Any]:
         """
         Parse multiple documents in batch.
         
@@ -102,178 +187,69 @@ class DocumentParser:
         • Handle individual file errors
         • Collect parsing results
         • Return batch processing results
-        """
-        pass
-
-
-class PDFParser:
-    """
-    PDF document parsing engine.
-    
-    • Extracts text from PDF documents
-    • Handles various PDF formats and versions
-    • Processes PDF metadata and properties
-    • Extracts images and embedded content
-    • Handles password-protected PDFs
-    """
-    
-    def __init__(self, **config):
-        """
-        Initialize PDF parser.
         
-        • Setup PDF processing libraries
-        • Configure text extraction options
-        • Initialize metadata extractors
-        • Setup image extraction tools
+        Args:
+            file_paths: List of document file paths
+            **options: Parsing options:
+                - max_workers: Maximum parallel workers
+                - continue_on_error: Continue on errors (default: True)
+                
+        Returns:
+            dict: Batch processing results
         """
-        pass
-    
-    def parse_pdf(self, file_path, **options):
-        """
-        Parse PDF document.
+        results = {
+            "successful": [],
+            "failed": [],
+            "total": len(file_paths)
+        }
         
-        • Open and validate PDF file
-        • Extract text from all pages
-        • Process page structure and layout
-        • Extract images and embedded content
-        • Handle password protection if needed
-        • Return parsed PDF content
-        """
-        pass
-    
-    def extract_text_from_pdf(self, file_path):
-        """
-        Extract text content from PDF.
+        continue_on_error = options.get("continue_on_error", True)
         
-        • Process each PDF page
-        • Extract text with positioning
-        • Preserve text flow and structure
-        • Handle special characters
-        • Return extracted text
-        """
-        pass
-    
-    def extract_images_from_pdf(self, file_path):
-        """
-        Extract images from PDF document.
+        for file_path in file_paths:
+            try:
+                result = self.parse_document(file_path, **options)
+                results["successful"].append({
+                    "file_path": str(file_path),
+                    "result": result
+                })
+            except Exception as e:
+                error_info = {
+                    "file_path": str(file_path),
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }
+                results["failed"].append(error_info)
+                
+                if not continue_on_error:
+                    raise ProcessingError(f"Batch processing failed at {file_path}: {e}")
         
-        • Identify image objects in PDF
-        • Extract image data and metadata
-        • Save images to temporary storage
-        • Return image information
-        """
-        pass
-
-
-class DOCXParser:
-    """
-    DOCX document parsing engine.
-    
-    • Extracts content from DOCX files
-    • Handles document structure and formatting
-    • Processes tables and embedded objects
-    • Extracts styles and formatting information
-    """
-    
-    def __init__(self, **config):
-        """
-        Initialize DOCX parser.
+        results["success_count"] = len(results["successful"])
+        results["failure_count"] = len(results["failed"])
         
-        • Setup DOCX processing libraries
-        • Configure content extraction
-        • Initialize structure analyzers
-        • Setup formatting extractors
-        """
-        pass
+        return results
     
-    def parse_docx(self, file_path, **options):
-        """
-        Parse DOCX document.
+    def _detect_file_type(self, file_path: Path) -> str:
+        """Detect document file type from extension."""
+        suffix = file_path.suffix.lower()
+        return self.supported_formats.get(suffix, 'unknown')
+    
+    def _parse_text(self, file_path: Path, **options) -> Dict[str, Any]:
+        """Parse plain text file."""
+        encoding = options.get("encoding", "utf-8")
         
-        • Open and validate DOCX file
-        • Extract document structure
-        • Process paragraphs and formatting
-        • Extract tables and embedded content
-        • Return parsed DOCX content
-        """
-        pass
-    
-    def extract_paragraphs(self, file_path):
-        """
-        Extract paragraphs from DOCX.
-        
-        • Process document paragraphs
-        • Extract text and formatting
-        • Preserve paragraph structure
-        • Return paragraph collection
-        """
-        pass
-    
-    def extract_tables(self, file_path):
-        """
-        Extract tables from DOCX.
-        
-        • Identify table elements
-        • Extract table structure and data
-        • Process table formatting
-        • Return table data collection
-        """
-        pass
-
-
-class HTMLParser:
-    """
-    HTML content parsing engine.
-    
-    • Parses HTML documents and fragments
-    • Extracts text content and structure
-    • Handles various HTML versions
-    • Processes embedded content and links
-    • Cleans and normalizes HTML content
-    """
-    
-    def __init__(self, **config):
-        """
-        Initialize HTML parser.
-        
-        • Setup HTML parsing libraries
-        • Configure content extraction
-        • Initialize text cleaners
-        • Setup link and image extractors
-        """
-        pass
-    
-    def parse_html(self, html_content, **options):
-        """
-        Parse HTML content.
-        
-        • Parse HTML structure
-        • Extract text content
-        • Process embedded elements
-        • Clean and normalize content
-        • Return parsed HTML object
-        """
-        pass
-    
-    def extract_text_from_html(self, html_content):
-        """
-        Extract clean text from HTML.
-        
-        • Remove HTML tags and scripts
-        • Extract text content
-        • Preserve text structure
-        • Clean whitespace and formatting
-        • Return clean text content
-        """
-        pass
-    
-    def extract_links_from_html(self, html_content):
-        """
-        Extract links from HTML.
-        
-        • Find all link elements
-        • Extract URL and text
-        • Resolve relative URLs
-        • Return link collection
-        """
-        pass
+        try:
+            with open(file_path, 'r', encoding=encoding, errors='ignore') as f:
+                text = f.read()
+            
+            return {
+                "text": text,
+                "metadata": {
+                    "file_path": str(file_path),
+                    "encoding": encoding,
+                    "size": len(text)
+                },
+                "full_text": text
+            }
+        except Exception as e:
+            self.logger.error(f"Failed to parse text file {file_path}: {e}")
+            raise ProcessingError(f"Failed to parse text file: {e}")

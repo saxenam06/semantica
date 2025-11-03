@@ -17,6 +17,13 @@ Main Classes:
     - VideoParser: Video file parser
 """
 
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+from ..utils.exceptions import ProcessingError, ValidationError
+from ..utils.logging import get_logger
+from .image_parser import ImageParser
+
 
 class MediaParser:
     """
@@ -28,255 +35,181 @@ class MediaParser:
     • Handles different media types
     • Supports batch media processing
     • Analyzes media characteristics
-    
-    Attributes:
-        • image_parser: Image file parser
-        • audio_parser: Audio file parser
-        • video_parser: Video file parser
-        • metadata_extractor: Metadata extraction tools
-        • supported_formats: List of supported formats
-        
-    Methods:
-        • parse_media(): Parse media file
-        • extract_metadata(): Extract media metadata
-        • analyze_content(): Analyze media content
-        • process_batch(): Process multiple media files
     """
     
     def __init__(self, config=None, **kwargs):
-        """
-        Initialize media parser.
+        """Initialize media parser."""
+        self.logger = get_logger("media_parser")
+        self.config = config or {}
+        self.config.update(kwargs)
         
-        • Setup format-specific parsers
-        • Configure metadata extraction
-        • Initialize content analysis
-        • Setup batch processing
-        • Configure error handling
-        """
-        pass
+        # Initialize parsers
+        self.image_parser = ImageParser(**self.config.get("image", {}))
+        
+        # Supported formats
+        self.supported_formats = {
+            # Image formats
+            '.jpg': 'image',
+            '.jpeg': 'image',
+            '.png': 'image',
+            '.gif': 'image',
+            '.bmp': 'image',
+            '.tiff': 'image',
+            '.webp': 'image',
+            # Audio formats (would need additional libraries)
+            '.mp3': 'audio',
+            '.wav': 'audio',
+            '.flac': 'audio',
+            '.aac': 'audio',
+            # Video formats (would need additional libraries)
+            '.mp4': 'video',
+            '.avi': 'video',
+            '.mov': 'video',
+            '.mkv': 'video',
+            '.webm': 'video'
+        }
     
-    def parse_media(self, file_path, media_type=None):
+    def parse_media(self, file_path: Union[str, Path], media_type: Optional[str] = None, **options) -> Dict[str, Any]:
         """
         Parse media file of any supported type.
         
-        • Detect media type if not specified
-        • Route to appropriate parser
-        • Extract metadata and properties
-        • Analyze media content
-        • Handle parsing errors
-        • Return parsed media object
+        Args:
+            file_path: Path to media file
+            media_type: Media type (auto-detected if None)
+            **options: Parsing options
+            
+        Returns:
+            dict: Parsed media data
         """
-        pass
+        file_path = Path(file_path)
+        
+        if not file_path.exists():
+            raise ValidationError(f"Media file not found: {file_path}")
+        
+        # Detect media type if not specified
+        if media_type is None:
+            media_type = self._detect_media_type(file_path)
+        
+        if media_type == "image":
+            return self.image_parser.parse(file_path, **options)
+        elif media_type == "audio":
+            return self._parse_audio(file_path, **options)
+        elif media_type == "video":
+            return self._parse_video(file_path, **options)
+        else:
+            raise ValidationError(f"Unsupported media type: {media_type}")
     
-    def extract_metadata(self, file_path, media_type):
+    def extract_metadata(self, file_path: Union[str, Path], media_type: Optional[str] = None) -> Dict[str, Any]:
         """
         Extract metadata from media file.
         
-        • Parse media file headers
-        • Extract technical properties
-        • Get creation and modification info
-        • Extract embedded metadata
-        • Return metadata dictionary
+        Args:
+            file_path: Path to media file
+            media_type: Media type (auto-detected if None)
+            
+        Returns:
+            dict: Media metadata
         """
-        pass
-    
-    def analyze_content(self, file_path, media_type):
-        """
-        Analyze media content characteristics.
+        file_path = Path(file_path)
         
-        • Analyze media properties
-        • Calculate content metrics
-        • Identify content features
-        • Assess content quality
-        • Return content analysis
-        """
-        pass
-    
-    def process_batch(self, file_paths, **options):
-        """
-        Process multiple media files in batch.
+        if media_type is None:
+            media_type = self._detect_media_type(file_path)
         
-        • Process files concurrently
-        • Track processing progress
-        • Handle individual file errors
-        • Collect processing results
-        • Return batch results
-        """
-        pass
-
-
-class ImageParser:
-    """
-    Image file parsing engine.
+        if media_type == "image":
+            return self.image_parser.extract_metadata(file_path).__dict__
+        elif media_type == "audio":
+            return self._extract_audio_metadata(file_path)
+        elif media_type == "video":
+            return self._extract_video_metadata(file_path)
+        else:
+            return {}
     
-    • Parses various image formats
-    • Extracts image metadata
-    • Analyzes image properties
-    • Processes image content
-    • Handles image transformations
-    """
+    def _detect_media_type(self, file_path: Path) -> str:
+        """Detect media type from file extension."""
+        suffix = file_path.suffix.lower()
+        return self.supported_formats.get(suffix, "unknown")
     
-    def __init__(self, **config):
-        """
-        Initialize image parser.
+    def _parse_audio(self, file_path: Path, **options) -> Dict[str, Any]:
+        """Parse audio file."""
+        metadata = self._extract_audio_metadata(file_path)
         
-        • Setup image processing library
-        • Configure metadata extraction
-        • Initialize content analysis
-        • Setup format handlers
-        """
-        pass
+        return {
+            "metadata": metadata,
+            "type": "audio"
+        }
     
-    def parse_image(self, file_path):
-        """
-        Parse image file and extract information.
+    def _parse_video(self, file_path: Path, **options) -> Dict[str, Any]:
+        """Parse video file."""
+        metadata = self._extract_video_metadata(file_path)
         
-        • Load image file
-        • Extract image properties
-        • Process image metadata
-        • Analyze image content
-        • Return image information
-        """
-        pass
+        return {
+            "metadata": metadata,
+            "type": "video"
+        }
     
-    def extract_metadata(self, file_path):
-        """
-        Extract image metadata and EXIF data.
+    def _extract_audio_metadata(self, file_path: Path) -> Dict[str, Any]:
+        """Extract audio metadata."""
+        metadata = {
+            "file_path": str(file_path),
+            "file_size": file_path.stat().st_size,
+            "format": file_path.suffix.lower()
+        }
         
-        • Parse image headers
-        • Extract EXIF information
-        • Get technical properties
-        • Extract creation metadata
-        • Return metadata dictionary
-        """
-        pass
-    
-    def analyze_properties(self, file_path):
-        """
-        Analyze image properties and characteristics.
+        # Try to extract metadata using mutagen if available
+        try:
+            from mutagen import File
+            audio_file = File(str(file_path))
+            if audio_file:
+                metadata.update({
+                    "title": audio_file.get("TIT2", [None])[0] or audio_file.get("TITLE", [None])[0],
+                    "artist": audio_file.get("TPE1", [None])[0] or audio_file.get("ARTIST", [None])[0],
+                    "album": audio_file.get("TALB", [None])[0] or audio_file.get("ALBUM", [None])[0],
+                    "duration": audio_file.info.length if hasattr(audio_file.info, 'length') else None,
+                    "bitrate": audio_file.info.bitrate if hasattr(audio_file.info, 'bitrate') else None,
+                    "sample_rate": audio_file.info.sample_rate if hasattr(audio_file.info, 'sample_rate') else None
+                })
+        except ImportError:
+            self.logger.warning("mutagen not available for audio metadata extraction")
+        except Exception as e:
+            self.logger.warning(f"Failed to extract audio metadata: {e}")
         
-        • Calculate image dimensions
-        • Analyze color properties
-        • Assess image quality
-        • Identify image features
-        • Return property analysis
-        """
-        pass
-
-
-class AudioParser:
-    """
-    Audio file parsing engine.
+        return metadata
     
-    • Parses various audio formats
-    • Extracts audio metadata
-    • Analyzes audio properties
-    • Processes audio content
-    • Handles audio information
-    """
-    
-    def __init__(self, **config):
-        """
-        Initialize audio parser.
+    def _extract_video_metadata(self, file_path: Path) -> Dict[str, Any]:
+        """Extract video metadata."""
+        metadata = {
+            "file_path": str(file_path),
+            "file_size": file_path.stat().st_size,
+            "format": file_path.suffix.lower()
+        }
         
-        • Setup audio processing library
-        • Configure metadata extraction
-        • Initialize content analysis
-        • Setup format handlers
-        """
-        pass
-    
-    def parse_audio(self, file_path):
-        """
-        Parse audio file and extract information.
+        # Try to extract metadata using ffmpeg if available
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', str(file_path)],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                import json
+                video_data = json.loads(result.stdout)
+                
+                if 'streams' in video_data:
+                    for stream in video_data['streams']:
+                        if stream.get('codec_type') == 'video':
+                            metadata.update({
+                                "width": stream.get("width"),
+                                "height": stream.get("height"),
+                                "duration": float(video_data.get('format', {}).get('duration', 0)),
+                                "codec": stream.get("codec_name"),
+                                "fps": eval(stream.get("r_frame_rate", "0/1")) if stream.get("r_frame_rate") else None
+                            })
+                            break
+        except FileNotFoundError:
+            self.logger.warning("ffprobe not available for video metadata extraction")
+        except Exception as e:
+            self.logger.warning(f"Failed to extract video metadata: {e}")
         
-        • Load audio file
-        • Extract audio properties
-        • Process audio metadata
-        • Analyze audio content
-        • Return audio information
-        """
-        pass
-    
-    def extract_metadata(self, file_path):
-        """
-        Extract audio metadata and tags.
-        
-        • Parse audio headers
-        • Extract ID3 tags
-        • Get technical properties
-        • Extract creation metadata
-        • Return metadata dictionary
-        """
-        pass
-    
-    def analyze_properties(self, file_path):
-        """
-        Analyze audio properties and characteristics.
-        
-        • Calculate audio duration
-        • Analyze audio quality
-        • Assess bitrate and sample rate
-        • Identify audio features
-        • Return property analysis
-        """
-        pass
-
-
-class VideoParser:
-    """
-    Video file parsing engine.
-    
-    • Parses various video formats
-    • Extracts video metadata
-    • Analyzes video properties
-    • Processes video content
-    • Handles video information
-    """
-    
-    def __init__(self, **config):
-        """
-        Initialize video parser.
-        
-        • Setup video processing library
-        • Configure metadata extraction
-        • Initialize content analysis
-        • Setup format handlers
-        """
-        pass
-    
-    def parse_video(self, file_path):
-        """
-        Parse video file and extract information.
-        
-        • Load video file
-        • Extract video properties
-        • Process video metadata
-        • Analyze video content
-        • Return video information
-        """
-        pass
-    
-    def extract_metadata(self, file_path):
-        """
-        Extract video metadata and properties.
-        
-        • Parse video headers
-        • Extract technical properties
-        • Get creation metadata
-        • Extract embedded information
-        • Return metadata dictionary
-        """
-        pass
-    
-    def analyze_properties(self, file_path):
-        """
-        Analyze video properties and characteristics.
-        
-        • Calculate video dimensions
-        • Analyze video quality
-        • Assess frame rate and bitrate
-        • Identify video features
-        • Return property analysis
-        """
-        pass
+        return metadata

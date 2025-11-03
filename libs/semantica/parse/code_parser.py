@@ -17,6 +17,36 @@ Main Classes:
     - DependencyAnalyzer: Code dependency analyzer
 """
 
+import ast
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+from ..utils.exceptions import ProcessingError, ValidationError
+from ..utils.logging import get_logger
+
+
+@dataclass
+class CodeStructure:
+    """Code structure representation."""
+    
+    functions: List[Dict[str, Any]] = field(default_factory=list)
+    classes: List[Dict[str, Any]] = field(default_factory=list)
+    imports: List[str] = field(default_factory=list)
+    variables: List[str] = field(default_factory=list)
+    constants: List[str] = field(default_factory=list)
+
+
+@dataclass
+class CodeComment:
+    """Code comment representation."""
+    
+    text: str
+    line_number: int
+    type: str  # "inline", "block", "docstring"
+    language: str
+
 
 class CodeParser:
     """
@@ -28,18 +58,6 @@ class CodeParser:
     • Analyzes code dependencies
     • Handles various code formats
     • Supports batch code processing
-    
-    Attributes:
-        • syntax_parser: Syntax tree parser
-        • comment_extractor: Comment processor
-        • dependency_analyzer: Dependency analyzer
-        • supported_languages: List of supported languages
-        
-    Methods:
-        • parse_code(): Parse source code file
-        • extract_structure(): Extract code structure
-        • extract_comments(): Extract code comments
-        • analyze_dependencies(): Analyze code dependencies
     """
     
     def __init__(self, config=None, **kwargs):
@@ -52,56 +70,124 @@ class CodeParser:
         • Setup dependency analysis
         • Configure batch processing
         """
-        pass
+        self.logger = get_logger("code_parser")
+        self.config = config or {}
+        self.config.update(kwargs)
+        
+        # Initialize sub-parsers
+        self.syntax_parser = SyntaxTreeParser(**self.config.get("syntax", {}))
+        self.comment_extractor = CommentExtractor(**self.config.get("comments", {}))
+        self.dependency_analyzer = DependencyAnalyzer(**self.config.get("dependencies", {}))
+        
+        # Supported languages
+        self.supported_languages = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.java': 'java',
+            '.cpp': 'cpp',
+            '.c': 'c',
+            '.cs': 'csharp',
+            '.rb': 'ruby',
+            '.go': 'go',
+            '.rs': 'rust',
+            '.php': 'php'
+        }
     
-    def parse_code(self, file_path, language=None):
+    def parse_code(self, file_path: Union[str, Path], language: Optional[str] = None, **options) -> Dict[str, Any]:
         """
         Parse source code file.
         
-        • Detect programming language
-        • Parse code syntax structure
-        • Extract code elements
-        • Process comments and docs
-        • Analyze code patterns
-        • Return parsed code object
+        Args:
+            file_path: Path to code file
+            language: Programming language (auto-detected if None)
+            **options: Parsing options
+            
+        Returns:
+            dict: Parsed code data
         """
-        pass
+        file_path = Path(file_path)
+        
+        if not file_path.exists():
+            raise ValidationError(f"Code file not found: {file_path}")
+        
+        # Detect language if not specified
+        if language is None:
+            language = self._detect_language(file_path)
+        
+        if language not in self.supported_languages.values():
+            self.logger.warning(f"Language {language} may not be fully supported")
+        
+        try:
+            # Read code content
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                code_content = f.read()
+            
+            # Extract structure
+            structure = self.extract_structure(code_content, language)
+            
+            # Extract comments
+            comments = self.extract_comments(code_content, language)
+            
+            # Analyze dependencies
+            dependencies = self.analyze_dependencies(code_content, language)
+            
+            return {
+                "file_path": str(file_path),
+                "language": language,
+                "structure": structure.__dict__,
+                "comments": [c.__dict__ for c in comments],
+                "dependencies": dependencies,
+                "line_count": len(code_content.splitlines()),
+                "size": len(code_content)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Failed to parse code {file_path}: {e}")
+            raise ProcessingError(f"Failed to parse code: {e}")
     
-    def extract_structure(self, code_content, language):
+    def extract_structure(self, code_content: str, language: str) -> CodeStructure:
         """
         Extract code structure and elements.
         
-        • Parse syntax tree
-        • Extract functions and classes
-        • Identify variables and imports
-        • Analyze code organization
-        • Return structure information
+        Args:
+            code_content: Code content as string
+            language: Programming language
+            
+        Returns:
+            CodeStructure: Code structure
         """
-        pass
+        return self.syntax_parser.extract_elements(code_content, language)
     
-    def extract_comments(self, code_content, language):
+    def extract_comments(self, code_content: str, language: str) -> List[CodeComment]:
         """
         Extract comments and documentation.
         
-        • Find comment blocks
-        • Extract docstrings
-        • Process inline comments
-        • Parse documentation
-        • Return comment collection
+        Args:
+            code_content: Code content as string
+            language: Programming language
+            
+        Returns:
+            list: List of comments
         """
-        pass
+        return self.comment_extractor.extract_comments(code_content, language)
     
-    def analyze_dependencies(self, code_content, language):
+    def analyze_dependencies(self, code_content: str, language: str) -> Dict[str, Any]:
         """
         Analyze code dependencies and imports.
         
-        • Parse import statements
-        • Identify external dependencies
-        • Map internal dependencies
-        • Analyze dependency relationships
-        • Return dependency analysis
+        Args:
+            code_content: Code content as string
+            language: Programming language
+            
+        Returns:
+            dict: Dependency analysis
         """
-        pass
+        return self.dependency_analyzer.analyze_dependencies(code_content, language)
+    
+    def _detect_language(self, file_path: Path) -> str:
+        """Detect programming language from file extension."""
+        suffix = file_path.suffix.lower()
+        return self.supported_languages.get(suffix, "unknown")
 
 
 class SyntaxTreeParser:
@@ -116,49 +202,163 @@ class SyntaxTreeParser:
     """
     
     def __init__(self, **config):
-        """
-        Initialize syntax tree parser.
-        
-        • Setup language parsers
-        • Configure tree analysis
-        • Initialize element extractors
-        • Setup error handling
-        """
-        pass
+        """Initialize syntax tree parser."""
+        self.logger = get_logger("syntax_tree_parser")
+        self.config = config
     
-    def parse_syntax_tree(self, code_content, language):
+    def parse_syntax_tree(self, code_content: str, language: str) -> Any:
         """
         Parse code into syntax tree.
         
-        • Parse code with language parser
-        • Build syntax tree structure
-        • Validate tree integrity
-        • Return syntax tree object
+        Args:
+            code_content: Code content
+            language: Programming language
+            
+        Returns:
+            Syntax tree object
         """
-        pass
+        if language == "python":
+            try:
+                return ast.parse(code_content)
+            except SyntaxError as e:
+                self.logger.warning(f"Syntax error in Python code: {e}")
+                return None
+        else:
+            # For other languages, return None (would need language-specific parsers)
+            return None
     
-    def extract_elements(self, syntax_tree):
+    def extract_elements(self, code_content: str, language: str) -> CodeStructure:
         """
         Extract code elements from syntax tree.
         
-        • Traverse syntax tree
-        • Extract functions and classes
-        • Identify variables and constants
-        • Extract control structures
-        • Return element collection
+        Args:
+            code_content: Code content
+            language: Programming language
+            
+        Returns:
+            CodeStructure: Extracted structure
         """
-        pass
+        structure = CodeStructure()
+        
+        if language == "python":
+            try:
+                tree = ast.parse(code_content)
+                
+                # Extract functions and classes
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.FunctionDef):
+                        structure.functions.append({
+                            "name": node.name,
+                            "line_number": node.lineno,
+                            "args": [arg.arg for arg in node.args.args],
+                            "decorators": [ast.unparse(d) for d in node.decorator_list]
+                        })
+                    elif isinstance(node, ast.ClassDef):
+                        structure.classes.append({
+                            "name": node.name,
+                            "line_number": node.lineno,
+                            "bases": [ast.unparse(b) for b in node.bases]
+                        })
+                    elif isinstance(node, ast.Import):
+                        for alias in node.names:
+                            structure.imports.append(alias.name)
+                    elif isinstance(node, ast.ImportFrom):
+                        module = node.module or ""
+                        for alias in node.names:
+                            structure.imports.append(f"{module}.{alias.name}")
+                            
+            except SyntaxError:
+                # Fallback to regex-based extraction
+                structure = self._extract_with_regex(code_content, language)
+        else:
+            # Use regex-based extraction for other languages
+            structure = self._extract_with_regex(code_content, language)
+        
+        return structure
     
-    def analyze_structure(self, syntax_tree):
+    def _extract_with_regex(self, code_content: str, language: str) -> CodeStructure:
+        """Extract code elements using regex patterns."""
+        structure = CodeStructure()
+        
+        # Extract imports (common patterns)
+        import_patterns = {
+            "python": r'^import\s+(\S+)|^from\s+(\S+)\s+import',
+            "javascript": r'^import\s+.*?from\s+[\'"](\S+)[\'"]|^require\([\'"](\S+)[\'"]',
+            "java": r'^import\s+(\S+);',
+            "c": r'^#include\s+[<"](\S+)[>"]'
+        }
+        
+        pattern = import_patterns.get(language, r'import|require|include')
+        for line in code_content.splitlines():
+            match = re.search(pattern, line, re.IGNORECASE)
+            if match:
+                structure.imports.append(match.group(1) or match.group(2) or match.group(0))
+        
+        # Extract functions (common patterns)
+        func_patterns = {
+            "python": r'^def\s+(\w+)',
+            "javascript": r'^function\s+(\w+)|^(\w+)\s*=\s*function',
+            "java": r'^\s*(?:public|private|protected)?\s*\w+\s+(\w+)\s*\(',
+            "c": r'^\w+\s+(\w+)\s*\('
+        }
+        
+        pattern = func_patterns.get(language, r'function|def')
+        for i, line in enumerate(code_content.splitlines(), 1):
+            match = re.search(pattern, line, re.IGNORECASE)
+            if match:
+                func_name = match.group(1) or match.group(2) or f"function_{i}"
+                structure.functions.append({
+                    "name": func_name,
+                    "line_number": i
+                })
+        
+        # Extract classes (common patterns)
+        class_patterns = {
+            "python": r'^class\s+(\w+)',
+            "javascript": r'^class\s+(\w+)',
+            "java": r'^public\s+class\s+(\w+)',
+            "c": r'^struct\s+(\w+)|^class\s+(\w+)'
+        }
+        
+        pattern = class_patterns.get(language, r'class|struct')
+        for i, line in enumerate(code_content.splitlines(), 1):
+            match = re.search(pattern, line, re.IGNORECASE)
+            if match:
+                class_name = match.group(1) or match.group(2) or f"class_{i}"
+                structure.classes.append({
+                    "name": class_name,
+                    "line_number": i
+                })
+        
+        return structure
+    
+    def analyze_structure(self, syntax_tree: Any) -> Dict[str, Any]:
         """
         Analyze code structure and organization.
         
-        • Analyze code hierarchy
-        • Identify patterns and conventions
-        • Calculate complexity metrics
-        • Return structure analysis
+        Args:
+            syntax_tree: Syntax tree object
+            
+        Returns:
+            dict: Structure analysis
         """
-        pass
+        if syntax_tree is None:
+            return {}
+        
+        # For Python AST
+        if isinstance(syntax_tree, ast.Module):
+            functions = sum(1 for node in ast.walk(syntax_tree) if isinstance(node, ast.FunctionDef))
+            classes = sum(1 for node in ast.walk(syntax_tree) if isinstance(node, ast.ClassDef))
+            imports = sum(1 for node in ast.walk(syntax_tree) if isinstance(node, (ast.Import, ast.ImportFrom)))
+            
+            return {
+                "function_count": functions,
+                "class_count": classes,
+                "import_count": imports,
+                "complexity": "low" if functions + classes < 10 else "medium" if functions + classes < 50 else "high"
+            }
+        
+        return {}
 
 
 class CommentExtractor:
@@ -173,49 +373,74 @@ class CommentExtractor:
     """
     
     def __init__(self, **config):
-        """
-        Initialize comment extractor.
-        
-        • Setup comment pattern matching
-        • Configure documentation parsing
-        • Initialize content analysis
-        • Setup metadata extraction
-        """
-        pass
+        """Initialize comment extractor."""
+        self.logger = get_logger("comment_extractor")
+        self.config = config
     
-    def extract_comments(self, code_content, language):
+    def extract_comments(self, code_content: str, language: str) -> List[CodeComment]:
         """
         Extract all comments from code.
         
-        • Find comment patterns
-        • Extract comment content
-        • Process different comment types
-        • Clean comment text
-        • Return comment collection
+        Args:
+            code_content: Code content
+            language: Programming language
+            
+        Returns:
+            list: List of comments
         """
-        pass
+        comments = []
+        
+        # Comment patterns by language
+        patterns = {
+            "python": [
+                (r'#(.+?)$', 'inline'),
+                (r'"""(.*?)"""', 'docstring'),
+                (r"'''(.*?)'''", 'docstring')
+            ],
+            "javascript": [
+                (r'//(.+?)$', 'inline'),
+                (r'/\*(.*?)\*/', 'block')
+            ],
+            "java": [
+                (r'//(.+?)$', 'inline'),
+                (r'/\*(.*?)\*/', 'block')
+            ],
+            "c": [
+                (r'//(.+?)$', 'inline'),
+                (r'/\*(.*?)\*/', 'block')
+            ]
+        }
+        
+        patterns_list = patterns.get(language, [(r'//(.+?)$', 'inline'), (r'/\*(.*?)\*/', 'block')])
+        
+        for i, line in enumerate(code_content.splitlines(), 1):
+            for pattern, comment_type in patterns_list:
+                matches = re.finditer(pattern, line, re.MULTILINE | re.DOTALL)
+                for match in matches:
+                    comment_text = match.group(1).strip()
+                    if comment_text:
+                        comments.append(CodeComment(
+                            text=comment_text,
+                            line_number=i,
+                            type=comment_type,
+                            language=language
+                        ))
+        
+        return comments
     
-    def extract_docstrings(self, code_content, language):
+    def extract_docstrings(self, code_content: str, language: str) -> List[CodeComment]:
         """
         Extract documentation strings.
         
-        • Find docstring patterns
-        • Extract docstring content
-        • Parse documentation structure
-        • Return docstring collection
+        Args:
+            code_content: Code content
+            language: Programming language
+            
+        Returns:
+            list: List of docstrings
         """
-        pass
-    
-    def analyze_comment_content(self, comments):
-        """
-        Analyze comment content and patterns.
-        
-        • Analyze comment topics
-        • Identify documentation patterns
-        • Extract metadata
-        • Return analysis results
-        """
-        pass
+        comments = self.extract_comments(code_content, language)
+        return [c for c in comments if c.type == "docstring"]
 
 
 class DependencyAnalyzer:
@@ -230,46 +455,68 @@ class DependencyAnalyzer:
     """
     
     def __init__(self, **config):
-        """
-        Initialize dependency analyzer.
-        
-        • Setup dependency detection
-        • Configure version tracking
-        • Initialize conflict detection
-        • Setup dependency mapping
-        """
-        pass
+        """Initialize dependency analyzer."""
+        self.logger = get_logger("dependency_analyzer")
+        self.config = config
     
-    def analyze_dependencies(self, code_content, language):
+    def analyze_dependencies(self, code_content: str, language: str) -> Dict[str, Any]:
         """
         Analyze code dependencies.
         
-        • Parse import statements
-        • Identify external packages
-        • Map internal dependencies
-        • Analyze dependency relationships
-        • Return dependency analysis
+        Args:
+            code_content: Code content
+            language: Programming language
+            
+        Returns:
+            dict: Dependency analysis
         """
-        pass
-    
-    def detect_conflicts(self, dependencies):
-        """
-        Detect dependency conflicts.
+        dependencies = {
+            "imports": [],
+            "external": [],
+            "internal": [],
+            "standard_library": []
+        }
         
-        • Compare dependency versions
-        • Identify version conflicts
-        • Analyze compatibility issues
-        • Return conflict report
-        """
-        pass
-    
-    def map_dependency_tree(self, dependencies):
-        """
-        Map dependency tree structure.
+        if language == "python":
+            try:
+                tree = ast.parse(code_content)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            dependencies["imports"].append(alias.name)
+                            if self._is_standard_library(alias.name):
+                                dependencies["standard_library"].append(alias.name)
+                            else:
+                                dependencies["external"].append(alias.name)
+                    elif isinstance(node, ast.ImportFrom):
+                        module = node.module or ""
+                        for alias in node.names:
+                            full_name = f"{module}.{alias.name}" if module else alias.name
+                            dependencies["imports"].append(full_name)
+                            if self._is_standard_library(module or alias.name):
+                                dependencies["standard_library"].append(full_name)
+                            else:
+                                dependencies["external"].append(full_name)
+            except SyntaxError:
+                # Fallback to regex
+                pass
         
-        • Build dependency graph
-        • Identify dependency chains
-        • Analyze dependency depth
-        • Return dependency tree
-        """
-        pass
+        # Regex fallback
+        import_pattern = r'(?:import|from|require|include)\s+[\'"](.*?)[\'"]|(?:import|from)\s+(\S+)'
+        for line in code_content.splitlines():
+            matches = re.finditer(import_pattern, line, re.IGNORECASE)
+            for match in matches:
+                dep = match.group(1) or match.group(2)
+                if dep:
+                    dependencies["imports"].append(dep)
+        
+        return dependencies
+    
+    def _is_standard_library(self, module_name: str) -> bool:
+        """Check if module is from Python standard library."""
+        stdlib_modules = [
+            'os', 'sys', 'json', 'csv', 'xml', 'html', 'urllib', 'http',
+            'email', 'datetime', 'time', 're', 'math', 'random', 'collections',
+            'itertools', 'functools', 'operator', 'pathlib', 'shutil'
+        ]
+        return any(module_name.startswith(mod) for mod in stdlib_modules)

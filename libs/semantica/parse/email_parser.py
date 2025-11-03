@@ -16,6 +16,51 @@ Main Classes:
     - EmailThreadAnalyzer: Email thread processor
 """
 
+import email
+from dataclasses import dataclass, field
+from email import message_from_string, message_from_bytes
+from email.header import decode_header
+from email.utils import parsedate_to_datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+from ..utils.exceptions import ProcessingError, ValidationError
+from ..utils.logging import get_logger
+
+
+@dataclass
+class EmailHeaders:
+    """Email headers representation."""
+    
+    subject: Optional[str] = None
+    from_address: Optional[str] = None
+    to_addresses: List[str] = field(default_factory=list)
+    cc_addresses: List[str] = field(default_factory=list)
+    bcc_addresses: List[str] = field(default_factory=list)
+    date: Optional[str] = None
+    message_id: Optional[str] = None
+    in_reply_to: Optional[str] = None
+    references: List[str] = field(default_factory=list)
+    custom_headers: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class EmailBody:
+    """Email body representation."""
+    
+    text: Optional[str] = None
+    html: Optional[str] = None
+    attachments: List[Dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class EmailData:
+    """Email data representation."""
+    
+    headers: EmailHeaders
+    body: EmailBody
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
 
 class EmailParser:
     """
@@ -27,191 +72,296 @@ class EmailParser:
     • Handles email attachments
     • Analyzes email threads and conversations
     • Supports various email formats
-    
-    Attributes:
-        • mime_parser: MIME message parser
-        • thread_analyzer: Email thread analyzer
-        • attachment_processor: Attachment handler
-        • header_parser: Email header parser
-        
-    Methods:
-        • parse_email(): Parse email message
-        • extract_headers(): Extract email headers
-        • extract_body(): Extract email body
-        • analyze_thread(): Analyze email thread
     """
     
     def __init__(self, config=None, **kwargs):
-        """
-        Initialize email parser.
+        """Initialize email parser."""
+        self.logger = get_logger("email_parser")
+        self.config = config or {}
+        self.config.update(kwargs)
         
-        • Setup MIME parsing library
-        • Configure email processing
-        • Initialize thread analysis
-        • Setup attachment handling
-        • Configure header parsing
-        """
-        pass
+        self.mime_parser = MIMEParser(**self.config.get("mime", {}))
+        self.thread_analyzer = EmailThreadAnalyzer(**self.config.get("thread", {}))
     
-    def parse_email(self, email_content, **options):
+    def parse_email(self, email_content: Union[str, bytes, Path], **options) -> EmailData:
         """
         Parse email message content.
         
-        • Parse email structure
-        • Extract headers and metadata
-        • Process MIME parts
-        • Extract body content
-        • Handle attachments
-        • Return parsed email object
+        Args:
+            email_content: Email content (string, bytes, or file path)
+            **options: Parsing options:
+                - extract_attachments: Whether to extract attachments (default: True)
+                
+        Returns:
+            EmailData: Parsed email data
         """
-        pass
+        # Load email content
+        if isinstance(email_content, Path) or (isinstance(email_content, str) and Path(email_content).exists()):
+            file_path = Path(email_content)
+            if not file_path.exists():
+                raise ValidationError(f"Email file not found: {file_path}")
+            
+            with open(file_path, 'rb') as f:
+                email_bytes = f.read()
+            email_msg = message_from_bytes(email_bytes)
+        elif isinstance(email_content, bytes):
+            email_msg = message_from_bytes(email_content)
+        else:
+            email_msg = message_from_string(email_content)
+        
+        try:
+            # Extract headers
+            headers = self.extract_headers(email_msg)
+            
+            # Extract body
+            body = self.extract_body(email_msg, extract_attachments=options.get("extract_attachments", True))
+            
+            return EmailData(
+                headers=headers,
+                body=body,
+                metadata={
+                    "message_id": headers.message_id,
+                    "date": headers.date
+                }
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Failed to parse email: {e}")
+            raise ProcessingError(f"Failed to parse email: {e}")
     
-    def extract_headers(self, email_message):
+    def extract_headers(self, email_message: email.message.Message) -> EmailHeaders:
         """
         Extract email headers and metadata.
         
-        • Parse email headers
-        • Extract sender and recipient info
-        • Process date and subject
-        • Extract custom headers
-        • Return header dictionary
+        Args:
+            email_message: Email message object
+            
+        Returns:
+            EmailHeaders: Extracted headers
         """
-        pass
+        def decode_header_value(value):
+            """Decode email header value."""
+            if value is None:
+                return None
+            
+            decoded_parts = decode_header(value)
+            decoded_str = ""
+            for part, encoding in decoded_parts:
+                if isinstance(part, bytes):
+                    decoded_str += part.decode(encoding or 'utf-8', errors='ignore')
+                else:
+                    decoded_str += part
+            return decoded_str.strip()
+        
+        headers = EmailHeaders()
+        
+        # Extract standard headers
+        headers.subject = decode_header_value(email_message.get('Subject'))
+        headers.from_address = decode_header_value(email_message.get('From'))
+        
+        # Extract recipients
+        to_header = email_message.get('To', '')
+        if to_header:
+            headers.to_addresses = [addr.strip() for addr in str(to_header).split(',')]
+        
+        cc_header = email_message.get('Cc', '')
+        if cc_header:
+            headers.cc_addresses = [addr.strip() for addr in str(cc_header).split(',')]
+        
+        bcc_header = email_message.get('Bcc', '')
+        if bcc_header:
+            headers.bcc_addresses = [addr.strip() for addr in str(bcc_header).split(',')]
+        
+        # Extract dates
+        date_str = email_message.get('Date')
+        if date_str:
+            try:
+                date_obj = parsedate_to_datetime(date_str)
+                headers.date = date_obj.isoformat() if date_obj else str(date_str)
+            except Exception:
+                headers.date = str(date_str)
+        
+        # Extract message IDs
+        headers.message_id = email_message.get('Message-ID')
+        headers.in_reply_to = email_message.get('In-Reply-To')
+        
+        # Extract references
+        references = email_message.get('References', '')
+        if references:
+            headers.references = [ref.strip() for ref in str(references).split()]
+        
+        # Extract custom headers
+        for header_name, header_value in email_message.items():
+            if header_name not in ['Subject', 'From', 'To', 'Cc', 'Bcc', 'Date', 'Message-ID', 'In-Reply-To', 'References']:
+                headers.custom_headers[header_name] = decode_header_value(header_value)
+        
+        return headers
     
-    def extract_body(self, email_message):
+    def extract_body(self, email_message: email.message.Message, extract_attachments: bool = True) -> EmailBody:
         """
         Extract email body content.
         
-        • Process MIME multipart structure
-        • Extract text and HTML content
-        • Handle content encoding
-        • Clean and normalize content
-        • Return body content
+        Args:
+            email_message: Email message object
+            extract_attachments: Whether to extract attachments
+            
+        Returns:
+            EmailBody: Extracted body content
         """
-        pass
+        body = EmailBody()
+        
+        # Process MIME message
+        if email_message.is_multipart():
+            for part in email_message.walk():
+                content_type = part.get_content_type()
+                content_disposition = part.get("Content-Disposition", "")
+                
+                # Check if it's an attachment
+                if "attachment" in content_disposition and extract_attachments:
+                    attachment = self._extract_attachment(part)
+                    if attachment:
+                        body.attachments.append(attachment)
+                
+                # Extract text content
+                elif content_type == "text/plain":
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or 'utf-8'
+                        body.text = payload.decode(charset, errors='ignore')
+                
+                # Extract HTML content
+                elif content_type == "text/html":
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or 'utf-8'
+                        body.html = payload.decode(charset, errors='ignore')
+        else:
+            # Single part message
+            content_type = email_message.get_content_type()
+            payload = email_message.get_payload(decode=True)
+            
+            if payload:
+                charset = email_message.get_content_charset() or 'utf-8'
+                if content_type == "text/html":
+                    body.html = payload.decode(charset, errors='ignore')
+                else:
+                    body.text = payload.decode(charset, errors='ignore')
+        
+        return body
     
-    def analyze_thread(self, emails):
+    def _extract_attachment(self, part: email.message.Message) -> Optional[Dict[str, Any]]:
+        """Extract attachment from email part."""
+        try:
+            filename = part.get_filename()
+            if not filename:
+                return None
+            
+            # Decode filename
+            decoded_parts = decode_header(filename)
+            decoded_filename = ""
+            for part_bytes, encoding in decoded_parts:
+                if isinstance(part_bytes, bytes):
+                    decoded_filename += part_bytes.decode(encoding or 'utf-8', errors='ignore')
+                else:
+                    decoded_filename += part_bytes
+            
+            payload = part.get_payload(decode=True)
+            
+            return {
+                "filename": decoded_filename,
+                "content_type": part.get_content_type(),
+                "size": len(payload) if payload else 0,
+                "data": payload
+            }
+        except Exception as e:
+            self.logger.warning(f"Failed to extract attachment: {e}")
+            return None
+    
+    def analyze_thread(self, emails: List[EmailData]) -> Dict[str, Any]:
         """
         Analyze email thread structure.
         
-        • Group related emails
-        • Identify thread participants
-        • Analyze conversation flow
-        • Extract thread metadata
-        • Return thread analysis
+        Args:
+            emails: List of email data objects
+            
+        Returns:
+            dict: Thread analysis
         """
-        pass
+        return self.thread_analyzer.analyze_thread(emails)
 
 
 class MIMEParser:
-    """
-    MIME message parsing engine.
-    
-    • Parses MIME multipart messages
-    • Handles various content types
-    • Processes email attachments
-    • Manages content encoding
-    • Extracts embedded content
-    """
+    """MIME message parsing engine."""
     
     def __init__(self, **config):
-        """
-        Initialize MIME parser.
-        
-        • Setup MIME parsing library
-        • Configure content handling
-        • Initialize attachment processing
-        • Setup encoding detection
-        """
-        pass
+        """Initialize MIME parser."""
+        self.logger = get_logger("mime_parser")
+        self.config = config
     
-    def parse_mime_message(self, message_content):
+    def parse_mime_message(self, message_content: Union[str, bytes]) -> email.message.Message:
         """
         Parse MIME message structure.
         
-        • Parse MIME headers
-        • Process multipart structure
-        • Extract content parts
-        • Handle content encoding
-        • Return parsed MIME object
+        Args:
+            message_content: MIME message content
+            
+        Returns:
+            Email message object
         """
-        pass
-    
-    def extract_content_parts(self, mime_message):
-        """
-        Extract content from MIME parts.
-        
-        • Process each MIME part
-        • Extract text and binary content
-        • Handle different content types
-        • Process attachments
-        • Return content collection
-        """
-        pass
-    
-    def decode_content(self, content, encoding):
-        """
-        Decode content with specified encoding.
-        
-        • Apply content decoding
-        • Handle encoding errors
-        • Return decoded content
-        """
-        pass
+        if isinstance(message_content, bytes):
+            return message_from_bytes(message_content)
+        else:
+            return message_from_string(message_content)
 
 
 class EmailThreadAnalyzer:
-    """
-    Email thread analysis engine.
-    
-    • Analyzes email conversations
-    • Identifies thread participants
-    • Tracks conversation flow
-    • Extracts thread metadata
-    • Handles thread reconstruction
-    """
+    """Email thread analysis engine."""
     
     def __init__(self, **config):
-        """
-        Initialize email thread analyzer.
-        
-        • Setup thread analysis algorithms
-        • Configure participant detection
-        • Initialize conversation tracking
-        • Setup metadata extraction
-        """
-        pass
+        """Initialize email thread analyzer."""
+        self.logger = get_logger("email_thread_analyzer")
+        self.config = config
     
-    def analyze_thread(self, emails):
+    def analyze_thread(self, emails: List[EmailData]) -> Dict[str, Any]:
         """
         Analyze email thread structure.
         
-        • Group emails by thread
-        • Identify thread participants
-        • Analyze conversation flow
-        • Extract thread metadata
-        • Return thread analysis
+        Args:
+            emails: List of email data objects
+            
+        Returns:
+            dict: Thread analysis
         """
-        pass
-    
-    def identify_participants(self, emails):
-        """
-        Identify thread participants.
+        analysis = {
+            "thread_count": len(emails),
+            "participants": set(),
+            "messages_by_date": {},
+            "reply_chains": []
+        }
         
-        • Extract sender and recipient info
-        • Identify unique participants
-        • Analyze participation patterns
-        • Return participant list
-        """
-        pass
-    
-    def track_conversation_flow(self, emails):
-        """
-        Track conversation flow and patterns.
+        # Extract participants
+        for email_data in emails:
+            if email_data.headers.from_address:
+                analysis["participants"].add(email_data.headers.from_address)
+            analysis["participants"].update(email_data.headers.to_addresses)
+            analysis["participants"].update(email_data.headers.cc_addresses)
         
-        • Analyze email sequence
-        • Identify response patterns
-        • Track topic changes
-        • Return flow analysis
-        """
-        pass
+        analysis["participants"] = list(analysis["participants"])
+        
+        # Group by date
+        for email_data in emails:
+            if email_data.headers.date:
+                date_key = email_data.headers.date[:10] if len(email_data.headers.date) >= 10 else email_data.headers.date
+                if date_key not in analysis["messages_by_date"]:
+                    analysis["messages_by_date"][date_key] = []
+                analysis["messages_by_date"][date_key].append(email_data.headers.message_id)
+        
+        # Identify reply chains
+        for email_data in emails:
+            if email_data.headers.in_reply_to:
+                analysis["reply_chains"].append({
+                    "message_id": email_data.headers.message_id,
+                    "in_reply_to": email_data.headers.in_reply_to
+                })
+        
+        return analysis

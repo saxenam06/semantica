@@ -12,10 +12,18 @@ Key Features:
 
 Main Classes:
     - StructuredDataParser: Main structured data parser
-    - JSONParser: JSON data parser
-    - CSVParser: CSV data parser
-    - YAMLParser: YAML data parser
 """
+
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import yaml
+
+from ..utils.exceptions import ProcessingError, ValidationError
+from ..utils.logging import get_logger
+from .csv_parser import CSVParser
+from .json_parser import JSONParser
+from .xml_parser import XMLParser
 
 
 class StructuredDataParser:
@@ -28,250 +36,293 @@ class StructuredDataParser:
     • Handles nested and complex structures
     • Processes large datasets efficiently
     • Supports various encoding formats
-    
-    Attributes:
-        • json_parser: JSON parsing engine
-        • csv_parser: CSV parsing engine
-        • xml_parser: XML parsing engine
-        • yaml_parser: YAML parsing engine
-        • data_validator: Data validation tools
-        
-    Methods:
-        • parse_data(): Parse any structured data format
-        • validate_data(): Validate data structure
-        • convert_data(): Convert data between formats
-        • extract_schema(): Extract data schema
     """
     
     def __init__(self, config=None, **kwargs):
-        """
-        Initialize structured data parser.
+        """Initialize structured data parser."""
+        self.logger = get_logger("structured_data_parser")
+        self.config = config or {}
+        self.config.update(kwargs)
         
-        • Setup format-specific parsers
-        • Configure data validation
-        • Initialize type converters
-        • Setup schema extraction
-        • Configure error handling
-        """
-        pass
+        # Initialize parsers
+        self.json_parser = JSONParser(**self.config.get("json", {}))
+        self.csv_parser = CSVParser(**self.config.get("csv", {}))
+        self.xml_parser = XMLParser(**self.config.get("xml", {}))
     
-    def parse_data(self, data, data_format, **options):
+    def parse_data(self, data: Union[str, Path], data_format: Optional[str] = None, **options) -> Dict[str, Any]:
         """
         Parse structured data of any supported format.
         
-        • Detect data format if not specified
-        • Route to appropriate parser
-        • Parse data structure
-        • Validate data integrity
-        • Handle parsing errors
-        • Return parsed data object
+        Args:
+            data: Data content or file path
+            data_format: Data format (auto-detected if None)
+            **options: Parsing options
+            
+        Returns:
+            dict: Parsed data
         """
-        pass
+        # Detect format if not specified
+        if data_format is None:
+            data_format = self._detect_format(data)
+        
+        # Route to appropriate parser
+        if data_format == "json":
+            return self.json_parser.parse(data, **options).__dict__
+        elif data_format == "csv":
+            return self.csv_parser.parse(data, **options).__dict__
+        elif data_format == "xml":
+            return self.xml_parser.parse(data, **options).__dict__
+        elif data_format == "yaml":
+            return self._parse_yaml(data, **options)
+        else:
+            raise ValidationError(f"Unsupported data format: {data_format}")
     
-    def validate_data(self, data, schema=None):
+    def validate_data(self, data: Any, schema: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Validate structured data against schema.
         
-        • Load validation schema
-        • Check data structure
-        • Validate data types
-        • Report validation errors
-        • Return validation result
+        Args:
+            data: Data to validate
+            schema: Validation schema
+            
+        Returns:
+            dict: Validation result
         """
-        pass
+        result = {
+            "valid": True,
+            "errors": []
+        }
+        
+        if schema is None:
+            result["valid"] = True
+            result["message"] = "No schema provided, skipping validation"
+            return result
+        
+        # Basic schema validation
+        if isinstance(data, dict):
+            # Check required fields
+            required_fields = schema.get("required", [])
+            for field in required_fields:
+                if field not in data:
+                    result["valid"] = False
+                    result["errors"].append(f"Missing required field: {field}")
+            
+            # Check field types
+            properties = schema.get("properties", {})
+            for field, value in data.items():
+                if field in properties:
+                    expected_type = properties[field].get("type")
+                    actual_type = type(value).__name__
+                    
+                    type_mapping = {
+                        "string": "str",
+                        "number": ("int", "float"),
+                        "integer": "int",
+                        "boolean": "bool",
+                        "array": "list",
+                        "object": "dict"
+                    }
+                    
+                    expected_types = type_mapping.get(expected_type, [expected_type])
+                    if isinstance(expected_types, tuple):
+                        if actual_type not in expected_types:
+                            result["valid"] = False
+                            result["errors"].append(f"Field {field}: expected {expected_type}, got {actual_type}")
+                    elif actual_type != expected_types:
+                        result["valid"] = False
+                        result["errors"].append(f"Field {field}: expected {expected_type}, got {actual_type}")
+        
+        return result
     
-    def convert_data(self, data, from_format, to_format):
+    def convert_data(self, data: Any, from_format: str, to_format: str) -> Any:
         """
         Convert data between different formats.
         
-        • Parse data from source format
-        • Transform data structure
-        • Serialize to target format
-        • Handle type conversions
-        • Return converted data
+        Args:
+            data: Input data
+            from_format: Source format
+            to_format: Target format
+            
+        Returns:
+            Converted data
         """
-        pass
+        # Parse from source format
+        if isinstance(data, (str, Path)):
+            parsed = self.parse_data(data, data_format=from_format)
+            if isinstance(parsed, dict) and "data" in parsed:
+                parsed = parsed["data"]
+        else:
+            parsed = data
+        
+        # Convert to target format
+        if to_format == "json":
+            import json
+            return json.dumps(parsed, indent=2)
+        elif to_format == "csv":
+            return self._convert_to_csv(parsed)
+        elif to_format == "xml":
+            return self._convert_to_xml(parsed)
+        elif to_format == "yaml":
+            return yaml.dump(parsed, default_flow_style=False)
+        else:
+            raise ValidationError(f"Unsupported target format: {to_format}")
     
-    def extract_schema(self, data):
+    def extract_schema(self, data: Any) -> Dict[str, Any]:
         """
         Extract schema from structured data.
         
-        • Analyze data structure
-        • Identify data types
-        • Extract field definitions
-        • Generate schema representation
-        • Return data schema
+        Args:
+            data: Structured data
+            
+        Returns:
+            dict: Extracted schema
         """
-        pass
-
-
-class JSONParser:
-    """
-    JSON data parsing engine.
-    
-    • Parses JSON documents and fragments
-    • Validates JSON structure
-    • Handles nested objects and arrays
-    • Processes JSON schemas
-    • Manages large JSON files
-    """
-    
-    def __init__(self, **config):
-        """
-        Initialize JSON parser.
+        schema = {
+            "type": "object" if isinstance(data, dict) else "array" if isinstance(data, list) else type(data).__name__,
+            "properties": {}
+        }
         
-        • Setup JSON parsing library
-        • Configure parsing options
-        • Initialize validation tools
-        • Setup streaming for large files
-        """
-        pass
-    
-    def parse_json(self, json_content, **options):
-        """
-        Parse JSON content.
+        if isinstance(data, dict):
+            for key, value in data.items():
+                schema["properties"][key] = self._infer_type(value)
+        elif isinstance(data, list) and len(data) > 0:
+            schema["items"] = self._infer_type(data[0])
         
-        • Parse JSON structure
-        • Validate JSON format
-        • Handle parsing errors
-        • Return parsed JSON object
-        """
-        pass
+        return schema
     
-    def validate_json(self, json_content, schema=None):
-        """
-        Validate JSON against schema.
+    def _detect_format(self, data: Union[str, Path]) -> str:
+        """Detect data format from content or extension."""
+        # Check if it's a file path
+        if isinstance(data, Path) or (isinstance(data, str) and Path(data).exists()):
+            file_path = Path(data)
+            suffix = file_path.suffix.lower()
+            format_map = {
+                '.json': 'json',
+                '.csv': 'csv',
+                '.xml': 'xml',
+                '.yaml': 'yaml',
+                '.yml': 'yaml'
+            }
+            if suffix in format_map:
+                return format_map[suffix]
         
-        • Parse JSON content
-        • Load JSON schema
-        • Validate structure and types
-        • Report validation errors
-        • Return validation result
-        """
-        pass
-    
-    def extract_values(self, json_data, key_path):
-        """
-        Extract values using key path.
+        # Check content if string
+        if isinstance(data, str):
+            data_str = data.strip()
+            if data_str.startswith('{') or data_str.startswith('['):
+                return 'json'
+            elif data_str.startswith('<'):
+                return 'xml'
+            elif ',' in data_str and '\n' in data_str:
+                return 'csv'
         
-        • Navigate JSON structure
-        • Extract values by path
-        • Handle nested objects
-        • Return extracted values
-        """
-        pass
-
-
-class CSVParser:
-    """
-    CSV data parsing engine.
+        return "unknown"
     
-    • Parses CSV files and data
-    • Handles various CSV formats
-    • Detects delimiters and encodings
-    • Processes headers and data types
-    • Manages large CSV files
-    """
-    
-    def __init__(self, **config):
-        """
-        Initialize CSV parser.
+    def _parse_yaml(self, data: Union[str, Path], **options) -> Dict[str, Any]:
+        """Parse YAML data."""
+        if isinstance(data, Path) or (isinstance(data, str) and Path(data).exists()):
+            file_path = Path(data)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                yaml_data = yaml.safe_load(f)
+        else:
+            yaml_data = yaml.safe_load(data)
         
-        • Setup CSV parsing library
-        • Configure delimiter detection
-        • Initialize encoding detection
-        • Setup data type inference
-        """
-        pass
+        return {
+            "data": yaml_data,
+            "type": type(yaml_data).__name__,
+            "metadata": {
+                "format": "yaml"
+            }
+        }
     
-    def parse_csv(self, csv_content, **options):
-        """
-        Parse CSV content.
+    def _convert_to_csv(self, data: Any) -> str:
+        """Convert data to CSV format."""
+        import csv
+        import io
         
-        • Detect CSV format parameters
-        • Parse CSV structure
-        • Process headers and data
-        • Handle encoding issues
-        • Return parsed CSV object
-        """
-        pass
+        if isinstance(data, dict):
+            # Convert dict to CSV (single row)
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=data.keys())
+            writer.writeheader()
+            writer.writerow(data)
+            return output.getvalue()
+        elif isinstance(data, list):
+            if not data:
+                return ""
+            
+            output = io.StringIO()
+            if isinstance(data[0], dict):
+                writer = csv.DictWriter(output, fieldnames=data[0].keys())
+                writer.writeheader()
+                writer.writerows(data)
+            else:
+                writer = csv.writer(output)
+                writer.writerows(data)
+            return output.getvalue()
+        else:
+            return str(data)
     
-    def detect_format(self, csv_content):
-        """
-        Detect CSV format parameters.
+    def _convert_to_xml(self, data: Any, root_tag: str = "root") -> str:
+        """Convert data to XML format."""
+        from xml.etree.ElementTree import Element, tostring
+        import xml.dom.minidom
         
-        • Analyze CSV structure
-        • Detect delimiter character
-        • Identify encoding format
-        • Determine quote character
-        • Return format parameters
-        """
-        pass
-    
-    def infer_types(self, csv_data):
-        """
-        Infer data types from CSV content.
+        def dict_to_xml(d: Dict[str, Any], parent: Element):
+            for key, value in d.items():
+                elem = Element(key)
+                if isinstance(value, dict):
+                    dict_to_xml(value, elem)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            dict_to_xml(item, elem)
+                        else:
+                            child = Element("item")
+                            child.text = str(item)
+                            elem.append(child)
+                else:
+                    elem.text = str(value)
+                parent.append(elem)
         
-        • Analyze column data
-        • Detect data types
-        • Handle type conversion
-        • Return type information
-        """
-        pass
-
-
-class YAMLParser:
-    """
-    YAML data parsing engine.
-    
-    • Parses YAML documents and fragments
-    • Validates YAML structure
-    • Handles YAML schemas
-    • Processes configuration files
-    • Manages YAML transformations
-    """
-    
-    def __init__(self, **config):
-        """
-        Initialize YAML parser.
+        root = Element(root_tag)
+        if isinstance(data, dict):
+            dict_to_xml(data, root)
+        elif isinstance(data, list):
+            for item in data:
+                if isinstance(item, dict):
+                    dict_to_xml(item, root)
+                else:
+                    elem = Element("item")
+                    elem.text = str(item)
+                    root.append(elem)
+        else:
+            root.text = str(data)
         
-        • Setup YAML parsing library
-        • Configure parsing options
-        • Initialize validation tools
-        • Setup transformation utilities
-        """
-        pass
+        # Pretty print
+        rough_string = tostring(root, encoding='unicode')
+        reparsed = xml.dom.minidom.parseString(rough_string)
+        return reparsed.toprettyxml(indent="  ")
     
-    def parse_yaml(self, yaml_content, **options):
-        """
-        Parse YAML content.
+    def _infer_type(self, value: Any) -> Dict[str, Any]:
+        """Infer JSON Schema type from Python value."""
+        type_mapping = {
+            str: "string",
+            int: "integer",
+            float: "number",
+            bool: "boolean",
+            list: "array",
+            dict: "object"
+        }
         
-        • Parse YAML structure
-        • Validate YAML format
-        • Handle parsing errors
-        • Return parsed YAML object
-        """
-        pass
-    
-    def validate_yaml(self, yaml_content, schema=None):
-        """
-        Validate YAML against schema.
+        python_type = type(value)
+        json_type = type_mapping.get(python_type, "string")
         
-        • Parse YAML content
-        • Load validation schema
-        • Validate structure and types
-        • Report validation errors
-        • Return validation result
-        """
-        pass
-    
-    def extract_config(self, yaml_content, config_path):
-        """
-        Extract configuration values.
+        result = {"type": json_type}
         
-        • Parse YAML structure
-        • Navigate configuration path
-        • Extract configuration values
-        • Return configuration object
-        """
-        pass
+        if json_type == "array" and isinstance(value, list) and len(value) > 0:
+            result["items"] = self._infer_type(value[0])
+        elif json_type == "object" and isinstance(value, dict):
+            result["properties"] = {k: self._infer_type(v) for k, v in value.items()}
+        
+        return result
