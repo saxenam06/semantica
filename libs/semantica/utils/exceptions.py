@@ -11,205 +11,351 @@ Key Features:
     - Error reporting and logging
 """
 
+import traceback
+import sys
+from typing import Any, Dict, Optional, Type
+
 
 class SemanticaError(Exception):
     """
     Base exception class for all Semantica framework errors.
     
-    • Provides base error handling
-    • Includes error context and debugging information
-    • Supports error chaining and propagation
-    • Handles error reporting and logging
+    Provides base error handling with:
+    - Error context and debugging information
+    - Error chaining and propagation
+    - Error reporting and logging
     """
     
-    def __init__(self, message, context=None, **details):
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        **details: Any
+    ):
         """
         Initialize Semantica error.
         
-        • Set error message
-        • Include error context
-        • Add error details
-        • Setup error debugging information
-        
         Args:
             message: Error message
-            context: Error context
-            **details: Additional error details
+            context: Error context dictionary
+            **details: Additional error details as keyword arguments
         """
-        # TODO: Set error message
-        # TODO: Include error context
-        # TODO: Add error details
-        # TODO: Setup error debugging information
-        pass
+        super().__init__(message)
+        self.message = message
+        self.context = context or {}
+        self.details = details
+        self.error_code = self.details.get("error_code", "SEM000")
+        
+        # Capture stack trace
+        _, _, self.traceback = sys.exc_info()
+        
+    def __str__(self) -> str:
+        """Return formatted error message with context."""
+        parts = [self.message]
+        
+        if self.context:
+            context_str = ", ".join(f"{k}={v}" for k, v in self.context.items())
+            parts.append(f"Context: {context_str}")
+            
+        if self.details:
+            details_str = ", ".join(
+                f"{k}={v}" for k, v in self.details.items() if k != "error_code"
+            )
+            if details_str:
+                parts.append(f"Details: {details_str}")
+                
+        return " | ".join(parts)
+    
+    def __repr__(self) -> str:
+        """Return detailed representation of the error."""
+        return (
+            f"{self.__class__.__name__}("
+            f"message={self.message!r}, "
+            f"context={self.context}, "
+            f"error_code={self.error_code}, "
+            f"details={self.details})"
+        )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert error to dictionary format for serialization.
+        
+        Returns:
+            Dictionary containing error information
+        """
+        return {
+            "error_type": self.__class__.__name__,
+            "message": self.message,
+            "error_code": self.error_code,
+            "context": self.context,
+            "details": self.details,
+        }
 
 
 class ValidationError(SemanticaError):
     """
     Exception raised for data validation errors.
     
-    • Handles data validation failures
-    • Includes validation context and details
-    • Supports validation error reporting
-    • Manages validation error recovery
+    Handles data validation failures with:
+    - Validation context and details
+    - Validation error reporting
+    - Validation error recovery support
     """
     
-    def __init__(self, message, validation_context=None, **details):
+    def __init__(
+        self,
+        message: str,
+        validation_context: Optional[Dict[str, Any]] = None,
+        **details: Any
+    ):
         """
         Initialize validation error.
         
-        • Set validation error message
-        • Include validation context
-        • Add validation details
-        • Setup validation error debugging
-        
         Args:
             message: Validation error message
-            validation_context: Validation context
+            validation_context: Validation context dictionary
             **details: Additional validation details
         """
-        # TODO: Set validation error message
-        # TODO: Include validation context
-        # TODO: Add validation details
-        # TODO: Setup validation error debugging
-        pass
+        super().__init__(
+            message,
+            context=validation_context,
+            error_code="SEM001",
+            **details
+        )
+        self.validation_context = validation_context or {}
+        self.field = details.get("field")
+        self.value = details.get("value")
+        self.constraint = details.get("constraint")
 
 
 class ProcessingError(SemanticaError):
     """
     Exception raised for data processing errors.
     
-    • Handles data processing failures
-    • Includes processing context and details
-    • Supports processing error reporting
-    • Manages processing error recovery
+    Handles data processing failures with:
+    - Processing context and details
+    - Processing error reporting
+    - Processing error recovery support
     """
     
-    def __init__(self, message, processing_context=None, **details):
+    def __init__(
+        self,
+        message: str,
+        processing_context: Optional[Dict[str, Any]] = None,
+        **details: Any
+    ):
         """
         Initialize processing error.
         
-        • Set processing error message
-        • Include processing context
-        • Add processing details
-        • Setup processing error debugging
-        
         Args:
             message: Processing error message
-            processing_context: Processing context
+            processing_context: Processing context dictionary
             **details: Additional processing details
         """
-        # TODO: Set processing error message
-        # TODO: Include processing context
-        # TODO: Add processing details
-        # TODO: Setup processing error debugging
-        pass
+        super().__init__(
+            message,
+            context=processing_context,
+            error_code="SEM002",
+            **details
+        )
+        self.processing_context = processing_context or {}
+        self.stage = details.get("stage")
+        self.input_data = details.get("input_data")
+        self.output_data = details.get("output_data")
 
 
 class ConfigurationError(SemanticaError):
     """
     Exception raised for configuration errors.
     
-    • Handles configuration validation failures
-    • Includes configuration context and details
-    • Supports configuration error reporting
-    • Manages configuration error recovery
+    Handles configuration validation failures with:
+    - Configuration context and details
+    - Configuration error reporting
+    - Configuration error recovery support
     """
     
-    def __init__(self, message, config_context=None, **details):
+    def __init__(
+        self,
+        message: str,
+        config_context: Optional[Dict[str, Any]] = None,
+        **details: Any
+    ):
         """
         Initialize configuration error.
         
-        • Set configuration error message
-        • Include configuration context
-        • Add configuration details
-        • Setup configuration error debugging
-        
         Args:
             message: Configuration error message
-            config_context: Configuration context
+            config_context: Configuration context dictionary
             **details: Additional configuration details
         """
-        # TODO: Set configuration error message
-        # TODO: Include configuration context
-        # TODO: Add configuration details
-        # TODO: Setup configuration error debugging
-        pass
+        super().__init__(
+            message,
+            context=config_context,
+            error_code="SEM003",
+            **details
+        )
+        self.config_context = config_context or {}
+        self.config_key = details.get("config_key")
+        self.config_value = details.get("config_value")
+        self.expected_type = details.get("expected_type")
 
 
 class QualityError(SemanticaError):
     """
     Exception raised for data quality errors.
     
-    • Handles data quality validation failures
-    • Includes quality context and details
-    • Supports quality error reporting
-    • Manages quality error recovery
+    Handles data quality validation failures with:
+    - Quality context and details
+    - Quality error reporting
+    - Quality error recovery support
     """
     
-    def __init__(self, message, quality_context=None, **details):
+    def __init__(
+        self,
+        message: str,
+        quality_context: Optional[Dict[str, Any]] = None,
+        **details: Any
+    ):
         """
         Initialize quality error.
         
-        • Set quality error message
-        • Include quality context
-        • Add quality details
-        • Setup quality error debugging
-        
         Args:
             message: Quality error message
-            quality_context: Quality context
+            quality_context: Quality context dictionary
             **details: Additional quality details
         """
-        # TODO: Set quality error message
-        # TODO: Include quality context
-        # TODO: Add quality details
-        # TODO: Setup quality error debugging
-        pass
+        super().__init__(
+            message,
+            context=quality_context,
+            error_code="SEM004",
+            **details
+        )
+        self.quality_context = quality_context or {}
+        self.quality_score = details.get("quality_score")
+        self.threshold = details.get("threshold")
+        self.metrics = details.get("metrics", {})
 
 
-def handle_exception(exception, context=None, **options):
+def handle_exception(
+    exception: Exception,
+    context: Optional[Dict[str, Any]] = None,
+    **options: Any
+) -> Dict[str, Any]:
     """
     Handle exception with context and options.
     
-    • Process exception information
-    • Include context and debugging information
-    • Handle exception recovery
-    • Log exception details
+    Processes exception information and returns structured error data.
     
     Args:
         exception: Exception to handle
-        context: Exception context
+        context: Exception context dictionary
         **options: Additional handling options
         
     Returns:
-        dict: Exception handling results
+        Dictionary containing exception handling results:
+        - handled: Whether exception was handled
+        - error_type: Type of error
+        - message: Error message
+        - context: Error context
+        - traceback: Formatted traceback string
+        - recovery: Recovery action if any
     """
-    # TODO: Process exception information
-    # TODO: Include context and debugging information
-    # TODO: Handle exception recovery
-    # TODO: Log exception details
-    # TODO: Return exception handling results
-    pass
+    context = context or {}
+    recovery_action = options.get("recovery_action", "log_and_continue")
+    log_error = options.get("log_error", True)
+    
+    # Extract error information
+    error_info = {
+        "handled": True,
+        "error_type": type(exception).__name__,
+        "message": str(exception),
+        "context": context,
+        "traceback": None,
+        "recovery": recovery_action,
+    }
+    
+    # Add traceback if requested
+    if options.get("include_traceback", True):
+        error_info["traceback"] = "".join(
+            traceback.format_exception(type(exception), exception, exception.__traceback__)
+        )
+    
+    # Add exception-specific details
+    if isinstance(exception, SemanticaError):
+        error_info["error_code"] = exception.error_code
+        error_info["details"] = exception.details
+        if hasattr(exception, "context"):
+            error_info["context"].update(exception.context)
+    
+    # Log error if requested
+    if log_error:
+        # Import here to avoid circular dependency
+        try:
+            from .logging import log_error as log_err
+            log_err(exception, context=context, **options)
+        except ImportError:
+            # Fallback to print if logging not available
+            print(f"Error: {error_info}")
+    
+    return error_info
 
 
-def format_exception(exception, **options):
+def format_exception(exception: Exception, **options: Any) -> str:
     """
     Format exception for display and logging.
     
-    • Format exception message
-    • Include exception context
-    • Add debugging information
-    • Return formatted exception
+    Formats exception message with context and debugging information.
     
     Args:
         exception: Exception to format
-        **options: Additional formatting options
-        
+        **options: Additional formatting options:
+            - include_traceback: Include full traceback (default: False)
+            - include_context: Include context information (default: True)
+            - max_length: Maximum length of formatted string (default: None)
+    
     Returns:
-        str: Formatted exception string
+        Formatted exception string
     """
-    # TODO: Format exception message
-    # TODO: Include exception context
-    # TODO: Add debugging information
-    # TODO: Return formatted exception string
-    pass
+    parts = []
+    
+    # Add error type and message
+    error_type = type(exception).__name__
+    error_message = str(exception)
+    parts.append(f"{error_type}: {error_message}")
+    
+    # Add exception-specific details
+    if isinstance(exception, SemanticaError):
+        if exception.error_code:
+            parts.append(f"Error Code: {exception.error_code}")
+        
+        if options.get("include_context", True) and exception.context:
+            context_str = ", ".join(
+                f"{k}={v}" for k, v in exception.context.items()
+            )
+            parts.append(f"Context: {context_str}")
+        
+        if exception.details:
+            details_str = ", ".join(
+                f"{k}={v}" for k, v in exception.details.items()
+                if k != "error_code"
+            )
+            if details_str:
+                parts.append(f"Details: {details_str}")
+    
+    # Add traceback if requested
+    if options.get("include_traceback", False):
+        tb_str = "".join(
+            traceback.format_exception(
+                type(exception), exception, exception.__traceback__
+            )
+        )
+        parts.append(f"\nTraceback:\n{tb_str}")
+    
+    formatted = "\n".join(parts)
+    
+    # Truncate if max_length specified
+    max_length = options.get("max_length")
+    if max_length and len(formatted) > max_length:
+        formatted = formatted[:max_length] + "..."
+    
+    return formatted
