@@ -68,7 +68,8 @@ class OntologyVisualizer:
         Visualize class hierarchy as tree.
         
         Args:
-            ontology: Ontology dictionary with classes
+            ontology: Ontology dictionary with classes, or SemanticNetwork object, 
+                     or ontology generator result
             output: Output type ("interactive", "html", "png", "svg", "dot")
             file_path: Output file path
             **options: Additional options
@@ -78,10 +79,24 @@ class OntologyVisualizer:
         """
         self.logger.info("Visualizing ontology class hierarchy")
         
-        classes = ontology.get("classes", [])
+        # Handle different input formats
+        if hasattr(ontology, "classes"):
+            # OntologyGenerator result object
+            classes = ontology.classes if hasattr(ontology, "classes") else []
+        elif isinstance(ontology, dict):
+            classes = ontology.get("classes", ontology.get("class_definitions", []))
+        else:
+            classes = []
+        
+        # If no classes, try to extract from semantic network
+        if not classes and isinstance(ontology, dict):
+            # Check if it's a semantic model or semantic network
+            semantic_network = ontology.get("semantic_network", ontology.get("network"))
+            if semantic_network:
+                classes = self._extract_classes_from_semantic_network(semantic_network)
         
         if not classes:
-            raise ProcessingError("No classes found in ontology")
+            raise ProcessingError("No classes found in ontology. Please provide classes or a semantic network.")
         
         # If output is dot and graphviz is available, use it
         if output == "dot" and graphviz is not None and file_path:
@@ -103,7 +118,7 @@ class OntologyVisualizer:
         Visualize property graph showing properties and their domains/ranges.
         
         Args:
-            ontology: Ontology dictionary
+            ontology: Ontology dictionary, SemanticNetwork, or ontology generator result
             output: Output type
             file_path: Output file path
             **options: Additional options
@@ -113,8 +128,22 @@ class OntologyVisualizer:
         """
         self.logger.info("Visualizing ontology properties")
         
-        properties = ontology.get("properties", [])
-        classes = ontology.get("classes", [])
+        # Handle different input formats
+        if hasattr(ontology, "properties"):
+            properties = ontology.properties if hasattr(ontology, "properties") else []
+            classes = ontology.classes if hasattr(ontology, "classes") else []
+        elif isinstance(ontology, dict):
+            properties = ontology.get("properties", ontology.get("property_definitions", []))
+            classes = ontology.get("classes", ontology.get("class_definitions", []))
+        else:
+            properties = []
+            classes = []
+        
+        # If no properties, try to extract from semantic network
+        if not properties and isinstance(ontology, dict):
+            semantic_network = ontology.get("semantic_network", ontology.get("network"))
+            if semantic_network:
+                properties = self._extract_properties_from_semantic_network(semantic_network)
         
         if not properties:
             raise ProcessingError("No properties found in ontology")
@@ -350,16 +379,128 @@ class OntologyVisualizer:
     
     def _calculate_class_depth(self, cls: Dict[str, Any], all_classes: List[Dict[str, Any]]) -> int:
         """Calculate depth of class in hierarchy."""
-        parent = cls.get("parent") or cls.get("subClassOf")
+        parent = cls.get("parent") or cls.get("subClassOf") or cls.get("superClassOf")
         if not parent:
             return 1
         
         # Find parent class
         for p_cls in all_classes:
-            if (p_cls.get("name") or p_cls.get("uri", "")) == parent:
+            cls_name = p_cls.get("name") or p_cls.get("uri") or p_cls.get("label", "")
+            if cls_name == parent:
                 return 1 + self._calculate_class_depth(p_cls, all_classes)
         
         return 1
+    
+    def _extract_classes_from_semantic_network(self, semantic_network: Any) -> List[Dict[str, Any]]:
+        """Extract class definitions from semantic network."""
+        classes = []
+        
+        # Handle SemanticNetwork dataclass
+        if hasattr(semantic_network, "nodes"):
+            # Group nodes by type to form classes
+            type_groups = {}
+            for node in semantic_network.nodes:
+                node_type = node.type if hasattr(node, "type") else "Unknown"
+                if node_type not in type_groups:
+                    type_groups[node_type] = []
+                type_groups[node_type].append(node)
+            
+            # Create class definitions
+            for node_type, nodes in type_groups.items():
+                classes.append({
+                    "name": node_type,
+                    "label": node_type,
+                    "uri": f"#{node_type}",
+                    "instances": len(nodes),
+                    "properties": list(set(
+                        prop for node in nodes 
+                        for prop in (node.properties.keys() if hasattr(node, "properties") else [])
+                    ))
+                })
+        
+        # Handle dictionary format
+        elif isinstance(semantic_network, dict):
+            nodes = semantic_network.get("nodes", [])
+            type_groups = {}
+            for node in nodes:
+                node_type = node.get("type") if isinstance(node, dict) else (
+                    node.type if hasattr(node, "type") else "Unknown"
+                )
+                if node_type not in type_groups:
+                    type_groups[node_type] = []
+                type_groups[node_type].append(node)
+            
+            for node_type, nodes in type_groups.items():
+                classes.append({
+                    "name": node_type,
+                    "label": node_type,
+                    "uri": f"#{node_type}",
+                    "instances": len(nodes)
+                })
+        
+        return classes
+    
+    def visualize_semantic_model(
+        self,
+        semantic_model: Any,
+        output: str = "interactive",
+        file_path: Optional[Union[str, Path]] = None,
+        **options
+    ) -> Optional[Any]:
+        """
+        Visualize semantic model from ontology generator.
+        
+        This method extracts and visualizes both the ontology structure
+        and the underlying semantic network that generated it.
+        
+        Args:
+            semantic_model: Semantic model from OntologyGenerator or semantic network
+            output: Output type
+            file_path: Output file path
+            **options: Additional options
+            
+        Returns:
+            Visualization figure or None
+        """
+        self.logger.info("Visualizing semantic model")
+        
+        # Handle OntologyGenerator result
+        if hasattr(semantic_model, "semantic_network"):
+            # Visualize the semantic network
+            from .semantic_network_visualizer import SemanticNetworkVisualizer
+            sem_net_viz = SemanticNetworkVisualizer(**self.config)
+            return sem_net_viz.visualize_network(
+                semantic_model.semantic_network,
+                output=output,
+                file_path=file_path,
+                **options
+            )
+        
+        # Handle dictionary format with semantic_network
+        elif isinstance(semantic_model, dict):
+            if "semantic_network" in semantic_model:
+                from .semantic_network_visualizer import SemanticNetworkVisualizer
+                sem_net_viz = SemanticNetworkVisualizer(**self.config)
+                return sem_net_viz.visualize_network(
+                    semantic_model["semantic_network"],
+                    output=output,
+                    file_path=file_path,
+                    **options
+                )
+            # Otherwise treat as ontology
+            else:
+                return self.visualize_structure(semantic_model, output, file_path, **options)
+        
+        # Handle direct semantic network
+        else:
+            from .semantic_network_visualizer import SemanticNetworkVisualizer
+            sem_net_viz = SemanticNetworkVisualizer(**self.config)
+            return sem_net_viz.visualize_network(
+                semantic_model,
+                output=output,
+                file_path=file_path,
+                **options
+            )
     
     def _visualize_hierarchy_plotly(
         self,
@@ -521,6 +662,46 @@ class OntologyVisualizer:
         from .kg_visualizer import KGVisualizer
         kg_viz = KGVisualizer(**self.config)
         return kg_viz._visualize_network_plotly(nodes, edges, output, file_path, **options)
+    
+    def _extract_properties_from_semantic_network(self, semantic_network: Any) -> List[Dict[str, Any]]:
+        """Extract property definitions from semantic network."""
+        properties = []
+        
+        # Handle SemanticNetwork dataclass
+        if hasattr(semantic_network, "edges"):
+            # Extract unique edge labels as properties
+            property_types = set()
+            for edge in semantic_network.edges:
+                edge_label = edge.label if hasattr(edge, "label") else ""
+                if edge_label and edge_label not in property_types:
+                    property_types.add(edge_label)
+                    properties.append({
+                        "name": edge_label,
+                        "label": edge_label,
+                        "uri": f"#{edge_label}",
+                        "domain": "Thing",  # Default domain
+                        "range": "Thing"    # Default range
+                    })
+        
+        # Handle dictionary format
+        elif isinstance(semantic_network, dict):
+            edges = semantic_network.get("edges", semantic_network.get("relationships", []))
+            property_types = set()
+            for edge in edges:
+                edge_label = edge.get("label") if isinstance(edge, dict) else (
+                    edge.label if hasattr(edge, "label") else ""
+                )
+                if edge_label and edge_label not in property_types:
+                    property_types.add(edge_label)
+                    properties.append({
+                        "name": edge_label,
+                        "label": edge_label,
+                        "uri": f"#{edge_label}",
+                        "domain": edge.get("domain", "Thing") if isinstance(edge, dict) else "Thing",
+                        "range": edge.get("range", "Thing") if isinstance(edge, dict) else "Thing"
+                    })
+        
+        return properties
     
     def _visualize_structure_plotly(
         self,

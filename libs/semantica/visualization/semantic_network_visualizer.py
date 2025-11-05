@@ -44,8 +44,14 @@ class SemanticNetworkVisualizer:
         """
         Visualize semantic network.
         
+        Supports multiple input formats:
+        - SemanticNetwork dataclass object
+        - Dictionary with 'nodes' and 'edges' keys
+        - Semantic model from ontology generator
+        - Entities and relationships lists
+        
         Args:
-            semantic_network: SemanticNetwork object
+            semantic_network: SemanticNetwork object, dict, or semantic model
             output: Output type
             file_path: Output file path
             **options: Additional options
@@ -57,40 +63,103 @@ class SemanticNetworkVisualizer:
         
         # Extract nodes and edges from semantic network
         nodes = []
-        if hasattr(semantic_network, "nodes"):
+        edges = []
+        
+        # Handle SemanticNetwork dataclass
+        if hasattr(semantic_network, "nodes") and hasattr(semantic_network, "edges"):
             for node in semantic_network.nodes:
                 nodes.append({
-                    "id": node.id,
-                    "label": node.label,
-                    "type": node.type,
-                    "metadata": node.metadata
+                    "id": getattr(node, "id", ""),
+                    "label": getattr(node, "label", ""),
+                    "type": getattr(node, "type", "entity"),
+                    "metadata": getattr(node, "metadata", {}) or {},
+                    "properties": getattr(node, "properties", {}) or {}
                 })
-        elif isinstance(semantic_network, dict):
-            for node in semantic_network.get("nodes", []):
-                nodes.append({
-                    "id": node.get("id", ""),
-                    "label": node.get("label", ""),
-                    "type": node.get("type", ""),
-                    "metadata": node.get("metadata", {})
-                })
-        
-        edges = []
-        if hasattr(semantic_network, "edges"):
+            
             for edge in semantic_network.edges:
                 edges.append({
-                    "source": edge.source,
-                    "target": edge.target,
-                    "label": edge.label,
-                    "metadata": edge.metadata
+                    "source": getattr(edge, "source", ""),
+                    "target": getattr(edge, "target", ""),
+                    "label": getattr(edge, "label", ""),
+                    "type": getattr(edge, "label", ""),
+                    "metadata": getattr(edge, "metadata", {}) or {},
+                    "properties": getattr(edge, "properties", {}) or {}
                 })
+        
+        # Handle dictionary format
         elif isinstance(semantic_network, dict):
-            for edge in semantic_network.get("edges", []):
-                edges.append({
-                    "source": edge.get("source", ""),
-                    "target": edge.get("target", ""),
-                    "label": edge.get("label", ""),
-                    "metadata": edge.get("metadata", {})
-                })
+            # Check if it's a semantic model from ontology generator
+            if "semantic_network" in semantic_network:
+                semantic_network = semantic_network["semantic_network"]
+            
+            # Extract nodes
+            network_nodes = semantic_network.get("nodes", [])
+            for node in network_nodes:
+                if isinstance(node, dict):
+                    nodes.append({
+                        "id": node.get("id", node.get("uri", "")),
+                        "label": node.get("label", node.get("name", "")),
+                        "type": node.get("type", node.get("class", "entity")),
+                        "metadata": node.get("metadata", {}),
+                        "properties": node.get("properties", {})
+                    })
+                elif hasattr(node, "id"):
+                    nodes.append({
+                        "id": getattr(node, "id", ""),
+                        "label": getattr(node, "label", ""),
+                        "type": getattr(node, "type", "entity"),
+                        "metadata": getattr(node, "metadata", {}) or {},
+                        "properties": getattr(node, "properties", {}) or {}
+                    })
+            
+            # Extract edges
+            network_edges = semantic_network.get("edges", semantic_network.get("relationships", []))
+            for edge in network_edges:
+                if isinstance(edge, dict):
+                    edges.append({
+                        "source": edge.get("source", edge.get("subject", "")),
+                        "target": edge.get("target", edge.get("object", "")),
+                        "label": edge.get("label", edge.get("predicate", edge.get("type", ""))),
+                        "type": edge.get("type", edge.get("predicate", "")),
+                        "metadata": edge.get("metadata", {}),
+                        "properties": edge.get("properties", {})
+                    })
+                elif hasattr(edge, "source"):
+                    edges.append({
+                        "source": getattr(edge, "source", ""),
+                        "target": getattr(edge, "target", ""),
+                        "label": getattr(edge, "label", ""),
+                        "type": getattr(edge, "label", ""),
+                        "metadata": getattr(edge, "metadata", {}) or {},
+                        "properties": getattr(edge, "properties", {}) or {}
+                    })
+        
+        # Handle entities/relationships format (for semantic models)
+        elif isinstance(semantic_network, (list, tuple)):
+            # Assume it's a list of entities/relationships
+            for item in semantic_network:
+                if isinstance(item, dict):
+                    if "source" in item or "subject" in item:
+                        edges.append({
+                            "source": item.get("source", item.get("subject", "")),
+                            "target": item.get("target", item.get("object", "")),
+                            "label": item.get("label", item.get("predicate", item.get("type", ""))),
+                            "type": item.get("type", ""),
+                            "metadata": item.get("metadata", {})
+                        })
+                    else:
+                        nodes.append({
+                            "id": item.get("id", item.get("uri", "")),
+                            "label": item.get("label", item.get("name", "")),
+                            "type": item.get("type", "entity"),
+                            "metadata": item.get("metadata", {})
+                        })
+        
+        if not nodes and not edges:
+            raise ProcessingError(
+                "Could not extract nodes and edges from semantic network. "
+                "Please provide a SemanticNetwork object, dict with 'nodes'/'edges', or semantic model."
+            )
         
         # Use KG visualizer for network visualization
         from .kg_visualizer import KGVisualizer

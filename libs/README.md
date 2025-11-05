@@ -908,11 +908,19 @@ kg_viz.visualize_relationship_matrix(graph, output="html", file_path="relationsh
 #### Ontology Visualization
 ```python
 from semantica.visualization import OntologyVisualizer
+from semantica.ontology import OntologyGenerator
 
 # Initialize ontology visualizer
 onto_viz = OntologyVisualizer(color_scheme="default")
 
-# Visualize class hierarchy
+# Option 1: Visualize from ontology generator result
+ontology_generator = OntologyGenerator()
+semantic_model = ontology_generator.generate_ontology(data)
+
+# Visualize semantic model (handles both ontology and semantic network)
+onto_viz.visualize_semantic_model(semantic_model, output="html", file_path="semantic_model.html")
+
+# Option 2: Visualize class hierarchy directly
 ontology = {
     "classes": classes,
     "properties": properties
@@ -920,6 +928,15 @@ ontology = {
 
 # Hierarchy tree visualization
 onto_viz.visualize_hierarchy(ontology, output="html", file_path="ontology_hierarchy.html")
+
+# Option 3: Visualize from semantic network (auto-extracts classes)
+from semantica.semantic_extract import SemanticNetworkExtractor
+extractor = SemanticNetworkExtractor()
+semantic_network = extractor.extract_network(text)
+
+# Can visualize directly - will extract classes automatically
+onto_viz.visualize_hierarchy({"semantic_network": semantic_network}, 
+                             output="html", file_path="ontology_from_network.html")
 
 # Property graph visualization
 onto_viz.visualize_properties(ontology, output="html", file_path="ontology_properties.html")
@@ -988,13 +1005,26 @@ from semantica.visualization import SemanticNetworkVisualizer
 # Initialize semantic network visualizer
 sem_net_viz = SemanticNetworkVisualizer()
 
-# Visualize semantic network
+# Option 1: Visualize SemanticNetwork dataclass object
 from semantica.semantic_extract import SemanticNetworkExtractor
 extractor = SemanticNetworkExtractor()
 semantic_network = extractor.extract_network(text)
 
 # Network graph
 sem_net_viz.visualize_network(semantic_network, output="html", file_path="semantic_network.html")
+
+# Option 2: Visualize from dictionary format
+semantic_network_dict = {
+    "nodes": [{"id": "n1", "label": "Node 1", "type": "Entity"}],
+    "edges": [{"source": "n1", "target": "n2", "label": "relatedTo"}]
+}
+sem_net_viz.visualize_network(semantic_network_dict, output="html", file_path="semantic_network.html")
+
+# Option 3: Visualize from semantic model (ontology generator result)
+from semantica.ontology import OntologyGenerator
+generator = OntologyGenerator()
+semantic_model = generator.generate_ontology(data)
+sem_net_viz.visualize_network(semantic_model.semantic_network, output="html", file_path="semantic_model_network.html")
 
 # Node type distribution
 sem_net_viz.visualize_node_types(semantic_network, output="html", file_path="node_types.html")
