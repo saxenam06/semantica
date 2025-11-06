@@ -1,9 +1,24 @@
 """
-YAML Exporter for Semantic Networks
+YAML Exporter Module
 
-Exports semantic networks (entities, relationships, triples) to YAML format
-for human-readable representation and intermediate processing in the
-6-stage ontology generation pipeline.
+This module provides comprehensive YAML export capabilities for the Semantica
+framework, enabling human-readable export of semantic networks and ontologies.
+
+Key Features:
+    - Semantic network export to YAML
+    - Ontology schema export for human editing
+    - Pipeline-ready YAML format
+    - Entity, relationship, and triple export
+    - Class and property definition export
+
+Example Usage:
+    >>> from semantica.export import SemanticNetworkYAMLExporter
+    >>> exporter = SemanticNetworkYAMLExporter()
+    >>> exporter.export(semantic_network, "network.yaml")
+    >>> exporter.export_for_pipeline(extracted_data, pipeline_stage=2)
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Union
@@ -19,6 +34,10 @@ class SemanticNetworkYAMLExporter:
     """
     Exports semantic networks to YAML format.
     
+    This class provides YAML export functionality for semantic networks, enabling
+    human-readable representation and intermediate processing in ontology
+    generation pipelines.
+    
     Part of the 6-stage ontology generation pipeline:
     1. Document parsing
     2. Semantic network extraction (YAML) ← This module
@@ -26,15 +45,23 @@ class SemanticNetworkYAMLExporter:
     4. Type mapping
     5. Hierarchy building
     6. TTL export
+    
+    Example Usage:
+        >>> exporter = SemanticNetworkYAMLExporter()
+        >>> exporter.export(semantic_network, "network.yaml")
     """
     
     def __init__(self, **config):
         """
         Initialize YAML exporter.
         
-        • Setup YAML serialization
-        • Configure output formatting
-        • Initialize schema templates
+        Sets up the exporter with YAML serialization support.
+        
+        Args:
+            **config: Configuration options (currently unused)
+        
+        Raises:
+            ImportError: If PyYAML is not installed
         """
         self.logger = get_logger("yaml_exporter")
         self.config = config or {}
@@ -43,16 +70,41 @@ class SemanticNetworkYAMLExporter:
             import yaml
             self.yaml = yaml
         except ImportError:
-            raise ImportError("PyYAML not installed. Install with: pip install pyyaml")
-    
-    def export_semantic_network(self, semantic_network: Dict[str, Any], **options) -> str:
-        """
-        Export semantic network to YAML.
+            raise ImportError(
+                "PyYAML not installed. Install with: pip install pyyaml"
+            )
         
-        • Structure entities and relationships
-        • Format as YAML document
-        • Include metadata and provenance
-        • Return YAML string
+        self.logger.debug("Semantic network YAML exporter initialized")
+    
+    def export_semantic_network(
+        self,
+        semantic_network: Dict[str, Any],
+        **options
+    ) -> str:
+        """
+        Export semantic network to YAML string.
+        
+        This method converts a semantic network (entities, relationships, triples)
+        to YAML format with metadata and provenance information.
+        
+        Args:
+            semantic_network: Semantic network dictionary containing:
+                - entities: List of entity dictionaries
+                - relationships: List of relationship dictionaries
+                - triples: List of triple dictionaries (optional)
+                - metadata: Metadata dictionary (optional)
+            **options: Additional export options (unused)
+        
+        Returns:
+            String containing YAML representation of semantic network
+        
+        Example:
+            >>> network = {
+            ...     "entities": [...],
+            ...     "relationships": [...],
+            ...     "triples": [...]
+            ... }
+            >>> yaml_str = exporter.export_semantic_network(network)
         """
         yaml_data = {
             "metadata": {
@@ -65,7 +117,11 @@ class SemanticNetworkYAMLExporter:
             "triples": semantic_network.get("triples", [])
         }
         
-        return self.yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
+        return self.yaml.dump(
+            yaml_data,
+            default_flow_style=False,
+            sort_keys=False
+        )
     
     def export(
         self,

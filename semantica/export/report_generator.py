@@ -1,8 +1,26 @@
 """
-Report generator for Semantica framework.
+Report Generator Module
 
-This module provides report generation capabilities
-for analysis results and framework metrics.
+This module provides comprehensive report generation capabilities for the
+Semantica framework, enabling formatted reports for analysis results,
+quality metrics, and framework statistics.
+
+Key Features:
+    - Multiple report formats (HTML, Markdown, JSON, Text)
+    - Quality assurance reports
+    - Analysis reports
+    - Metrics reports
+    - Custom report templates
+    - Chart/visualization support
+
+Example Usage:
+    >>> from semantica.export import ReportGenerator
+    >>> generator = ReportGenerator(format="html")
+    >>> generator.generate_report(data, "report.html")
+    >>> generator.generate_quality_report(metrics, "quality.md", format="markdown")
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Union
@@ -19,54 +37,119 @@ class ReportGenerator:
     """
     Report generator for analysis results and metrics.
     
-    • Report generation functionality
-    • Analysis result formatting
-    • Framework metrics reporting
-    • Performance optimization
-    • Error handling and recovery
-    • Advanced reporting features
+    This class provides comprehensive report generation functionality for
+    various data types including quality metrics, analysis results, and
+    framework statistics.
+    
+    Features:
+        - Multiple report formats (HTML, Markdown, JSON, Text)
+        - Quality assurance reports
+        - Analysis reports
+        - Metrics reports
+        - Custom report templates
+        - Chart/visualization support
+    
+    Example Usage:
+        >>> generator = ReportGenerator(
+        ...     format="html",
+        ...     include_charts=True
+        ... )
+        >>> generator.generate_report(data, "report.html")
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs):
+    def __init__(
+        self,
+        format: str = "markdown",
+        include_charts: bool = False,
+        template: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
         """
         Initialize report generator.
         
+        Sets up the generator with specified format, chart inclusion, and template options.
+        
         Args:
-            config: Configuration dictionary
-            **kwargs: Additional configuration options:
-                - format: Report format ('html', 'markdown', 'json', 'text')
-                - include_charts: Include charts/visualizations (default: False)
-                - template: Custom report template
+            format: Default report format - 'html', 'markdown', 'json', or 'text'
+                   (default: 'markdown')
+            include_charts: Whether to include charts/visualizations (default: False)
+            template: Custom report template path or identifier (default: None)
+            config: Optional configuration dictionary (merged with kwargs)
+            **kwargs: Additional configuration options
         """
         self.logger = get_logger("report_generator")
         self.config = config or {}
         self.config.update(kwargs)
         
-        self.format = self.config.get("format", "markdown")
-        self.include_charts = self.config.get("include_charts", False)
-        self.template = self.config.get("template")
+        # Report configuration
+        self.format = format
+        self.include_charts = include_charts
+        self.template = template
+        
+        self.logger.debug(
+            f"Report generator initialized: format={format}, "
+            f"include_charts={include_charts}"
+        )
     
     def generate_report(
         self,
         data: Dict[str, Any],
         file_path: Optional[Union[str, Path]] = None,
         format: Optional[str] = None,
+        encoding: str = "utf-8",
         **options
-    ) -> Union[str, None]:
+    ) -> Optional[str]:
         """
         Generate report from data.
         
+        This method generates a formatted report from data dictionary in the
+        specified format. Can write to file or return as string.
+        
+        Supported Formats:
+            - "markdown": Markdown format (default)
+            - "html": HTML format with styling
+            - "json": JSON format
+            - "text": Plain text format
+        
         Args:
-            data: Report data dictionary
-            file_path: Optional output file path
-            format: Report format ('html', 'markdown', 'json', 'text')
-            **options: Additional options
-            
+            data: Report data dictionary containing:
+                - title: Report title
+                - generated_at: Generation timestamp (optional, auto-added)
+                - summary: Summary dictionary or string (optional)
+                - metrics: Metrics dictionary (optional)
+                - analysis: Analysis results dictionary (optional)
+            file_path: Optional output file path. If None, returns report as string.
+            format: Report format - 'html', 'markdown', 'json', or 'text'
+                   (default: self.format)
+            encoding: File encoding (default: 'utf-8')
+            **options: Additional format-specific options
+        
         Returns:
-            Report string if file_path not provided, None otherwise
+            Report string if file_path is None, None if file was written
+        
+        Raises:
+            ValidationError: If format is unsupported
+        
+        Example:
+            >>> data = {
+            ...     "title": "Analysis Report",
+            ...     "metrics": {"total": 100, "success": 95}
+            ... }
+            >>> # Write to file
+            >>> generator.generate_report(data, "report.html", format="html")
+            >>> # Get as string
+            >>> report = generator.generate_report(data, format="markdown")
         """
         report_format = format or self.format
         
+        self.logger.debug(
+            f"Generating report ({report_format}): "
+            f"title={data.get('title', 'Report')}, "
+            f"file_path={file_path}"
+        )
+        
+        # Generate report based on format
         if report_format == "markdown":
             report = self._generate_markdown(data, **options)
         elif report_format == "html":
@@ -76,19 +159,23 @@ class ReportGenerator:
         elif report_format == "text":
             report = self._generate_text(data, **options)
         else:
-            raise ValidationError(f"Unsupported report format: {report_format}")
+            raise ValidationError(
+                f"Unsupported report format: {report_format}. "
+                "Supported formats: markdown, html, json, text"
+            )
         
+        # Write to file if path provided
         if file_path:
             file_path = Path(file_path)
             ensure_directory(file_path.parent)
             
-            encoding = options.get("encoding", "utf-8")
             with open(file_path, "w", encoding=encoding) as f:
                 f.write(report)
             
             self.logger.info(f"Generated report ({report_format}) to: {file_path}")
             return None
         
+        # Return report string
         return report
     
     def generate_quality_report(
@@ -96,18 +183,37 @@ class ReportGenerator:
         quality_metrics: Dict[str, Any],
         file_path: Optional[Union[str, Path]] = None,
         **options
-    ) -> Union[str, None]:
+    ) -> Optional[str]:
         """
         Generate quality assurance report.
         
+        This method generates a specialized quality assurance report from quality
+        metrics, including an automatic summary with overall score and status.
+        
         Args:
-            quality_metrics: Quality metrics dictionary
-            file_path: Optional output file path
-            **options: Additional options
-            
+            quality_metrics: Quality metrics dictionary containing:
+                - score/overall_score: Overall quality score (0-1)
+                - completeness: Completeness metric (optional)
+                - accuracy: Accuracy metric (optional)
+                - consistency: Consistency metric (optional)
+                - Additional custom metrics
+            file_path: Optional output file path. If None, returns report as string.
+            **options: Additional options passed to generate_report()
+        
         Returns:
-            Report string if file_path not provided, None otherwise
+            Report string if file_path is None, None if file was written
+        
+        Example:
+            >>> metrics = {
+            ...     "score": 0.85,
+            ...     "completeness": 0.90,
+            ...     "accuracy": 0.80
+            ... }
+            >>> generator.generate_quality_report(metrics, "quality.html", format="html")
         """
+        self.logger.debug("Generating quality assurance report")
+        
+        # Build report data with summary
         report_data = {
             "title": "Quality Assurance Report",
             "generated_at": datetime.now().isoformat(),
@@ -355,8 +461,27 @@ class ReportGenerator:
             else:
                 lines.append(f"{prefix}{key}: {value}")
     
-    def _generate_quality_summary(self, metrics: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate quality summary."""
+    def _generate_quality_summary(
+        self,
+        metrics: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generate quality summary from metrics.
+        
+        This method creates a summary dictionary from quality metrics including
+        overall score, status (PASS/FAIL), and key quality dimensions.
+        
+        Args:
+            metrics: Quality metrics dictionary
+        
+        Returns:
+            Dictionary with summary information:
+                - Overall Score: Formatted score (0.00-1.00)
+                - Status: "PASS" if score >= 0.7, "FAIL" otherwise
+                - Completeness: Completeness metric or "N/A"
+                - Accuracy: Accuracy metric or "N/A"
+                - Consistency: Consistency metric or "N/A"
+        """
         score = metrics.get("score") or metrics.get("overall_score", 0.0)
         
         return {

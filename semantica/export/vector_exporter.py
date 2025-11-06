@@ -1,8 +1,25 @@
 """
-Vector Exporter for Vector Embeddings Use Cases
+Vector Exporter Module
 
-Exports vector embeddings and vector data to various formats
-for use with vector stores and embedding systems.
+This module provides comprehensive vector embedding export capabilities for the
+Semantica framework, enabling export to various formats for vector stores and
+embedding systems.
+
+Key Features:
+    - Multiple vector format export (JSON, NumPy, Binary, FAISS)
+    - Vector store integration (Pinecone, Weaviate, Qdrant, FAISS)
+    - Metadata and document association
+    - Batch vector export
+    - Multi-dimensional vector support
+
+Example Usage:
+    >>> from semantica.export import VectorExporter
+    >>> exporter = VectorExporter(format="json", include_metadata=True)
+    >>> exporter.export(vectors, "vectors.json")
+    >>> exporter.export_for_vector_store(vectors, "pinecone.json", vector_store_type="pinecone")
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Union
@@ -19,32 +36,59 @@ class VectorExporter:
     """
     Vector exporter for embeddings and vector data.
     
-    • Exports vector embeddings to various formats
-    • Supports JSON, NumPy, and binary formats
-    • Handles metadata and document associations
-    • Generates vector store import formats
-    • Supports batch vector export
-    • Handles multi-dimensional vectors
+    This class provides comprehensive vector embedding export functionality for
+    various formats and vector store systems.
+    
+    Features:
+        - Multiple vector format export (JSON, NumPy, Binary, FAISS)
+        - Vector store integration (Pinecone, Weaviate, Qdrant, FAISS)
+        - Metadata and document association
+        - Batch vector export
+        - Multi-dimensional vector support
+    
+    Example Usage:
+        >>> exporter = VectorExporter(
+        ...     format="json",
+        ...     include_metadata=True,
+        ...     include_text=True
+        ... )
+        >>> exporter.export(vectors, "vectors.json")
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs):
+    def __init__(
+        self,
+        format: str = "json",
+        include_metadata: bool = True,
+        include_text: bool = True,
+        config: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
         """
         Initialize vector exporter.
         
+        Sets up the exporter with specified format and inclusion options.
+        
         Args:
-            config: Configuration dictionary
-            **kwargs: Additional configuration options:
-                - format: Export format ('json', 'numpy', 'binary', 'faiss')
-                - include_metadata: Include metadata (default: True)
-                - include_text: Include original text (default: True)
+            format: Default export format - 'json', 'numpy', 'binary', or 'faiss'
+                   (default: 'json')
+            include_metadata: Whether to include metadata in export (default: True)
+            include_text: Whether to include original text in export (default: True)
+            config: Optional configuration dictionary (merged with kwargs)
+            **kwargs: Additional configuration options
         """
         self.logger = get_logger("vector_exporter")
         self.config = config or {}
         self.config.update(kwargs)
         
-        self.format = self.config.get("format", "json")
-        self.include_metadata = self.config.get("include_metadata", True)
-        self.include_text = self.config.get("include_text", True)
+        # Vector export configuration
+        self.format = format
+        self.include_metadata = include_metadata
+        self.include_text = include_text
+        
+        self.logger.debug(
+            f"Vector exporter initialized: format={format}, "
+            f"include_metadata={include_metadata}, include_text={include_text}"
+        )
     
     def export(
         self,
@@ -54,20 +98,48 @@ class VectorExporter:
         **options
     ) -> None:
         """
-        Export vectors to file.
+        Export vectors to file in specified format.
+        
+        This method exports vector embeddings to various formats suitable for
+        different use cases (JSON for human-readable, NumPy for Python, FAISS for
+        similarity search, etc.).
+        
+        Supported Formats:
+            - "json": JSON format (human-readable, includes metadata)
+            - "numpy": NumPy compressed format (.npz)
+            - "binary": Binary format (raw float32 array)
+            - "faiss": FAISS index format (for similarity search)
         
         Args:
-            vectors: List of vector dictionaries or dict with 'vectors' key
+            vectors: Vector data:
+                - List of dicts: Each dict with 'id', 'vector', 'text', 'metadata'
+                - Dict: With 'vectors' key containing list, and optional 'metadata'
             file_path: Output file path
-            format: Export format ('json', 'numpy', 'binary', 'faiss')
-            **options: Additional options
+            format: Export format - 'json', 'numpy', 'binary', or 'faiss'
+                   (default: self.format)
+            **options: Additional format-specific options
+        
+        Raises:
+            ValidationError: If format is unsupported
+        
+        Example:
+            >>> vectors = [
+            ...     {"id": "v1", "vector": [0.1, 0.2, ...], "text": "text1"},
+            ...     {"id": "v2", "vector": [0.3, 0.4, ...], "text": "text2"}
+            ... ]
+            >>> exporter.export(vectors, "vectors.json", format="json")
         """
         file_path = Path(file_path)
         ensure_directory(file_path.parent)
         
         export_format = format or self.format
         
-        # Normalize input
+        self.logger.debug(
+            f"Exporting vectors to {export_format}: {file_path}, "
+            f"include_metadata={self.include_metadata}, include_text={self.include_text}"
+        )
+        
+        # Normalize input data
         if isinstance(vectors, dict):
             vector_list = vectors.get("vectors", [])
             metadata = vectors.get("metadata", {})
@@ -75,6 +147,7 @@ class VectorExporter:
             vector_list = vectors
             metadata = {}
         
+        # Export based on format
         if export_format == "json":
             self._export_json(vector_list, file_path, metadata, **options)
         elif export_format == "numpy":
@@ -84,7 +157,10 @@ class VectorExporter:
         elif export_format == "faiss":
             self._export_faiss(vector_list, file_path, **options)
         else:
-            raise ValidationError(f"Unsupported vector format: {export_format}")
+            raise ValidationError(
+                f"Unsupported vector format: {export_format}. "
+                "Supported formats: json, numpy, binary, faiss"
+            )
         
         self.logger.info(f"Exported vectors ({export_format}) to: {file_path}")
     
@@ -113,7 +189,19 @@ class VectorExporter:
         metadata: Dict[str, Any],
         **options
     ) -> None:
-        """Export to JSON format."""
+        """
+        Export vectors to JSON format.
+        
+        This method exports vectors to JSON format with metadata, text, and
+        vector data. Suitable for human-readable export and integration with
+        systems that consume JSON.
+        
+        Args:
+            vectors: List of vector dictionaries
+            file_path: Output JSON file path
+            metadata: Additional metadata to include in export
+            **options: Additional options (unused)
+        """
         export_data = {
             "vectors": [],
             "metadata": {
@@ -129,13 +217,15 @@ class VectorExporter:
                 "vector": vec_data.get("vector") or vec_data.get("embedding", [])
             }
             
+            # Add text if requested and available
             if self.include_text and "text" in vec_data:
                 vector_entry["text"] = vec_data["text"]
             
+            # Add metadata if requested and available
             if self.include_metadata and "metadata" in vec_data:
                 vector_entry["metadata"] = vec_data["metadata"]
             
-            # Determine dimension
+            # Determine dimension from first vector
             vector = vector_entry["vector"]
             if isinstance(vector, list) and len(vector) > 0:
                 if export_data["metadata"]["dimension"] is None:
@@ -144,6 +234,11 @@ class VectorExporter:
             export_data["vectors"].append(vector_entry)
         
         write_json_file(export_data, file_path, indent=2)
+        
+        self.logger.debug(
+            f"Exported {len(vectors)} vector(s) to JSON: "
+            f"dimension={export_data['metadata']['dimension']}"
+        )
     
     def _export_numpy(
         self,
@@ -151,13 +246,29 @@ class VectorExporter:
         file_path: Path,
         **options
     ) -> None:
-        """Export to NumPy format."""
+        """
+        Export vectors to NumPy format.
+        
+        This method exports vectors to NumPy compressed format (.npz) with
+        optional text and metadata arrays. Also saves metadata as separate JSON.
+        
+        Args:
+            vectors: List of vector dictionaries
+            file_path: Output .npz file path
+            **options: Additional options (unused)
+        
+        Raises:
+            ImportError: If NumPy is not installed
+            ValidationError: If no vectors to export
+        """
         try:
             import numpy as np
         except ImportError:
-            raise ImportError("NumPy not installed. Install with: pip install numpy")
+            raise ImportError(
+                "NumPy not installed. Install with: pip install numpy"
+            )
         
-        # Extract vectors
+        # Extract vectors and associated data
         vector_list = []
         ids = []
         texts = []
@@ -169,41 +280,55 @@ class VectorExporter:
                 vector_list.append(vector)
                 ids.append(vec_data.get("id") or vec_data.get("vector_id", ""))
                 
+                # Add text if requested
                 if self.include_text and "text" in vec_data:
                     texts.append(vec_data["text"])
                 else:
                     texts.append(None)
                 
+                # Add metadata if requested
                 if self.include_metadata and "metadata" in vec_data:
                     metadata_list.append(vec_data["metadata"])
                 else:
                     metadata_list.append(None)
         
         if not vector_list:
-            raise ValidationError("No vectors to export")
+            raise ValidationError("No vectors to export. Vector list is empty.")
         
         # Convert to numpy array
         vector_array = np.array(vector_list)
         
-        # Save as .npz (compressed numpy format)
+        # Build save dictionary
         save_dict = {"vectors": vector_array, "ids": np.array(ids)}
         
+        # Add texts if any present
         if any(t for t in texts if t):
             save_dict["texts"] = np.array(texts, dtype=object)
         
+        # Add metadata if any present
         if any(m for m in metadata_list if m):
             save_dict["metadata"] = np.array(metadata_list, dtype=object)
         
+        # Save as compressed NumPy format
         np.savez_compressed(file_path, **save_dict)
         
-        # Also save metadata separately as JSON
+        # Save metadata separately as JSON for easy access
         metadata_file = file_path.parent / f"{file_path.stem}_metadata.json"
         metadata = {
             "vector_count": len(vector_list),
-            "dimension": vector_array.shape[1] if len(vector_array.shape) > 1 else vector_array.shape[0],
+            "dimension": (
+                vector_array.shape[1]
+                if len(vector_array.shape) > 1
+                else vector_array.shape[0]
+            ),
             "shape": list(vector_array.shape)
         }
         write_json_file(metadata, metadata_file)
+        
+        self.logger.debug(
+            f"Exported {len(vector_list)} vector(s) to NumPy: "
+            f"shape={vector_array.shape}, metadata={metadata_file}"
+        )
     
     def _export_binary(
         self,
@@ -247,16 +372,38 @@ class VectorExporter:
         self,
         vectors: List[Dict[str, Any]],
         file_path: Path,
+        normalize: bool = False,
         **options
     ) -> None:
-        """Export to FAISS index format."""
+        """
+        Export vectors to FAISS index format.
+        
+        This method exports vectors to FAISS index format for efficient similarity
+        search. Creates a FAISS index and saves it along with ID mapping.
+        
+        Args:
+            vectors: List of vector dictionaries
+            file_path: Output FAISS index file path
+            normalize: Whether to normalize vectors before indexing (default: False)
+            **options: Additional options (unused)
+        
+        Raises:
+            ImportError: If FAISS is not installed
+            ValidationError: If no vectors to export
+        
+        Example:
+            >>> vectors = [{"id": "v1", "vector": [0.1, 0.2, ...]}, ...]
+            >>> exporter._export_faiss(vectors, "index.faiss", normalize=True)
+        """
         try:
             import faiss
             import numpy as np
         except ImportError:
-            raise ImportError("FAISS not installed. Install with: pip install faiss-cpu or faiss-gpu")
+            raise ImportError(
+                "FAISS not installed. Install with: pip install faiss-cpu or faiss-gpu"
+            )
         
-        # Extract vectors
+        # Extract vectors and IDs
         vector_list = []
         ids = []
         
@@ -267,26 +414,32 @@ class VectorExporter:
                 ids.append(vec_data.get("id") or vec_data.get("vector_id", ""))
         
         if not vector_list:
-            raise ValidationError("No vectors to export")
+            raise ValidationError("No vectors to export. Vector list is empty.")
         
         # Convert to numpy array
         vector_array = np.array(vector_list, dtype=np.float32)
-        
-        # Create FAISS index
         dimension = vector_array.shape[1]
+        
+        self.logger.debug(
+            f"Creating FAISS index: {len(vector_list)} vector(s), "
+            f"dimension={dimension}, normalize={normalize}"
+        )
+        
+        # Create FAISS index (L2 distance)
         index = faiss.IndexFlatL2(dimension)
         
         # Normalize vectors if requested
-        if options.get("normalize", False):
+        if normalize:
             faiss.normalize_L2(vector_array)
+            self.logger.debug("Normalized vectors for FAISS index")
         
         # Add vectors to index
         index.add(vector_array)
         
-        # Save index
+        # Save FAISS index
         faiss.write_index(index, str(file_path))
         
-        # Save ID mapping
+        # Save ID mapping for vector retrieval
         id_file = file_path.parent / f"{file_path.stem}_ids.json"
         id_mapping = {
             "ids": ids,
@@ -294,6 +447,10 @@ class VectorExporter:
             "dimension": dimension
         }
         write_json_file(id_mapping, id_file)
+        
+        self.logger.debug(
+            f"Exported FAISS index: {file_path}, ID mapping={id_file}"
+        )
     
     def export_for_vector_store(
         self,

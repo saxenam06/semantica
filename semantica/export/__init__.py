@@ -1,15 +1,36 @@
 """
 Export and Reporting Module
 
-This module provides comprehensive export and reporting capabilities.
+This module provides comprehensive export and reporting capabilities for the
+Semantica framework, supporting multiple formats and use cases.
 
-Exports:
-    - RDFExporter: RDF format export
-    - JSONExporter: JSON format export
-    - CSVExporter: CSV format export
-    - GraphExporter: Graph format export
+Key Features:
+    - Multiple export formats (RDF, JSON, CSV, Graph, YAML, OWL, Vector)
+    - Knowledge graph export
+    - Report generation (HTML, Markdown, JSON, Text)
+    - Vector store integration
+    - Batch export processing
+    - Metadata and provenance tracking
+
+Main Classes:
+    - RDFExporter: RDF format export (Turtle, RDF/XML, JSON-LD)
+    - JSONExporter: JSON and JSON-LD format export
+    - CSVExporter: CSV format export for tabular data
+    - GraphExporter: Graph format export (GraphML, GEXF, DOT)
     - YAMLExporter: YAML format export for semantic networks
-    - ReportGenerator: Report generation
+    - OWLExporter: OWL format export for ontologies
+    - VectorExporter: Vector embedding export for vector stores
+    - ReportGenerator: Report generation (HTML, Markdown, JSON, Text)
+
+Example Usage:
+    >>> from semantica.export import JSONExporter, CSVExporter
+    >>> json_exporter = JSONExporter()
+    >>> json_exporter.export_knowledge_graph(kg, "output.json")
+    >>> csv_exporter = CSVExporter()
+    >>> csv_exporter.export_entities(entities, "entities.csv")
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from .rdf_exporter import (

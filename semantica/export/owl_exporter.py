@@ -1,8 +1,25 @@
 """
-OWL Exporter for Semantic Modeling
+OWL Exporter Module
 
-Exports ontologies and knowledge graphs to OWL (Web Ontology Language) format
-for semantic modeling and ontology representation.
+This module provides comprehensive OWL (Web Ontology Language) export capabilities
+for the Semantica framework, enabling ontology export for semantic modeling.
+
+Key Features:
+    - OWL/OWL-XML format export
+    - Turtle format export
+    - Class definition and hierarchy export
+    - Object and data property export
+    - OWL 2.0 feature support
+    - Ontology validation
+
+Example Usage:
+    >>> from semantica.export import OWLExporter
+    >>> exporter = OWLExporter(ontology_uri="http://example.org/ontology#")
+    >>> exporter.export(ontology, "ontology.owl", format="owl-xml")
+    >>> exporter.export_classes(classes, "classes.owl")
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Union
@@ -16,64 +33,129 @@ from ..utils.helpers import ensure_directory
 
 class OWLExporter:
     """
-    OWL exporter for semantic modeling.
+    OWL exporter for semantic modeling and ontology representation.
     
-    • Exports ontologies to OWL/OWL-XML format
-    • Handles class definitions and hierarchies
-    • Manages object and data properties
-    • Supports OWL 2.0 features
-    • Generates OWL-XML serialization
-    • Validates OWL structure
+    This class provides comprehensive OWL export functionality for ontologies,
+    including class definitions, hierarchies, and property definitions.
+    
+    Features:
+        - OWL/OWL-XML format export
+        - Turtle format export
+        - Class definition and hierarchy export
+        - Object and data property export
+        - OWL 2.0 feature support
+        - Ontology validation
+    
+    Example Usage:
+        >>> exporter = OWLExporter(
+        ...     ontology_uri="http://example.org/ontology#",
+        ...     version="1.0",
+        ...     format="owl-xml"
+        ... )
+        >>> exporter.export(ontology, "ontology.owl")
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs):
+    def __init__(
+        self,
+        ontology_uri: str = "https://semantica.dev/ontology/",
+        version: str = "1.0",
+        format: str = "owl-xml",
+        config: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
         """
         Initialize OWL exporter.
         
+        Sets up the exporter with ontology URI, version, and format configuration.
+        
         Args:
-            config: Configuration dictionary
-            **kwargs: Additional configuration options:
-                - ontology_uri: Base ontology URI
-                - version: Ontology version
-                - format: Export format ('owl-xml', 'turtle')
+            ontology_uri: Base URI for the ontology (default: "https://semantica.dev/ontology/")
+            version: Ontology version string (default: "1.0")
+            format: Default export format - 'owl-xml' or 'turtle' (default: 'owl-xml')
+            config: Optional configuration dictionary (merged with kwargs)
+            **kwargs: Additional configuration options
         """
         self.logger = get_logger("owl_exporter")
         self.config = config or {}
         self.config.update(kwargs)
         
-        self.ontology_uri = self.config.get("ontology_uri", "https://semantica.dev/ontology/")
-        self.version = self.config.get("version", "1.0")
-        self.format = self.config.get("format", "owl-xml")
+        # OWL configuration
+        self.ontology_uri = ontology_uri
+        self.version = version
+        self.format = format
+        
+        self.logger.debug(
+            f"OWL exporter initialized: uri={ontology_uri}, "
+            f"version={version}, format={format}"
+        )
     
     def export(
         self,
         ontology: Dict[str, Any],
         file_path: Union[str, Path],
         format: Optional[str] = None,
+        encoding: str = "utf-8",
         **options
     ) -> None:
         """
-        Export ontology to OWL format.
+        Export ontology to OWL format file.
+        
+        This method exports a complete ontology (classes, properties, etc.) to
+        OWL format in either OWL-XML or Turtle serialization.
+        
+        Supported Formats:
+            - "owl-xml": OWL-XML format (RDF/XML-based)
+            - "turtle": Turtle format (human-readable)
         
         Args:
-            ontology: Ontology dictionary with classes, properties, etc.
-            file_path: Output file path
-            format: Export format ('owl-xml', 'turtle')
-            **options: Additional options
+            ontology: Ontology dictionary containing:
+                - uri: Ontology URI (optional, uses self.ontology_uri if not provided)
+                - name: Ontology name
+                - description: Ontology description (optional)
+                - version: Ontology version (optional)
+                - classes: List of class definitions
+                - object_properties: List of object property definitions
+                - data_properties: List of data property definitions
+            file_path: Output OWL file path
+            format: Export format - 'owl-xml' or 'turtle' (default: self.format)
+            encoding: File encoding (default: 'utf-8')
+            **options: Additional export options
+        
+        Raises:
+            ValidationError: If format is unsupported
+        
+        Example:
+            >>> ontology = {
+            ...     "name": "MyOntology",
+            ...     "classes": [...],
+            ...     "object_properties": [...]
+            ... }
+            >>> exporter.export(ontology, "ontology.owl", format="owl-xml")
         """
         file_path = Path(file_path)
         ensure_directory(file_path.parent)
         
         export_format = format or self.format
         
+        self.logger.debug(
+            f"Exporting ontology to {export_format}: {file_path}, "
+            f"classes={len(ontology.get('classes', []))}, "
+            f"object_properties={len(ontology.get('object_properties', []))}, "
+            f"data_properties={len(ontology.get('data_properties', []))}"
+        )
+        
+        # Generate OWL content based on format
         if export_format == "owl-xml":
             owl_content = self._export_owl_xml(ontology, **options)
         elif export_format == "turtle":
             owl_content = self._export_owl_turtle(ontology, **options)
         else:
-            raise ValidationError(f"Unsupported OWL format: {export_format}")
+            raise ValidationError(
+                f"Unsupported OWL format: {export_format}. "
+                "Supported formats: owl-xml, turtle"
+            )
         
-        encoding = options.get("encoding", "utf-8")
+        # Write OWL file
         with open(file_path, "w", encoding=encoding) as f:
             f.write(owl_content)
         
@@ -95,8 +177,24 @@ class OWLExporter:
         """
         self.export(ontology, file_path, **options)
     
-    def _export_owl_xml(self, ontology: Dict[str, Any], **options) -> str:
-        """Export to OWL-XML format."""
+    def _export_owl_xml(
+        self,
+        ontology: Dict[str, Any],
+        **options
+    ) -> str:
+        """
+        Export ontology to OWL-XML format.
+        
+        OWL-XML is the RDF/XML-based serialization of OWL ontologies. This method
+        generates OWL-XML syntax with proper RDF/XML structure.
+        
+        Args:
+            ontology: Ontology dictionary with classes, properties, etc.
+            **options: Additional export options (unused)
+        
+        Returns:
+            String containing OWL-XML serialization
+        """
         ontology_uri = ontology.get("uri") or self.ontology_uri
         ontology_name = ontology.get("name", "SemanticaOntology")
         version = ontology.get("version") or self.version
@@ -203,8 +301,24 @@ class OWLExporter:
         lines.append("</rdf:RDF>")
         return "\n".join(lines)
     
-    def _export_owl_turtle(self, ontology: Dict[str, Any], **options) -> str:
-        """Export to OWL Turtle format."""
+    def _export_owl_turtle(
+        self,
+        ontology: Dict[str, Any],
+        **options
+    ) -> str:
+        """
+        Export ontology to OWL Turtle format.
+        
+        Turtle is a human-readable RDF serialization format. This method generates
+        OWL ontology in Turtle syntax with namespace declarations and OWL constructs.
+        
+        Args:
+            ontology: Ontology dictionary with classes, properties, etc.
+            **options: Additional export options (unused)
+        
+        Returns:
+            String containing OWL Turtle serialization
+        """
         ontology_uri = ontology.get("uri") or self.ontology_uri
         ontology_name = ontology.get("name", "SemanticaOntology")
         version = ontology.get("version") or self.version
@@ -285,20 +399,39 @@ class OWLExporter:
         self,
         classes: List[Dict[str, Any]],
         file_path: Union[str, Path],
+        ontology_uri: Optional[str] = None,
+        ontology_name: str = "SemanticaOntology",
         **options
     ) -> None:
         """
-        Export classes to OWL format.
+        Export class definitions to OWL format.
+        
+        This method exports a list of class definitions to OWL format, creating
+        a minimal ontology containing only the classes.
         
         Args:
-            classes: List of class definitions
-            file_path: Output file path
-            **options: Additional options
+            classes: List of class definition dictionaries with fields:
+                - uri/id: Class URI/identifier
+                - name/label: Class name/label
+                - comment: Class description (optional)
+                - subClassOf: Parent class URI (optional)
+                - equivalentClass: Equivalent class URI (optional)
+            file_path: Output OWL file path
+            ontology_uri: Ontology URI (default: self.ontology_uri)
+            ontology_name: Ontology name (default: "SemanticaOntology")
+            **options: Additional options passed to export()
+        
+        Example:
+            >>> classes = [
+            ...     {"uri": "http://example.org/Person", "name": "Person"},
+            ...     {"uri": "http://example.org/Organization", "name": "Organization"}
+            ... ]
+            >>> exporter.export_classes(classes, "classes.owl")
         """
         ontology = {
             "classes": classes,
-            "uri": options.get("ontology_uri", self.ontology_uri),
-            "name": options.get("ontology_name", "SemanticaOntology")
+            "uri": ontology_uri or self.ontology_uri,
+            "name": ontology_name
         }
         self.export(ontology, file_path, **options)
     
@@ -307,22 +440,55 @@ class OWLExporter:
         properties: List[Dict[str, Any]],
         file_path: Union[str, Path],
         property_type: str = "object",
+        ontology_uri: Optional[str] = None,
+        ontology_name: str = "SemanticaOntology",
         **options
     ) -> None:
         """
-        Export properties to OWL format.
+        Export property definitions to OWL format.
+        
+        This method exports a list of property definitions (object or data properties)
+        to OWL format, creating a minimal ontology containing only the properties.
         
         Args:
-            properties: List of property definitions
-            file_path: Output file path
-            property_type: Property type ('object', 'data')
-            **options: Additional options
+            properties: List of property definition dictionaries with fields:
+                - uri/id: Property URI/identifier
+                - name/label: Property name/label
+                - comment: Property description (optional)
+                - domain: Domain class URI(s) (optional)
+                - range: Range class URI or datatype (optional)
+            file_path: Output OWL file path
+            property_type: Property type - 'object' or 'data' (default: 'object')
+            ontology_uri: Ontology URI (default: self.ontology_uri)
+            ontology_name: Ontology name (default: "SemanticaOntology")
+            **options: Additional options passed to export()
+        
+        Raises:
+            ValidationError: If property_type is invalid
+        
+        Example:
+            >>> properties = [
+            ...     {
+            ...         "uri": "http://example.org/hasName",
+            ...         "name": "hasName",
+            ...         "domain": "http://example.org/Person",
+            ...         "range": "http://www.w3.org/2001/XMLSchema#string"
+            ...     }
+            ... ]
+            >>> exporter.export_properties(properties, "properties.owl", property_type="data")
         """
+        if property_type not in ["object", "data"]:
+            raise ValidationError(
+                f"Invalid property_type: {property_type}. "
+                "Must be 'object' or 'data'."
+            )
+        
         ontology = {
-            "uri": options.get("ontology_uri", self.ontology_uri),
-            "name": options.get("ontology_name", "SemanticaOntology")
+            "uri": ontology_uri or self.ontology_uri,
+            "name": ontology_name
         }
         
+        # Add properties based on type
         if property_type == "object":
             ontology["object_properties"] = properties
         else:
