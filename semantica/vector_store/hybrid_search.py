@@ -1,8 +1,38 @@
 """
-Hybrid search for Semantica framework.
+Hybrid Search Module
 
-This module provides combined vector and metadata search
-capabilities for enhanced retrieval.
+This module provides hybrid search capabilities combining vector similarity search
+and metadata filtering for enhanced retrieval in the Semantica framework, supporting
+result fusion, ranking strategies, and multi-source search.
+
+Key Features:
+    - Combined vector similarity and metadata filtering
+    - Multiple ranking strategies (RRF, Weighted Average)
+    - Metadata filter builder with various operators
+    - Multi-source search and result fusion
+    - Configurable ranking parameters
+    - Performance optimization
+
+Main Classes:
+    - HybridSearch: Main hybrid search coordinator
+    - MetadataFilter: Metadata filter builder with condition chaining
+    - SearchRanker: Result ranking and fusion strategies
+
+Example Usage:
+    >>> from semantica.vector_store import HybridSearch, MetadataFilter
+    >>> search = HybridSearch()
+    >>> filter = MetadataFilter().eq("category", "science").gt("year", 2020)
+    >>> results = search.search(query_vector, vectors, metadata, vector_ids, filter=filter, k=10)
+    >>> 
+    >>> from semantica.vector_store import SearchRanker
+    >>> ranker = SearchRanker(strategy="reciprocal_rank_fusion")
+    >>> fused = ranker.rank([results1, results2], k=60)
+    >>> 
+    >>> sources = [{"vectors": v1, "metadata": m1, "ids": ids1}, {"vectors": v2, "metadata": m2, "ids": ids2}]
+    >>> results = search.multi_source_search(query_vector, sources, k=10)
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union

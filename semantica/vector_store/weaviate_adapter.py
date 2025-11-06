@@ -1,8 +1,37 @@
 """
-Weaviate adapter for Semantica framework.
+Weaviate Adapter Module
 
-This module provides Weaviate integration for vector storage
-and similarity search.
+This module provides Weaviate vector database integration for vector storage and
+similarity search in the Semantica framework, supporting GraphQL queries, schema
+management, and object-oriented vector storage with rich metadata support.
+
+Key Features:
+    - GraphQL-based query interface
+    - Schema and class management
+    - Object-oriented vector storage
+    - Rich metadata and property support
+    - Similarity search with filtering
+    - Batch operations for efficient data loading
+    - Optional dependency handling
+
+Main Classes:
+    - WeaviateAdapter: Main Weaviate adapter for vector operations
+    - WeaviateClient: Weaviate client wrapper
+    - WeaviateSchema: Schema builder and validator
+    - WeaviateQuery: Query builder and executor
+
+Example Usage:
+    >>> from semantica.vector_store import WeaviateAdapter
+    >>> adapter = WeaviateAdapter(url="http://localhost:8080")
+    >>> adapter.connect()
+    >>> adapter.create_schema("Document", properties=[{"name": "text", "dataType": "text"}])
+    >>> collection = adapter.get_collection("Document")
+    >>> object_ids = adapter.add_objects(objects, vectors=vectors)
+    >>> results = adapter.query_vectors(query_vector, limit=10, where={"category": "science"})
+    >>> results = adapter.graphql_query("{Get {Document {text}}}")
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Union

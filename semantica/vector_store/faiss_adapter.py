@@ -1,8 +1,38 @@
 """
-FAISS adapter for Semantica framework.
+FAISS Adapter Module
 
-This module provides FAISS integration for vector storage
-and similarity search.
+This module provides FAISS (Facebook AI Similarity Search) integration for vector
+storage and similarity search in the Semantica framework, supporting various index
+types (flat, IVF, HNSW, PQ) and distance metrics for efficient vector operations.
+
+Key Features:
+    - Multiple index types (Flat, IVF, HNSW, Product Quantization)
+    - Distance metrics (L2, Inner Product)
+    - Index persistence (save/load)
+    - Batch vector operations
+    - Index optimization and training
+    - Optional dependency handling
+
+Main Classes:
+    - FAISSAdapter: Main FAISS adapter for vector operations
+    - FAISSIndex: FAISS index wrapper with metadata support
+    - FAISSSearch: FAISS search operations
+    - FAISSIndexBuilder: FAISS index construction and configuration
+
+Example Usage:
+    >>> from semantica.vector_store import FAISSAdapter
+    >>> adapter = FAISSAdapter(dimension=768)
+    >>> index = adapter.create_index(index_type="flat", metric="L2")
+    >>> vector_ids = adapter.add_vectors(vectors, ids, metadata)
+    >>> results = adapter.search_similar(query_vector, k=10)
+    >>> adapter.save_index("index.faiss")
+    >>> 
+    >>> from semantica.vector_store import FAISSIndexBuilder
+    >>> builder = FAISSIndexBuilder(dimension=768)
+    >>> index = builder.build_index(index_type="ivf", metric="L2", nlist=100)
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union

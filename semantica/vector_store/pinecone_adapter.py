@@ -1,8 +1,36 @@
 """
-Pinecone adapter for Semantica framework.
+Pinecone Adapter Module
 
-This module provides Pinecone integration for vector storage
-and similarity search.
+This module provides Pinecone cloud vector database integration for vector storage
+and similarity search in the Semantica framework, supporting serverless and pod-based
+deployments with namespace isolation and metadata filtering.
+
+Key Features:
+    - Cloud-based vector storage and retrieval
+    - Serverless and pod-based index specifications
+    - Namespace isolation for multi-tenant support
+    - Metadata filtering and querying
+    - Batch upsert and query operations
+    - Index statistics and monitoring
+    - Optional dependency handling
+
+Main Classes:
+    - PineconeAdapter: Main Pinecone adapter for cloud vector operations
+    - PineconeIndex: Pinecone index wrapper with operations
+    - PineconeQuery: Pinecone query builder and executor
+    - PineconeMetadata: Metadata validation and sanitization
+
+Example Usage:
+    >>> from semantica.vector_store import PineconeAdapter
+    >>> adapter = PineconeAdapter(api_key="your-api-key")
+    >>> adapter.connect()
+    >>> index = adapter.create_index("my-index", dimension=768, metric="cosine")
+    >>> adapter.upsert_vectors(vectors, ids, metadata, namespace="docs")
+    >>> results = adapter.query_vectors(query_vector, top_k=10, namespace="docs")
+    >>> stats = adapter.get_stats()
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Union

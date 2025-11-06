@@ -1,8 +1,38 @@
 """
-Metadata store for Semantica framework.
+Metadata Store Module
 
-This module provides metadata indexing and management
-for vector store operations.
+This module provides metadata indexing and management for vector store operations
+in the Semantica framework, supporting fast metadata queries, schema validation,
+and efficient filtering for hybrid search operations.
+
+Key Features:
+    - Fast metadata indexing and lookup
+    - Schema validation and enforcement
+    - Field-based querying with AND/OR operators
+    - Metadata import/export (JSON, dict)
+    - Field value enumeration
+    - Statistics and monitoring
+    - Multi-format metadata support
+
+Main Classes:
+    - MetadataStore: Main metadata store coordinator
+    - MetadataIndex: Fast metadata indexing and querying
+    - MetadataSchema: Schema validation and management
+
+Example Usage:
+    >>> from semantica.vector_store import MetadataStore
+    >>> store = MetadataStore(schema={"category": {"type": str, "required": True}})
+    >>> store.store_metadata("vec1", {"category": "science", "year": 2023})
+    >>> metadata = store.get_metadata("vec1")
+    >>> vector_ids = store.query_metadata({"category": "science"}, operator="AND")
+    >>> 
+    >>> from semantica.vector_store import MetadataIndex
+    >>> index = MetadataIndex()
+    >>> index.index_metadata("vec1", {"category": "science"})
+    >>> matching_ids = index.query({"category": "science"})
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Set, Union

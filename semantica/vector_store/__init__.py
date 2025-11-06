@@ -1,21 +1,53 @@
 """
 Vector Store Management Module
 
-This module provides comprehensive vector storage and retrieval capabilities.
+This module provides comprehensive vector storage and retrieval capabilities for the
+Semantica framework, including support for multiple vector store backends (FAISS,
+Pinecone, Weaviate, Qdrant, Milvus), hybrid search combining vector similarity and
+metadata filtering, metadata management, and namespace isolation.
 
-Exports:
+Key Features:
+    - Multi-backend vector store support (FAISS, Pinecone, Weaviate, Qdrant, Milvus)
+    - Vector indexing and similarity search
+    - Metadata indexing and filtering
+    - Hybrid search combining vector and metadata queries
+    - Namespace isolation and multi-tenant support
+    - Vector store management and optimization
+    - Batch operations and performance optimization
+
+Main Classes:
     - VectorStore: Main vector store interface
-    - VectorIndexer: Vector indexing and search
+    - VectorIndexer: Vector indexing engine
     - VectorRetriever: Vector retrieval and similarity search
     - VectorManager: Vector store management and operations
-    - FAISSAdapter: FAISS integration
-    - PineconeAdapter: Pinecone integration
-    - WeaviateAdapter: Weaviate integration
-    - QdrantAdapter: Qdrant integration
-    - MilvusAdapter: Milvus integration
+    - FAISSAdapter: FAISS integration for local vector storage
+    - PineconeAdapter: Pinecone cloud vector database integration
+    - WeaviateAdapter: Weaviate vector database integration
+    - QdrantAdapter: Qdrant vector database integration
+    - MilvusAdapter: Milvus vector database integration
     - HybridSearch: Hybrid vector and metadata search
     - MetadataStore: Metadata indexing and management
     - NamespaceManager: Namespace isolation and management
+
+Example Usage:
+    >>> from semantica.vector_store import VectorStore, FAISSAdapter
+    >>> store = VectorStore(backend="faiss", dimension=768)
+    >>> vector_ids = store.store_vectors(vectors, metadata=metadata_list)
+    >>> results = store.search_vectors(query_vector, k=10)
+    >>> 
+    >>> from semantica.vector_store import PineconeAdapter
+    >>> adapter = PineconeAdapter(api_key="your-key")
+    >>> adapter.connect()
+    >>> index = adapter.create_index("my-index", dimension=768)
+    >>> adapter.upsert_vectors(vectors, ids, metadata)
+    >>> 
+    >>> from semantica.vector_store import HybridSearch, MetadataFilter
+    >>> search = HybridSearch()
+    >>> filter = MetadataFilter().eq("category", "science")
+    >>> results = search.search(query_vector, vectors, metadata, vector_ids, filter=filter)
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from .vector_store import (

@@ -1,7 +1,40 @@
 """
 Vector Store Module
 
-Handles vector storage, indexing, and retrieval operations.
+This module provides the core vector storage, indexing, and retrieval operations for
+the Semantica framework, including vector storage, similarity search, indexing
+management, and vector store maintenance capabilities.
+
+Key Features:
+    - Vector storage and management
+    - Similarity search and retrieval
+    - Vector indexing and optimization
+    - Metadata association with vectors
+    - Vector update and deletion operations
+    - Multi-backend support through adapters
+
+Main Classes:
+    - VectorStore: Main vector store interface for storing and searching vectors
+    - VectorIndexer: Vector indexing engine for efficient similarity search
+    - VectorRetriever: Vector retrieval and similarity search operations
+    - VectorManager: Vector store management, maintenance, and statistics
+
+Example Usage:
+    >>> from semantica.vector_store import VectorStore
+    >>> store = VectorStore(backend="faiss", dimension=768)
+    >>> vector_ids = store.store_vectors(vectors, metadata=metadata_list)
+    >>> results = store.search_vectors(query_vector, k=10)
+    >>> store.update_vectors(vector_ids, new_vectors)
+    >>> store.delete_vectors(vector_ids)
+    >>> 
+    >>> from semantica.vector_store import VectorIndexer, VectorRetriever
+    >>> indexer = VectorIndexer(backend="faiss", dimension=768)
+    >>> index = indexer.create_index(vectors, ids)
+    >>> retriever = VectorRetriever(backend="faiss")
+    >>> results = retriever.search_similar(query_vector, vectors, ids, k=10)
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Tuple

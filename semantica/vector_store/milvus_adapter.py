@@ -1,8 +1,38 @@
 """
-Milvus adapter for Semantica framework.
+Milvus Adapter Module
 
-This module provides Milvus integration for vector storage
-and similarity search.
+This module provides Milvus vector database integration for vector storage and
+similarity search in the Semantica framework, supporting collection management,
+partitioning, and efficient vector operations with various distance metrics.
+
+Key Features:
+    - Collection and partition management
+    - Distance metrics (L2, Inner Product, Cosine)
+    - Index types (IVF_FLAT, HNSW, etc.)
+    - Expression-based filtering
+    - Collection loading and release
+    - Batch insert and search operations
+    - Collection statistics and monitoring
+    - Optional dependency handling
+
+Main Classes:
+    - MilvusAdapter: Main Milvus adapter for vector operations
+    - MilvusClient: Milvus client wrapper
+    - MilvusCollection: Collection wrapper with operations
+    - MilvusSearch: Search operations and filtering
+
+Example Usage:
+    >>> from semantica.vector_store import MilvusAdapter
+    >>> adapter = MilvusAdapter(host="localhost", port=19530)
+    >>> adapter.connect()
+    >>> collection = adapter.create_collection("my-collection", dimension=768, metric_type="L2")
+    >>> adapter.insert_vectors(vectors)
+    >>> collection.load()
+    >>> results = adapter.search_vectors(query_vector, limit=10, expr="category == 'science'")
+    >>> stats = adapter.get_stats()
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Union

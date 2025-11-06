@@ -1,8 +1,36 @@
 """
-Qdrant adapter for Semantica framework.
+Qdrant Adapter Module
 
-This module provides Qdrant integration for vector storage
-and similarity search.
+This module provides Qdrant vector database integration for vector storage and
+similarity search in the Semantica framework, supporting collection management,
+payload filtering, and efficient vector operations with distance metrics.
+
+Key Features:
+    - Collection-based vector organization
+    - Distance metrics (Cosine, Euclidean, Dot Product)
+    - Payload (metadata) filtering and querying
+    - Point-based vector operations
+    - Batch insert and search operations
+    - Collection statistics and monitoring
+    - Optional dependency handling
+
+Main Classes:
+    - QdrantAdapter: Main Qdrant adapter for vector operations
+    - QdrantClient: Qdrant client wrapper
+    - QdrantCollection: Collection wrapper with operations
+    - QdrantSearch: Search operations and filtering
+
+Example Usage:
+    >>> from semantica.vector_store import QdrantAdapter
+    >>> adapter = QdrantAdapter(url="http://localhost:6333")
+    >>> adapter.connect()
+    >>> collection = adapter.create_collection("my-collection", vector_size=768, distance="Cosine")
+    >>> adapter.insert_vectors(vectors, ids, payloads=metadata)
+    >>> results = adapter.search_vectors(query_vector, limit=10, filter={"category": "science"})
+    >>> stats = adapter.get_stats()
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Union

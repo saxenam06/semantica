@@ -1,8 +1,38 @@
 """
-Namespace manager for Semantica framework.
+Namespace Manager Module
 
-This module provides namespace isolation and management
-for vector store operations.
+This module provides namespace isolation and management for vector store operations
+in the Semantica framework, supporting multi-tenant architectures, access control,
+and namespace-based vector organization.
+
+Key Features:
+    - Namespace creation and management
+    - Vector-to-namespace mapping
+    - Access control and permissions
+    - Namespace metadata and configuration
+    - Multi-tenant support
+    - Namespace statistics and monitoring
+    - Default namespace handling
+
+Main Classes:
+    - NamespaceManager: Main namespace manager coordinator
+    - Namespace: Namespace container with vector tracking and access control
+
+Example Usage:
+    >>> from semantica.vector_store import NamespaceManager
+    >>> manager = NamespaceManager()
+    >>> namespace = manager.create_namespace("user1", description="User 1 vectors")
+    >>> manager.add_vector_to_namespace("vec1", "user1")
+    >>> vectors = manager.get_namespace_vectors("user1")
+    >>> 
+    >>> from semantica.vector_store import Namespace
+    >>> ns = Namespace("docs", description="Document vectors")
+    >>> ns.add_vector("vec1")
+    >>> ns.set_access_control("user1", ["read", "write"])
+    >>> has_access = ns.has_permission("user1", "read")
+
+Author: Semantica Contributors
+License: MIT
 """
 
 from typing import Any, Dict, List, Optional, Set
