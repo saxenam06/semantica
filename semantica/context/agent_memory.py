@@ -91,6 +91,9 @@ class AgentMemory:
         self.memory_items: Dict[str, MemoryItem] = {}
         self.memory_index: deque = deque(maxlen=self.max_memory_size)
         
+        # Initialize progress tracker
+        self.progress_tracker = get_progress_tracker()
+        
         # Statistics
         self.stats = {
             "total_items": 0,
@@ -121,58 +124,75 @@ class AgentMemory:
         Returns:
             Memory ID
         """
-        memory_id = options.get("memory_id") or self._generate_memory_id()
-        timestamp = options.get("timestamp") or datetime.now()
-        
-        # Create memory item
-        memory_item = MemoryItem(
-            content=content,
-            timestamp=timestamp,
-            metadata=metadata or {},
-            entities=entities or [],
-            relationships=relationships or [],
-            memory_id=memory_id
+        # Track memory storage
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="context",
+            submodule="AgentMemory",
+            message=f"Storing memory: {content[:50]}..."
         )
         
-        # Generate embedding if vector store available
-        if self.vector_store:
-            try:
-                embedding = self._generate_embedding(content)
-                memory_item.embedding = embedding
-                
-                # Store in vector store
-                if hasattr(self.vector_store, "add"):
-                    self.vector_store.add(
-                        id=memory_id,
-                        vector=embedding,
-                        metadata={
-                            "content": content,
-                            "timestamp": timestamp.isoformat(),
-                            **metadata or {}
-                        }
-                    )
-            except Exception as e:
-                self.logger.warning(f"Failed to generate embedding: {e}")
-        
-        # Store in memory
-        self.memory_items[memory_id] = memory_item
-        self.memory_index.append(memory_id)
-        
-        # Update knowledge graph if available
-        if self.knowledge_graph and entities:
-            self._update_knowledge_graph(entities, relationships)
-        
-        # Update statistics
-        self.stats["total_items"] += 1
-        item_type = metadata.get("type", "general") if metadata else "general"
-        self.stats["items_by_type"][item_type] = self.stats["items_by_type"].get(item_type, 0) + 1
-        
-        self.logger.debug(f"Stored memory item: {memory_id}")
-        
-        # Apply retention policy
-        self._apply_retention_policy()
-        
-        return memory_id
+        try:
+            memory_id = options.get("memory_id") or self._generate_memory_id()
+            timestamp = options.get("timestamp") or datetime.now()
+            
+            # Create memory item
+            memory_item = MemoryItem(
+                content=content,
+                timestamp=timestamp,
+                metadata=metadata or {},
+                entities=entities or [],
+                relationships=relationships or [],
+                memory_id=memory_id
+            )
+            
+            # Generate embedding if vector store available
+            if self.vector_store:
+                try:
+                    self.progress_tracker.update_tracking(tracking_id, message="Generating embedding...")
+                    embedding = self._generate_embedding(content)
+                    memory_item.embedding = embedding
+                    
+                    # Store in vector store
+                    if hasattr(self.vector_store, "add"):
+                        self.vector_store.add(
+                            id=memory_id,
+                            vector=embedding,
+                            metadata={
+                                "content": content,
+                                "timestamp": timestamp.isoformat(),
+                                **metadata or {}
+                            }
+                        )
+                except Exception as e:
+                    self.logger.warning(f"Failed to generate embedding: {e}")
+            
+            # Store in memory
+            self.memory_items[memory_id] = memory_item
+            self.memory_index.append(memory_id)
+            
+            # Update knowledge graph if available
+            if self.knowledge_graph and entities:
+                self.progress_tracker.update_tracking(tracking_id, message="Updating knowledge graph...")
+                self._update_knowledge_graph(entities, relationships)
+            
+            # Update statistics
+            self.stats["total_items"] += 1
+            item_type = metadata.get("type", "general") if metadata else "general"
+            self.stats["items_by_type"][item_type] = self.stats["items_by_type"].get(item_type, 0) + 1
+            
+            self.logger.debug(f"Stored memory item: {memory_id}")
+            
+            # Apply retention policy
+            self._apply_retention_policy()
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Stored memory: {memory_id}")
+            return memory_id
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def retrieve(
         self,
@@ -196,49 +216,67 @@ class AgentMemory:
         Returns:
             List of retrieved memory items
         """
-        results = []
+        # Track memory retrieval
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="context",
+            submodule="AgentMemory",
+            message=f"Retrieving memories for: {query[:50]}..."
+        )
         
-        # Vector-based retrieval
-        if self.vector_store:
-            try:
-                if hasattr(self.vector_store, "search"):
-                    vector_results = self.vector_store.search(
-                        query=query,
-                        top_k=max_results * 2
-                    )
-                    
-                    for result in vector_results:
-                        memory_id = result.get("id")
-                        if memory_id in self.memory_items:
-                            memory_item = self.memory_items[memory_id]
-                            
-                            # Apply filters
-                            if not self._matches_filters(memory_item, filters):
-                                continue
-                            
-                            results.append({
-                                "memory_id": memory_id,
-                                "content": memory_item.content,
-                                "score": result.get("score", 0.0),
-                                "timestamp": memory_item.timestamp.isoformat(),
-                                "metadata": memory_item.metadata,
-                                "entities": memory_item.entities,
-                                "relationships": memory_item.relationships
-                            })
-            except Exception as e:
-                self.logger.warning(f"Vector retrieval failed: {e}")
-        
-        # Fallback to keyword search if no vector store
-        if not results:
-            results = self._keyword_search(query, max_results, filters)
-        
-        # Sort by score and return top results
-        results.sort(key=lambda x: x.get("score", 0.0), reverse=True)
-        filtered_results = [r for r in results if r.get("score", 0.0) >= min_score]
-        
-        self.stats["last_accessed"] = datetime.now().isoformat()
-        
-        return filtered_results[:max_results]
+        try:
+            results = []
+            
+            # Vector-based retrieval
+            if self.vector_store:
+                self.progress_tracker.update_tracking(tracking_id, message="Searching vector store...")
+                try:
+                    if hasattr(self.vector_store, "search"):
+                        vector_results = self.vector_store.search(
+                            query=query,
+                            top_k=max_results * 2
+                        )
+                        
+                        for result in vector_results:
+                            memory_id = result.get("id")
+                            if memory_id in self.memory_items:
+                                memory_item = self.memory_items[memory_id]
+                                
+                                # Apply filters
+                                if not self._matches_filters(memory_item, filters):
+                                    continue
+                                
+                                results.append({
+                                    "memory_id": memory_id,
+                                    "content": memory_item.content,
+                                    "score": result.get("score", 0.0),
+                                    "timestamp": memory_item.timestamp.isoformat(),
+                                    "metadata": memory_item.metadata,
+                                    "entities": memory_item.entities,
+                                    "relationships": memory_item.relationships
+                                })
+                except Exception as e:
+                    self.logger.warning(f"Vector retrieval failed: {e}")
+            
+            # Fallback to keyword search if no vector store
+            if not results:
+                self.progress_tracker.update_tracking(tracking_id, message="Performing keyword search...")
+                results = self._keyword_search(query, max_results, filters)
+            
+            # Sort by score and return top results
+            self.progress_tracker.update_tracking(tracking_id, message="Ranking results...")
+            results.sort(key=lambda x: x.get("score", 0.0), reverse=True)
+            filtered_results = [r for r in results if r.get("score", 0.0) >= min_score]
+            
+            self.stats["last_accessed"] = datetime.now().isoformat()
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Retrieved {len(filtered_results[:max_results])} memories")
+            return filtered_results[:max_results]
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def get_memory(self, memory_id: str) -> Optional[Dict[str, Any]]:
         """

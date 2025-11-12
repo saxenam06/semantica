@@ -101,6 +101,9 @@ class ContextGraphBuilder:
         self.nodes: Dict[str, ContextNode] = {}
         self.edges: List[ContextEdge] = []
         
+        # Initialize progress tracker
+        self.progress_tracker = get_progress_tracker()
+        
         # Indexes
         self.node_type_index: Dict[str, Set[str]] = defaultdict(set)
         self.edge_type_index: Dict[str, List[ContextEdge]] = defaultdict(list)
@@ -126,34 +129,52 @@ class ContextGraphBuilder:
         Returns:
             Context graph dictionary
         """
-        self.logger.info(f"Building context graph from {len(conversations)} conversations")
-        
-        # Process each conversation
-        for conv in conversations:
-            if isinstance(conv, str):
-                # Load conversation from file
-                conv_data = self._load_conversation(conv)
-            else:
-                conv_data = conv
-            
-            self._process_conversation(
-                conv_data,
-                extract_intents=extract_intents,
-                extract_sentiments=extract_sentiments
-            )
-        
-        # Link entities if requested
-        if link_entities:
-            self._link_entities()
-        
-        # Build graph structure
-        graph = self._build_graph_structure()
-        
-        self.logger.info(
-            f"Built context graph: {len(self.nodes)} nodes, {len(self.edges)} edges"
+        # Track context graph building
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="context",
+            submodule="ContextGraphBuilder",
+            message=f"Building graph from {len(conversations)} conversations"
         )
         
-        return graph
+        try:
+            self.logger.info(f"Building context graph from {len(conversations)} conversations")
+            
+            self.progress_tracker.update_tracking(tracking_id, message="Processing conversations...")
+            # Process each conversation
+            for conv in conversations:
+                if isinstance(conv, str):
+                    # Load conversation from file
+                    conv_data = self._load_conversation(conv)
+                else:
+                    conv_data = conv
+                
+                self._process_conversation(
+                    conv_data,
+                    extract_intents=extract_intents,
+                    extract_sentiments=extract_sentiments
+                )
+            
+            # Link entities if requested
+            if link_entities:
+                self.progress_tracker.update_tracking(tracking_id, message="Linking entities...")
+                self._link_entities()
+            
+            # Build graph structure
+            self.progress_tracker.update_tracking(tracking_id, message="Building graph structure...")
+            graph = self._build_graph_structure()
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Built graph with {len(self.nodes)} nodes, {len(self.edges)} edges")
+            self.logger.info(
+                f"Built context graph: {len(self.nodes)} nodes, {len(self.edges)} edges"
+            )
+            
+            return graph
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def build_from_entities_and_relationships(
         self,
@@ -172,70 +193,91 @@ class ContextGraphBuilder:
         Returns:
             Context graph dictionary
         """
-        # Add entities as nodes
-        for entity in entities:
-            entity_id = entity.get("id") or entity.get("entity_id")
-            if not entity_id:
-                continue
-            
-            node = ContextNode(
-                node_id=entity_id,
-                node_type="entity",
-                content=entity.get("text") or entity.get("label") or entity.get("name", ""),
-                metadata={
-                    "type": entity.get("type") or entity.get("entity_type"),
-                    "confidence": entity.get("confidence", 1.0),
-                    **entity.get("metadata", {})
-                },
-                properties=entity.get("properties", {})
-            )
-            
-            self.nodes[entity_id] = node
-            self.node_type_index["entity"].add(entity_id)
-            
-            # Assign URI if entity linker available
-            if self.entity_linker:
-                self.entity_linker.assign_uri(
-                    entity_id,
-                    node.content,
-                    node.metadata.get("type")
-                )
+        # Track context graph building
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="context",
+            submodule="ContextGraphBuilder",
+            message=f"Building graph from {len(entities)} entities, {len(relationships)} relationships"
+        )
         
-        # Add relationships as edges
-        for rel in relationships:
-            source_id = rel.get("source_id")
-            target_id = rel.get("target_id")
-            
-            if not source_id or not target_id:
-                continue
-            
-            # Ensure source and target nodes exist
-            if source_id not in self.nodes:
-                self.nodes[source_id] = ContextNode(
-                    node_id=source_id,
+        try:
+            self.progress_tracker.update_tracking(tracking_id, message="Adding entities as nodes...")
+            # Add entities as nodes
+            for entity in entities:
+                entity_id = entity.get("id") or entity.get("entity_id")
+                if not entity_id:
+                    continue
+                
+                node = ContextNode(
+                    node_id=entity_id,
                     node_type="entity",
-                    content=source_id
+                    content=entity.get("text") or entity.get("label") or entity.get("name", ""),
+                    metadata={
+                        "type": entity.get("type") or entity.get("entity_type"),
+                        "confidence": entity.get("confidence", 1.0),
+                        **entity.get("metadata", {})
+                    },
+                    properties=entity.get("properties", {})
                 )
+                
+                self.nodes[entity_id] = node
+                self.node_type_index["entity"].add(entity_id)
+                
+                # Assign URI if entity linker available
+                if self.entity_linker:
+                    self.entity_linker.assign_uri(
+                        entity_id,
+                        node.content,
+                        node.metadata.get("type")
+                    )
             
-            if target_id not in self.nodes:
-                self.nodes[target_id] = ContextNode(
-                    node_id=target_id,
-                    node_type="entity",
-                    content=target_id
+            # Add relationships as edges
+            self.progress_tracker.update_tracking(tracking_id, message="Adding relationships as edges...")
+            for rel in relationships:
+                source_id = rel.get("source_id")
+                target_id = rel.get("target_id")
+                
+                if not source_id or not target_id:
+                    continue
+                
+                # Ensure source and target nodes exist
+                if source_id not in self.nodes:
+                    self.nodes[source_id] = ContextNode(
+                        node_id=source_id,
+                        node_type="entity",
+                        content=source_id
+                    )
+                
+                if target_id not in self.nodes:
+                    self.nodes[target_id] = ContextNode(
+                        node_id=target_id,
+                        node_type="entity",
+                        content=target_id
+                    )
+                
+                edge = ContextEdge(
+                    source_id=source_id,
+                    target_id=target_id,
+                    edge_type=rel.get("type") or rel.get("relationship_type", "related_to"),
+                    weight=rel.get("confidence", 1.0),
+                    metadata=rel.get("metadata", {})
                 )
+                
+                self.edges.append(edge)
+                self.edge_type_index[edge.edge_type].append(edge)
             
-            edge = ContextEdge(
-                source_id=source_id,
-                target_id=target_id,
-                edge_type=rel.get("type") or rel.get("relationship_type", "related_to"),
-                weight=rel.get("confidence", 1.0),
-                metadata=rel.get("metadata", {})
-            )
+            # Build graph structure
+            self.progress_tracker.update_tracking(tracking_id, message="Building graph structure...")
+            graph = self._build_graph_structure()
             
-            self.edges.append(edge)
-            self.edge_type_index[edge.edge_type].append(edge)
-        
-        return self._build_graph_structure()
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Built graph with {len(self.nodes)} nodes, {len(self.edges)} edges")
+            return graph
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def add_node(
         self,

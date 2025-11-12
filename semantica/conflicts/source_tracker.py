@@ -38,6 +38,7 @@ from collections import defaultdict
 
 from ..utils.exceptions import ValidationError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 
 
 @dataclass
@@ -85,6 +86,9 @@ class SourceTracker:
         self.logger = get_logger("source_tracker")
         self.config = config or {}
         self.config.update(kwargs)
+        
+        # Initialize progress tracker
+        self.progress_tracker = get_progress_tracker()
         
         # Entity -> Property -> PropertySource
         self.entity_sources: Dict[str, Dict[str, PropertySource]] = defaultdict(dict)

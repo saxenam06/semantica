@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 
 from ..utils.exceptions import ValidationError, ProcessingError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 
 
 @dataclass
@@ -86,6 +87,9 @@ class ContextRetriever:
         self.use_graph_expansion = self.config.get("use_graph_expansion", True)
         self.max_expansion_hops = self.config.get("max_expansion_hops", 2)
         self.hybrid_alpha = self.config.get("hybrid_alpha", 0.5)
+        
+        # Initialize progress tracker
+        self.progress_tracker = get_progress_tracker()
     
     def retrieve(
         self,
@@ -111,39 +115,58 @@ class ContextRetriever:
         Returns:
             List of retrieved context items
         """
-        use_expansion = use_graph_expansion if use_graph_expansion is not None else self.use_graph_expansion
+        # Track context retrieval
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="context",
+            submodule="ContextRetriever",
+            message=f"Retrieving context for: {query[:50]}..."
+        )
         
-        all_results = []
-        
-        # Vector-based retrieval
-        vector_results = self._retrieve_from_vector(query, max_results * 2)
-        all_results.extend(vector_results)
-        
-        # Graph-based retrieval
-        if self.knowledge_graph and use_expansion:
-            graph_results = self._retrieve_from_graph(
-                query,
-                max_results * 2,
-                max_hops=options.get("max_hops", self.max_expansion_hops)
-            )
-            all_results.extend(graph_results)
-        
-        # Memory-based retrieval
-        if self.memory_store:
-            memory_results = self._retrieve_from_memory(query, max_results * 2)
-            all_results.extend(memory_results)
-        
-        # Combine and rank results
-        ranked_results = self._rank_and_merge(all_results, query)
-        
-        # Filter by minimum score
-        filtered_results = [
-            r for r in ranked_results
-            if r.score >= min_relevance_score
-        ]
-        
-        # Return top results
-        return filtered_results[:max_results]
+        try:
+            use_expansion = use_graph_expansion if use_graph_expansion is not None else self.use_graph_expansion
+            
+            all_results = []
+            
+            # Vector-based retrieval
+            self.progress_tracker.update_tracking(tracking_id, message="Retrieving from vector store...")
+            vector_results = self._retrieve_from_vector(query, max_results * 2)
+            all_results.extend(vector_results)
+            
+            # Graph-based retrieval
+            if self.knowledge_graph and use_expansion:
+                self.progress_tracker.update_tracking(tracking_id, message="Retrieving from knowledge graph...")
+                graph_results = self._retrieve_from_graph(
+                    query,
+                    max_results * 2,
+                    max_hops=options.get("max_hops", self.max_expansion_hops)
+                )
+                all_results.extend(graph_results)
+            
+            # Memory-based retrieval
+            if self.memory_store:
+                self.progress_tracker.update_tracking(tracking_id, message="Retrieving from memory...")
+                memory_results = self._retrieve_from_memory(query, max_results * 2)
+                all_results.extend(memory_results)
+            
+            # Combine and rank results
+            self.progress_tracker.update_tracking(tracking_id, message="Ranking and merging results...")
+            ranked_results = self._rank_and_merge(all_results, query)
+            
+            # Filter by minimum score
+            filtered_results = [
+                r for r in ranked_results
+                if r.score >= min_relevance_score
+            ]
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Retrieved {len(filtered_results[:max_results])} results")
+            # Return top results
+            return filtered_results[:max_results]
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def _retrieve_from_vector(
         self,

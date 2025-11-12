@@ -37,6 +37,7 @@ from datetime import datetime
 from .conflict_detector import Conflict, ConflictType
 from .source_tracker import SourceTracker
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 
 
 @dataclass
@@ -90,6 +91,7 @@ class InvestigationGuideGenerator:
         
         self.source_tracker = self.config.get("source_tracker") or SourceTracker()
         self.include_traceability = self.config.get("include_traceability", True)
+        self.progress_tracker = get_progress_tracker()
     
     def generate_guide(
         self,
@@ -106,17 +108,32 @@ class InvestigationGuideGenerator:
         Returns:
             Investigation guide
         """
-        guide = InvestigationGuide(
-            conflict_id=conflict.conflict_id,
-            conflict_summary=self._generate_summary(conflict),
-            severity=conflict.severity,
-            conflicting_sources=conflict.sources,
-            investigation_steps=self._generate_investigation_steps(conflict),
-            recommended_actions=self._generate_recommended_actions(conflict),
-            context=additional_context or {}
+        # Track investigation guide generation
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="conflicts",
+            submodule="InvestigationGuideGenerator",
+            message=f"Generating guide for conflict: {conflict.conflict_id}"
         )
         
-        return guide
+        try:
+            guide = InvestigationGuide(
+                conflict_id=conflict.conflict_id,
+                conflict_summary=self._generate_summary(conflict),
+                severity=conflict.severity,
+                conflicting_sources=conflict.sources,
+                investigation_steps=self._generate_investigation_steps(conflict),
+                recommended_actions=self._generate_recommended_actions(conflict),
+                context=additional_context or {}
+            )
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message="Investigation guide generated")
+            return guide
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def generate_guides(
         self,

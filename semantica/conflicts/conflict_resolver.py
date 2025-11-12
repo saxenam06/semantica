@@ -38,6 +38,7 @@ from .conflict_detector import Conflict, ConflictType
 from .source_tracker import SourceTracker
 from ..utils.exceptions import ValidationError, ProcessingError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 
 
 class ResolutionStrategy(str, Enum):
@@ -99,6 +100,9 @@ class ConflictResolver:
             "resolution_rules", {}
         )
         
+        # Initialize progress tracker
+        self.progress_tracker = get_progress_tracker()
+        
         self.resolution_history: List[ResolutionResult] = []
     
     def resolve_conflict(
@@ -116,42 +120,57 @@ class ConflictResolver:
         Returns:
             Resolution result
         """
-        if not strategy:
-            # Check for property-specific rule
-            if conflict.property_name:
-                rule_key = f"{conflict.entity_id}.{conflict.property_name}"
-                if rule_key in self.resolution_rules:
-                    strategy = self.resolution_rules[rule_key]
-                else:
-                    strategy = self.default_strategy
-            else:
-                strategy = self.default_strategy
-        
-        self.logger.info(
-            f"Resolving conflict {conflict.conflict_id} using strategy: {strategy.value}"
+        # Track conflict resolution
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="conflicts",
+            submodule="ConflictResolver",
+            message=f"Resolving conflict: {conflict.conflict_id}"
         )
         
-        if strategy == ResolutionStrategy.VOTING:
-            result = self._resolve_by_voting(conflict)
-        elif strategy == ResolutionStrategy.CREDIBILITY_WEIGHTED:
-            result = self._resolve_by_credibility(conflict)
-        elif strategy == ResolutionStrategy.MOST_RECENT:
-            result = self._resolve_by_recency(conflict)
-        elif strategy == ResolutionStrategy.FIRST_SEEN:
-            result = self._resolve_by_first_seen(conflict)
-        elif strategy == ResolutionStrategy.HIGHEST_CONFIDENCE:
-            result = self._resolve_by_confidence(conflict)
-        elif strategy == ResolutionStrategy.MANUAL_REVIEW:
-            result = self._flag_for_manual_review(conflict)
-        elif strategy == ResolutionStrategy.EXPERT_REVIEW:
-            result = self._flag_for_expert_review(conflict)
-        else:
-            result = self._resolve_by_voting(conflict)
-        
-        result.resolution_strategy = strategy.value
-        self.resolution_history.append(result)
-        
-        return result
+        try:
+            if not strategy:
+                # Check for property-specific rule
+                if conflict.property_name:
+                    rule_key = f"{conflict.entity_id}.{conflict.property_name}"
+                    if rule_key in self.resolution_rules:
+                        strategy = self.resolution_rules[rule_key]
+                    else:
+                        strategy = self.default_strategy
+                else:
+                    strategy = self.default_strategy
+            
+            self.logger.info(
+                f"Resolving conflict {conflict.conflict_id} using strategy: {strategy.value}"
+            )
+            
+            if strategy == ResolutionStrategy.VOTING:
+                result = self._resolve_by_voting(conflict)
+            elif strategy == ResolutionStrategy.CREDIBILITY_WEIGHTED:
+                result = self._resolve_by_credibility(conflict)
+            elif strategy == ResolutionStrategy.MOST_RECENT:
+                result = self._resolve_by_recency(conflict)
+            elif strategy == ResolutionStrategy.FIRST_SEEN:
+                result = self._resolve_by_first_seen(conflict)
+            elif strategy == ResolutionStrategy.HIGHEST_CONFIDENCE:
+                result = self._resolve_by_confidence(conflict)
+            elif strategy == ResolutionStrategy.MANUAL_REVIEW:
+                result = self._flag_for_manual_review(conflict)
+            elif strategy == ResolutionStrategy.EXPERT_REVIEW:
+                result = self._flag_for_expert_review(conflict)
+            else:
+                result = self._resolve_by_voting(conflict)
+            
+            result.resolution_strategy = strategy.value
+            self.resolution_history.append(result)
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Resolved conflict using {strategy.value}")
+            return result
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def resolve_conflicts(
         self,

@@ -39,6 +39,7 @@ import hashlib
 
 from ..utils.exceptions import ValidationError, ProcessingError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 from ..utils.types import EntityDict
 
 
@@ -97,6 +98,9 @@ class EntityLinker:
         self.similarity_threshold = self.config.get("similarity_threshold", 0.8)
         self.base_uri = self.config.get("base_uri", "https://semantica.dev/entity/")
         self.enable_cross_document_linking = self.config.get("enable_cross_document_linking", True)
+        
+        # Initialize progress tracker
+        self.progress_tracker = get_progress_tracker()
         
         # Entity registry: entity_id -> URI
         self.entity_registry: Dict[str, str] = {}
@@ -160,48 +164,59 @@ class EntityLinker:
         Returns:
             List of linked entities
         """
-        if not entities:
-            entities = []
+        # Track entity linking
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="context",
+            submodule="EntityLinker",
+            message=f"Linking entities in text"
+        )
         
-        linked_entities = []
-        
-        for entity in entities:
-            entity_id = entity.get("id") or entity.get("entity_id")
-            entity_text = entity.get("text") or entity.get("label") or entity.get("name", "")
-            entity_type = entity.get("type") or entity.get("entity_type", "UNKNOWN")
+        try:
+            if not entities:
+                entities = []
             
-            if not entity_id:
-                # Generate entity_id if not present
-                entity_id = self._generate_entity_id(entity_text, entity_type)
+            linked_entities = []
             
-            # Assign URI
-            uri = self.assign_uri(entity_id, entity_text, entity_type)
+            self.progress_tracker.update_tracking(tracking_id, message=f"Linking {len(entities)} entities...")
             
-            # Find linked entities
-            linked_entity_links = self._find_linked_entities(
-                entity_id,
-                entity_text,
-                entity_type,
-                entities,
-                context
-            )
-            
-            linked_entity = LinkedEntity(
-                entity_id=entity_id,
-                uri=uri,
-                text=entity_text,
-                type=entity_type,
-                linked_entities=linked_entity_links,
-                context=entity.get("metadata", {}),
-                confidence=entity.get("confidence", 1.0)
-            )
-            
-            linked_entities.append(linked_entity)
-            
-            # Store links
-            if entity_id not in self.entity_links:
-                self.entity_links[entity_id] = []
-            self.entity_links[entity_id].extend(linked_entity_links)
+            for entity in entities:
+                entity_id = entity.get("id") or entity.get("entity_id")
+                entity_text = entity.get("text") or entity.get("label") or entity.get("name", "")
+                entity_type = entity.get("type") or entity.get("entity_type", "UNKNOWN")
+                
+                if not entity_id:
+                    # Generate entity_id if not present
+                    entity_id = self._generate_entity_id(entity_text, entity_type)
+                
+                # Assign URI
+                uri = self.assign_uri(entity_id, entity_text, entity_type)
+                
+                # Find linked entities
+                linked_entity_links = self._find_linked_entities(
+                    entity_id,
+                    entity_text,
+                    entity_type,
+                    entities,
+                    context
+                )
+                
+                linked_entity = LinkedEntity(
+                    entity_id=entity_id,
+                    uri=uri,
+                    text=entity_text,
+                    type=entity_type,
+                    linked_entities=linked_entity_links,
+                    context=entity.get("metadata", {}),
+                    confidence=entity.get("confidence", 1.0)
+                )
+                
+                linked_entities.append(linked_entity)
+                
+                # Store links
+                if entity_id not in self.entity_links:
+                    self.entity_links[entity_id] = []
+                self.entity_links[entity_id].extend(linked_entity_links)
         
         return linked_entities
     
@@ -228,37 +243,53 @@ class EntityLinker:
         Returns:
             True if link created successfully
         """
-        link = EntityLink(
-            source_entity_id=entity1_id,
-            target_entity_id=entity2_id,
-            link_type=link_type,
-            confidence=confidence,
-            source=source,
-            metadata=metadata
+        # Track entity linking
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="context",
+            submodule="EntityLinker",
+            message=f"Linking {entity1_id} -> {entity2_id}"
         )
         
-        if entity1_id not in self.entity_links:
-            self.entity_links[entity1_id] = []
-        
-        self.entity_links[entity1_id].append(link)
-        
-        # Create bidirectional link if appropriate
-        if link_type in ["related_to", "same_as"]:
-            reverse_link = EntityLink(
-                source_entity_id=entity2_id,
-                target_entity_id=entity1_id,
+        try:
+            link = EntityLink(
+                source_entity_id=entity1_id,
+                target_entity_id=entity2_id,
                 link_type=link_type,
                 confidence=confidence,
                 source=source,
                 metadata=metadata
             )
             
-            if entity2_id not in self.entity_links:
-                self.entity_links[entity2_id] = []
-            self.entity_links[entity2_id].append(reverse_link)
-        
-        self.logger.debug(f"Linked {entity1_id} --{link_type}--> {entity2_id}")
-        return True
+            if entity1_id not in self.entity_links:
+                self.entity_links[entity1_id] = []
+            
+            self.entity_links[entity1_id].append(link)
+            
+            # Create bidirectional link if appropriate
+            if link_type in ["related_to", "same_as"]:
+                reverse_link = EntityLink(
+                    source_entity_id=entity2_id,
+                    target_entity_id=entity1_id,
+                    link_type=link_type,
+                    confidence=confidence,
+                    source=source,
+                    metadata=metadata
+                )
+                
+                if entity2_id not in self.entity_links:
+                    self.entity_links[entity2_id] = []
+                self.entity_links[entity2_id].append(reverse_link)
+            
+            self.logger.debug(f"Linked {entity1_id} --{link_type}--> {entity2_id}")
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Linked {entity1_id} -> {entity2_id}")
+            return True
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def get_entity_links(self, entity_id: str) -> List[EntityLink]:
         """

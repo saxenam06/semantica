@@ -37,6 +37,7 @@ from enum import Enum
 from .source_tracker import SourceTracker, SourceReference
 from ..utils.exceptions import ValidationError, ProcessingError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 
 
 class ConflictType(str, Enum):
@@ -97,6 +98,9 @@ class ConflictDetector:
         self.confidence_threshold = self.config.get("confidence_threshold", 0.7)
         self.auto_resolve = self.config.get("auto_resolve", False)
         
+        # Initialize progress tracker
+        self.progress_tracker = get_progress_tracker()
+        
         self.detected_conflicts: Dict[str, Conflict] = {}
     
     def detect_value_conflicts(
@@ -116,81 +120,98 @@ class ConflictDetector:
         Returns:
             List of detected conflicts
         """
-        conflicts = []
+        # Track conflict detection
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="conflicts",
+            submodule="ConflictDetector",
+            message=f"Detecting value conflicts for property: {property_name}"
+        )
         
-        # Group entities by ID (same entity from different sources)
-        entity_groups: Dict[str, List[Dict[str, Any]]] = {}
-        
-        for entity in entities:
-            entity_id = entity.get("id") or entity.get("entity_id")
-            if not entity_id:
-                continue
+        try:
+            conflicts = []
             
-            if entity_type and entity.get("type") != entity_type:
-                continue
+            # Group entities by ID (same entity from different sources)
+            entity_groups: Dict[str, List[Dict[str, Any]]] = {}
             
-            if entity_id not in entity_groups:
-                entity_groups[entity_id] = []
-            entity_groups[entity_id].append(entity)
-        
-        # Check each entity group for conflicts
-        for entity_id, entity_list in entity_groups.items():
-            if len(entity_list) < 2:
-                continue  # Need at least 2 sources to have conflict
+            self.progress_tracker.update_tracking(tracking_id, message=f"Analyzing {len(entities)} entities...")
             
-            values = []
-            sources = []
-            
-            for entity in entity_list:
-                if property_name in entity:
-                    value = entity[property_name]
-                    values.append(value)
-                    
-                    # Track source if available
-                    if self.track_provenance:
-                        source_ref = SourceReference(
-                            document=entity.get("source", "unknown"),
-                            page=entity.get("page"),
-                            section=entity.get("section"),
-                            confidence=entity.get("confidence", 1.0),
-                            metadata=entity.get("metadata", {})
-                        )
-                        self.source_tracker.track_property_source(
-                            entity_id,
-                            property_name,
-                            value,
-                            source_ref
-                        )
-                        sources.append({
-                            "document": source_ref.document,
-                            "page": source_ref.page,
-                            "confidence": source_ref.confidence
-                        })
-            
-            # Check for value conflicts
-            unique_values = list(set(str(v) for v in values if v is not None))
-            
-            if len(unique_values) > 1:
-                conflict = Conflict(
-                    conflict_id=f"{entity_id}_{property_name}_conflict",
-                    conflict_type=ConflictType.VALUE_CONFLICT,
-                    entity_id=entity_id,
-                    property_name=property_name,
-                    conflicting_values=values,
-                    sources=sources,
-                    confidence=self._calculate_conflict_confidence(values, sources),
-                    severity=self._calculate_severity(property_name, values),
-                    recommended_action=self._recommend_action(property_name, values)
-                )
-                conflicts.append(conflict)
-                self.detected_conflicts[conflict.conflict_id] = conflict
+            for entity in entities:
+                entity_id = entity.get("id") or entity.get("entity_id")
+                if not entity_id:
+                    continue
                 
-                self.logger.warning(
-                    f"Value conflict detected: {entity_id}.{property_name} "
-                    f"has conflicting values: {unique_values}"
-                )
-        
-        return conflicts
+                if entity_type and entity.get("type") != entity_type:
+                    continue
+                
+                if entity_id not in entity_groups:
+                    entity_groups[entity_id] = []
+                entity_groups[entity_id].append(entity)
+            
+            # Check each entity group for conflicts
+            for entity_id, entity_list in entity_groups.items():
+                if len(entity_list) < 2:
+                    continue  # Need at least 2 sources to have conflict
+                
+                values = []
+                sources = []
+                
+                for entity in entity_list:
+                    if property_name in entity:
+                        value = entity[property_name]
+                        values.append(value)
+                        
+                        # Track source if available
+                        if self.track_provenance:
+                            source_ref = SourceReference(
+                                document=entity.get("source", "unknown"),
+                                page=entity.get("page"),
+                                section=entity.get("section"),
+                                confidence=entity.get("confidence", 1.0),
+                                metadata=entity.get("metadata", {})
+                            )
+                            self.source_tracker.track_property_source(
+                                entity_id,
+                                property_name,
+                                value,
+                                source_ref
+                            )
+                            sources.append({
+                                "document": source_ref.document,
+                                "page": source_ref.page,
+                                "confidence": source_ref.confidence
+                            })
+                
+                # Check for value conflicts
+                unique_values = list(set(str(v) for v in values if v is not None))
+                
+                if len(unique_values) > 1:
+                    conflict = Conflict(
+                        conflict_id=f"{entity_id}_{property_name}_conflict",
+                        conflict_type=ConflictType.VALUE_CONFLICT,
+                        entity_id=entity_id,
+                        property_name=property_name,
+                        conflicting_values=values,
+                        sources=sources,
+                        confidence=self._calculate_conflict_confidence(values, sources),
+                        severity=self._calculate_severity(property_name, values),
+                        recommended_action=self._recommend_action(property_name, values)
+                    )
+                    conflicts.append(conflict)
+                    self.detected_conflicts[conflict.conflict_id] = conflict
+                    
+                    self.logger.warning(
+                        f"Value conflict detected: {entity_id}.{property_name} "
+                        f"has conflicting values: {unique_values}"
+                    )
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Detected {len(conflicts)} conflicts")
+            return conflicts
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def detect_property_conflicts(
         self,

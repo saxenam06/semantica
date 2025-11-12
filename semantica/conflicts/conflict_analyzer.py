@@ -72,6 +72,7 @@ class ConflictAnalyzer:
         self.logger = get_logger("conflict_analyzer")
         self.config = config or {}
         self.config.update(kwargs)
+        self.progress_tracker = get_progress_tracker()
     
     def analyze_conflicts(
         self,
@@ -86,18 +87,34 @@ class ConflictAnalyzer:
         Returns:
             Analysis results dictionary
         """
-        analysis = {
-            "total_conflicts": len(conflicts),
-            "by_type": self._analyze_by_type(conflicts),
-            "by_severity": self._analyze_by_severity(conflicts),
-            "by_entity": self._analyze_by_entity(conflicts),
-            "by_property": self._analyze_by_property(conflicts),
-            "patterns": self._identify_patterns(conflicts),
-            "recommendations": self._generate_recommendations(conflicts),
-            "statistics": self._calculate_statistics(conflicts)
-        }
+        # Track conflict analysis
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="conflicts",
+            submodule="ConflictAnalyzer",
+            message=f"Analyzing {len(conflicts)} conflicts"
+        )
         
-        return analysis
+        try:
+            self.progress_tracker.update_tracking(tracking_id, message="Analyzing conflict patterns...")
+            analysis = {
+                "total_conflicts": len(conflicts),
+                "by_type": self._analyze_by_type(conflicts),
+                "by_severity": self._analyze_by_severity(conflicts),
+                "by_entity": self._analyze_by_entity(conflicts),
+                "by_property": self._analyze_by_property(conflicts),
+                "patterns": self._identify_patterns(conflicts),
+                "recommendations": self._generate_recommendations(conflicts),
+                "statistics": self._calculate_statistics(conflicts)
+            }
+            
+            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                               message=f"Analyzed {len(conflicts)} conflicts")
+            return analysis
+            
+        except Exception as e:
+            self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
+            raise
     
     def _analyze_by_type(self, conflicts: List[Conflict]) -> Dict[str, Any]:
         """Analyze conflicts by type."""
