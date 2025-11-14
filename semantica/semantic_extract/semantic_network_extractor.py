@@ -4,6 +4,24 @@ Semantic Network Extractor Module
 This module extracts structured semantic networks from documents, converting
 entities and relations into graph structures with nodes and edges. Part of the
 6-stage ontology generation pipeline (Stage 2: semantic network extraction).
+Supports multiple extraction methods for underlying entity and relation extraction.
+
+Supported Methods (for underlying NER/Relation extractors):
+    - "pattern": Pattern-based extraction
+    - "regex": Regex-based extraction
+    - "rules": Rule-based extraction
+    - "ml": ML-based extraction (spaCy)
+    - "huggingface": HuggingFace model extraction
+    - "llm": LLM-based extraction
+    - Any method supported by NERExtractor and RelationExtractor
+
+Algorithms Used:
+    - Graph Construction: Node and edge creation from entities and relations
+    - Network Analysis: Degree centrality, betweenness centrality calculations
+    - Connectivity Analysis: Path finding and component detection algorithms
+    - YAML Serialization: Tree structure serialization algorithms
+    - Graph Metrics: Node count, edge count, density calculations
+    - Entity-Relation Mapping: Hash-based and graph-based entity-relation mapping
 
 Key Features:
     - Semantic network construction from entities and relations
@@ -11,6 +29,8 @@ Key Features:
     - Network analysis and metrics
     - YAML export capabilities
     - Connectivity analysis
+    - Integration with multiple NER and relation extraction methods
+    - Method parameter support for underlying extractors
 
 Main Classes:
     - SemanticNetworkExtractor: Main network extractor
@@ -20,8 +40,14 @@ Main Classes:
 
 Example Usage:
     >>> from semantica.semantic_extract import SemanticNetworkExtractor
+    >>> # Using default methods
     >>> extractor = SemanticNetworkExtractor()
     >>> network = extractor.extract_network(text, entities, relations)
+    >>> 
+    >>> # Using LLM-based extraction
+    >>> extractor = SemanticNetworkExtractor(ner_method="llm", relation_method="llm", provider="openai")
+    >>> network = extractor.extract_network(text)
+    >>> 
     >>> analysis = extractor.analyze_network(network)
     >>> yaml_str = extractor.export_to_yaml(network, "network.yaml")
 
@@ -30,7 +56,7 @@ License: MIT
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
@@ -75,16 +101,26 @@ class SemanticNetwork:
 class SemanticNetworkExtractor:
     """Semantic network extractor for structured networks."""
     
-    def __init__(self, **config):
+    def __init__(self, method: Union[str, List[str]] = None, **config):
         """
         Initialize semantic network extractor.
         
         Args:
-            **config: Configuration options
+            method: Extraction method(s) for underlying NER/relation extractors.
+                   Can be passed to ner_method and relation_method in config.
+            **config: Configuration options:
+                - ner_method: Method for NER extraction (if entities need to be extracted)
+                - relation_method: Method for relation extraction (if relations need to be extracted)
+                - Other options passed to NER and relation extractors
         """
         self.logger = get_logger("semantic_network_extractor")
         self.config = config
         self.progress_tracker = get_progress_tracker()
+        
+        # Store method for passing to extractors if needed
+        if method is not None:
+            self.config["ner_method"] = method
+            self.config["relation_method"] = method
     
     def extract_network(
         self,
@@ -118,14 +154,22 @@ class SemanticNetworkExtractor:
             # Extract entities if not provided
             if entities is None:
                 self.progress_tracker.update_tracking(tracking_id, message="Extracting entities...")
-                ner = NERExtractor(**self.config.get("ner", {}))
-                entities = ner.extract_entities(text)
+                ner_config = self.config.get("ner", {})
+                # Pass method if specified
+                if "ner_method" in self.config:
+                    ner_config["method"] = self.config["ner_method"]
+                ner = NERExtractor(**ner_config, **{k: v for k, v in self.config.items() if k not in ["ner", "relation"]})
+                entities = ner.extract_entities(text, **options)
             
             # Extract relations if not provided
             if relations is None:
                 self.progress_tracker.update_tracking(tracking_id, message="Extracting relations...")
-                rel_extractor = RelationExtractor(**self.config.get("relation", {}))
-                relations = rel_extractor.extract_relations(text, entities)
+                rel_config = self.config.get("relation", {})
+                # Pass method if specified
+                if "relation_method" in self.config:
+                    rel_config["method"] = self.config["relation_method"]
+                rel_extractor = RelationExtractor(**rel_config, **{k: v for k, v in self.config.items() if k not in ["ner", "relation"]})
+                relations = rel_extractor.extract_relations(text, entities, **options)
             
             # Build network
             self.progress_tracker.update_tracking(tracking_id, message="Building semantic network...")

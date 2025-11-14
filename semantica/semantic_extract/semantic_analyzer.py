@@ -3,6 +3,24 @@ Semantic Analysis Module
 
 This module provides comprehensive semantic analysis capabilities including
 similarity calculation, role labeling, clustering, and feature extraction.
+Supports multiple extraction methods for underlying entity and relation extraction.
+
+Supported Methods (for underlying NER/Relation extractors):
+    - "pattern": Pattern-based extraction
+    - "regex": Regex-based extraction
+    - "rules": Rule-based extraction
+    - "ml": ML-based extraction (spaCy)
+    - "huggingface": HuggingFace model extraction
+    - "llm": LLM-based extraction
+    - Any method supported by NERExtractor and RelationExtractor
+
+Algorithms Used:
+    - Jaccard Similarity: Set intersection over union for text similarity
+    - Cosine Similarity: Vector space model with TF-IDF or embeddings
+    - Semantic Role Labeling: Dependency parsing and rule-based role assignment
+    - Clustering: K-means, hierarchical clustering for semantic grouping
+    - Feature Extraction: TF-IDF, word embeddings, and semantic features
+    - Text Quality Metrics: Readability, coherence, and complexity measures
 
 Key Features:
     - Semantic similarity analysis (Jaccard, cosine)
@@ -10,6 +28,8 @@ Key Features:
     - Semantic clustering and grouping
     - Semantic feature extraction
     - Text quality assessment
+    - Integration with multiple NER and relation extraction methods
+    - Method parameter support for underlying extractors
 
 Main Classes:
     - SemanticAnalyzer: Main semantic analysis coordinator
@@ -21,8 +41,12 @@ Main Classes:
 
 Example Usage:
     >>> from semantica.semantic_extract import SemanticAnalyzer
+    >>> # Using default methods
     >>> analyzer = SemanticAnalyzer()
     >>> similarity = analyzer.calculate_similarity("Apple Inc.", "Apple company")
+    >>> 
+    >>> # Using LLM-based extraction
+    >>> analyzer = SemanticAnalyzer(method="llm", provider="openai")
     >>> roles = analyzer.label_semantic_roles("John bought a car.")
     >>> clusters = analyzer.cluster_semantically(texts)
 
@@ -31,7 +55,7 @@ License: MIT
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..utils.exceptions import ProcessingError
 from ..utils.logging import get_logger
@@ -62,12 +86,28 @@ class SemanticCluster:
 class SemanticAnalyzer:
     """Comprehensive semantic analysis handler."""
     
-    def __init__(self, config=None, **kwargs):
-        """Initialize semantic analyzer."""
+    def __init__(self, method: Union[str, List[str]] = None, config=None, **kwargs):
+        """
+        Initialize semantic analyzer.
+        
+        Args:
+            method: Extraction method(s) for underlying NER/relation extractors.
+                   Can be passed to ner_method and relation_method in config.
+            config: Legacy config dict (deprecated, use kwargs)
+            **kwargs: Configuration options:
+                - ner_method: Method for NER extraction (if entities need to be extracted)
+                - relation_method: Method for relation extraction (if relations need to be extracted)
+                - Other options passed to sub-components
+        """
         self.logger = get_logger("semantic_analyzer")
         self.config = config or {}
         self.config.update(kwargs)
         self.progress_tracker = get_progress_tracker()
+        
+        # Store method for passing to extractors if needed
+        if method is not None:
+            self.config["ner_method"] = method
+            self.config["relation_method"] = method
         
         self.similarity_analyzer = SimilarityAnalyzer(**self.config.get("similarity", {}))
         self.role_labeler = RoleLabeler(**self.config.get("role", {}))

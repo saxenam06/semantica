@@ -2,19 +2,40 @@
 RDF Triple Extraction Module
 
 This module provides comprehensive RDF triple extraction capabilities, enabling
-conversion of entities and relations into RDF triples with validation and
-serialization support.
+conversion of entities and relations into RDF triples using multiple extraction
+methods, with validation and serialization support.
+
+Supported Methods:
+    - "pattern": Pattern-based triple extraction from relations (default)
+    - "rules": Rule-based triple extraction using linguistic rules
+    - "huggingface": Custom HuggingFace triplet extraction models
+    - "llm": LLM-based triple extraction using various providers
+
+Algorithms Used:
+    - Pattern Matching: Regex-based subject-predicate-object extraction
+    - Rule-based Extraction: Linguistic rule application for triple formation
+    - Sequence-to-Sequence Models: Transformer-based seq2seq for triplet generation
+    - Large Language Models: GPT, Claude, Gemini for structured triple extraction
+    - RDF Serialization: Graph serialization algorithms (Turtle, N-Triples, JSON-LD)
+    - URI Normalization: String normalization and URI formatting algorithms
 
 Key Features:
+    - Multiple extraction methods:
+        * Pattern-based: Pattern matching for triple extraction (default)
+        * Rules-based: Rule-based triple extraction
+        * HuggingFace: Custom HuggingFace triplet models
+        * LLM-based: LLM-powered triple extraction
+    - Fallback chain support: Try methods in order until one succeeds
     - RDF triple generation from entities and relations
     - Subject-predicate-object extraction
     - Triple validation and quality checking
     - RDF serialization (Turtle, N-Triples, JSON-LD, RDF/XML)
     - Batch triple processing
     - URI formatting and normalization
+    - Quality assessment and scoring
 
 Main Classes:
-    - TripleExtractor: Main triple extraction coordinator
+    - TripleExtractor: Main triple extraction coordinator with method selection
     - TripleValidator: Triple validation engine
     - RDFSerializer: RDF serialization handler
     - TripleQualityChecker: Triple quality assessment
@@ -22,8 +43,19 @@ Main Classes:
 
 Example Usage:
     >>> from semantica.semantic_extract import TripleExtractor
-    >>> extractor = TripleExtractor()
+    >>> # Using pattern method (default)
+    >>> extractor = TripleExtractor(method="pattern")
     >>> triples = extractor.extract_triples(text, entities, relations)
+    >>> 
+    >>> # Using LLM method
+    >>> extractor = TripleExtractor(method="llm", provider="openai", llm_model="gpt-4")
+    >>> triples = extractor.extract_triples(text, entities, relations)
+    >>> 
+    >>> # Using HuggingFace model
+    >>> extractor = TripleExtractor(method="huggingface", huggingface_model="custom/triplet-model")
+    >>> triples = extractor.extract_triples(text)
+    >>> 
+    >>> # Serialize to RDF
     >>> rdf_turtle = extractor.serialize_triples(triples, format="turtle")
     >>> validated = extractor.validate_triples(triples)
 
@@ -32,7 +64,7 @@ License: MIT
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote
 
 from ..utils.exceptions import ProcessingError, ValidationError
@@ -40,6 +72,7 @@ from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
 from .ner_extractor import Entity
 from .relation_extractor import Relation
+from .methods import get_triple_method
 
 
 @dataclass
@@ -56,12 +89,36 @@ class Triple:
 class TripleExtractor:
     """RDF triple extraction handler."""
     
-    def __init__(self, config=None, **kwargs):
-        """Initialize triple extractor."""
+    def __init__(self, method: Union[str, List[str]] = "pattern", config=None, **kwargs):
+        """
+        Initialize triple extractor.
+        
+        Args:
+            method: Extraction method(s). Can be:
+                - "pattern": Pattern-based extraction (default)
+                - "rules": Rule-based extraction
+                - "huggingface": HuggingFace model
+                - "llm": LLM-based extraction
+                - List of methods for fallback chain
+            config: Legacy config dict (deprecated, use kwargs)
+            **kwargs: Configuration options:
+                - model: Model name (for HuggingFace methods)
+                - huggingface_model: HuggingFace model name
+                - provider: LLM provider (for LLM method)
+                - llm_model: LLM model name
+                - device: Device for HuggingFace models
+                - min_confidence: Minimum confidence threshold
+                - validate: Enable validation (default: True)
+        """
         self.logger = get_logger("triple_extractor")
         self.config = config or {}
         self.config.update(kwargs)
         self.progress_tracker = get_progress_tracker()
+        
+        # Method configuration
+        self.method = method if isinstance(method, list) else [method]
+        self.min_confidence = self.config.get("min_confidence", 0.5)
+        self.validate_triples = self.config.get("validate", True)
         
         self.triple_validator = TripleValidator(**self.config.get("validator", {}))
         self.rdf_serializer = RDFSerializer(**self.config.get("serializer", {}))
@@ -110,24 +167,74 @@ class TripleExtractor:
                 rel_extractor = RelationExtractor(**self.config.get("relation", {}))
                 relationships = rel_extractor.extract_relations(text, entities)
             
-            # Convert relations to triples
-            self.progress_tracker.update_tracking(tracking_id, message=f"Converting {len(relationships)} relations to triples...")
-            triples = []
-            for relation in relationships:
-                triple = Triple(
-                    subject=self._format_uri(relation.subject.text),
-                    predicate=self._format_uri(relation.predicate),
-                    object=self._format_uri(relation.object.text),
-                    confidence=relation.confidence,
-                    metadata={
-                        "context": relation.context,
-                        **relation.metadata
-                    }
-                )
-                triples.append(triple)
+            # Use method-based extraction
+            methods = options.get("method", self.method)
+            if isinstance(methods, str):
+                methods = [methods]
+            
+            # Merge config with options
+            all_options = {**self.config, **options}
+            
+            # Try each method in order (fallback chain)
+            all_triples = []
+            for method_name in methods:
+                try:
+                    self.progress_tracker.update_tracking(tracking_id, message=f"Extracting triples using {method_name}...")
+                    method_func = get_triple_method(method_name)
+                    
+                    # Prepare method-specific options
+                    method_options = all_options.copy()
+                    if method_name == "huggingface":
+                        method_options["model"] = all_options.get("huggingface_model", all_options.get("model"))
+                        method_options["device"] = all_options.get("device")
+                    elif method_name == "llm":
+                        method_options["provider"] = all_options.get("provider", "openai")
+                        method_options["model"] = all_options.get("llm_model", all_options.get("model"))
+                    
+                    triples = method_func(text, entities=entities, relations=relationships, **method_options)
+                    
+                    # Filter by confidence
+                    min_conf = options.get("min_confidence", self.min_confidence)
+                    filtered = [t for t in triples if t.confidence >= min_conf]
+                    
+                    if filtered:
+                        all_triples.append((method_name, filtered))
+                        
+                        # If not using ensemble, return first successful result
+                        if len(methods) == 1:
+                            result = filtered
+                            if options.get("validate", self.validate_triples):
+                                result = self.triple_validator.validate_triples(result)
+                            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                                              message=f"Extracted {len(result)} triples using {method_name}")
+                            return result
+                    
+                except Exception as e:
+                    self.logger.warning(f"Method {method_name} failed: {e}")
+                    continue
+            
+            # Use first successful method or fallback to relation conversion
+            if all_triples:
+                triples = all_triples[0][1]
+            else:
+                # Fallback: Convert relations to triples
+                self.progress_tracker.update_tracking(tracking_id, message=f"Converting {len(relationships)} relations to triples...")
+                triples = []
+                for relation in relationships:
+                    triple = Triple(
+                        subject=self._format_uri(relation.subject.text),
+                        predicate=self._format_uri(relation.predicate),
+                        object=self._format_uri(relation.object.text),
+                        confidence=relation.confidence,
+                        metadata={
+                            "context": relation.context,
+                            **relation.metadata
+                        }
+                    )
+                    triples.append(triple)
             
             # Validate triples
-            if options.get("validate", True):
+            if options.get("validate", self.validate_triples):
                 self.progress_tracker.update_tracking(tracking_id, message="Validating triples...")
                 triples = self.triple_validator.validate_triples(triples)
             

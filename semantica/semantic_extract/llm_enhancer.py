@@ -1,16 +1,41 @@
 """
 LLM Enhancement Module
 
-This module provides LLM-based extraction enhancement capabilities using OpenAI,
-Anthropic, and other language models to improve entity and relation extraction quality.
+This module provides LLM-based extraction enhancement capabilities using multiple
+language model providers to improve entity and relation extraction quality through
+post-processing and refinement.
+
+Supported Providers:
+    - "openai": OpenAI (GPT-3.5, GPT-4, etc.)
+    - "gemini": Google Gemini (gemini-pro, etc.)
+    - "groq": Groq (llama2, mixtral, etc.)
+    - "anthropic": Anthropic Claude (claude-3-sonnet, etc.)
+    - "ollama": Ollama (local open-source models)
+    - "huggingface_llm": HuggingFace Transformers (custom LLM models)
+
+Algorithms Used:
+    - Prompt Engineering: Structured prompt construction for enhancement tasks
+    - LLM Generation: Transformer-based language model text generation
+    - Response Parsing: JSON parsing and structured output extraction
+    - Entity Refinement: Confidence-based entity validation and correction
+    - Relation Enhancement: Context-aware relation validation and improvement
+    - Temperature Sampling: Stochastic sampling for diverse outputs
 
 Key Features:
     - Entity extraction enhancement using LLMs
     - Relation extraction enhancement
-    - Multi-provider support (OpenAI, Anthropic)
-    - Configurable model selection
-    - API key management
+    - Multi-provider support:
+        * OpenAI (GPT-3.5, GPT-4, etc.)
+        * Google Gemini (gemini-pro, etc.)
+        * Groq (llama2, mixtral, etc.)
+        * Anthropic Claude (claude-3-sonnet, etc.)
+        * Ollama (local open-source models)
+        * HuggingFace Transformers (custom LLM models)
+    - Unified provider interface via providers module
+    - Configurable model selection per provider
+    - Automatic API key management from environment variables
     - Graceful fallback when LLM unavailable
+    - Structured prompt generation for enhancement tasks
 
 Main Classes:
     - LLMEnhancer: Main LLM enhancement coordinator
@@ -18,9 +43,18 @@ Main Classes:
 
 Example Usage:
     >>> from semantica.semantic_extract import LLMEnhancer
-    >>> enhancer = LLMEnhancer(provider="openai", model="gpt-3.5-turbo")
+    >>> # Using OpenAI
+    >>> enhancer = LLMEnhancer(provider="openai", model="gpt-4")
     >>> enhanced_entities = enhancer.enhance_entities(text, entities)
     >>> enhanced_relations = enhancer.enhance_relations(text, relations)
+    >>> 
+    >>> # Using Gemini
+    >>> enhancer = LLMEnhancer(provider="gemini", model="gemini-pro")
+    >>> enhanced_entities = enhancer.enhance_entities(text, entities)
+    >>> 
+    >>> # Using Ollama (local)
+    >>> enhancer = LLMEnhancer(provider="ollama", model="llama2")
+    >>> enhanced_entities = enhancer.enhance_entities(text, entities)
 
 Author: Semantica Contributors
 License: MIT
@@ -34,6 +68,7 @@ from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
 from .ner_extractor import Entity
 from .relation_extractor import Relation
+from .providers import create_provider
 
 
 @dataclass
@@ -49,14 +84,14 @@ class LLMResponse:
 class LLMEnhancer:
     """LLM-based extraction enhancer."""
     
-    def __init__(self, **config):
+    def __init__(self, provider: str = "openai", **config):
         """
         Initialize LLM enhancer.
         
         Args:
+            provider: LLM provider ("openai", "gemini", "groq", "anthropic", "ollama", "huggingface_llm")
             **config: Configuration options:
-                - provider: LLM provider ("openai", "anthropic", default: "openai")
-                - model: Model name (default: "gpt-3.5-turbo")
+                - model: Model name (default depends on provider)
                 - api_key: API key (from environment if not provided)
                 - temperature: Temperature for generation
         """
@@ -64,37 +99,16 @@ class LLMEnhancer:
         self.config = config
         self.progress_tracker = get_progress_tracker()
         
-        self.provider = config.get("provider", "openai")
-        self.model = config.get("model", "gpt-3.5-turbo")
+        self.provider_name = provider
+        self.model = config.get("model")
         self.temperature = config.get("temperature", 0.3)
         
-        # Initialize client
-        self.client = None
-        self._initialize_client()
-    
-    def _initialize_client(self):
-        """Initialize LLM client based on provider."""
+        # Initialize provider using new system
         try:
-            if self.provider == "openai":
-                import os
-                from openai import OpenAI
-                api_key = self.config.get("api_key") or os.getenv("OPENAI_API_KEY")
-                if api_key:
-                    self.client = OpenAI(api_key=api_key)
-                else:
-                    self.logger.warning("OpenAI API key not found. LLM features disabled.")
-            elif self.provider == "anthropic":
-                import os
-                from anthropic import Anthropic
-                api_key = self.config.get("api_key") or os.getenv("ANTHROPIC_API_KEY")
-                if api_key:
-                    self.client = Anthropic(api_key=api_key)
-                else:
-                    self.logger.warning("Anthropic API key not found. LLM features disabled.")
-            else:
-                self.logger.warning(f"Unsupported LLM provider: {self.provider}")
-        except ImportError:
-            self.logger.warning(f"Required library for {self.provider} not installed. LLM features disabled.")
+            self.provider = create_provider(provider, **config)
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize {provider} provider: {e}")
+            self.provider = None
     
     def enhance_entities(self, text: str, entities: List[Entity], **options) -> List[Entity]:
         """
@@ -115,16 +129,16 @@ class LLMEnhancer:
         )
         
         try:
-            if not self.client:
-                self.logger.warning("LLM client not available. Returning original entities.")
-                self.progress_tracker.stop_tracking(tracking_id, status="completed", message="LLM client not available")
+            if not self.provider or not self.provider.is_available():
+                self.logger.warning("LLM provider not available. Returning original entities.")
+                self.progress_tracker.stop_tracking(tracking_id, status="completed", message="LLM provider not available")
                 return entities
             
             self.progress_tracker.update_tracking(tracking_id, message="Building prompt...")
             prompt = self._build_entity_prompt(text, entities)
             
             self.progress_tracker.update_tracking(tracking_id, message="Calling LLM API...")
-            response = self._call_llm(prompt, **options)
+            response = self.provider.generate(prompt, temperature=options.get("temperature", self.temperature))
             
             self.progress_tracker.update_tracking(tracking_id, message="Parsing LLM response...")
             enhanced_entities = self._parse_entity_response(response, entities)
@@ -149,38 +163,19 @@ class LLMEnhancer:
         Returns:
             list: Enhanced relations
         """
-        if not self.client:
-            self.logger.warning("LLM client not available. Returning original relations.")
+        if not self.provider or not self.provider.is_available():
+            self.logger.warning("LLM provider not available. Returning original relations.")
             return relations
         
         prompt = self._build_relation_prompt(text, relations)
         
         try:
-            response = self._call_llm(prompt, **options)
+            response = self.provider.generate(prompt, temperature=options.get("temperature", self.temperature))
             enhanced_relations = self._parse_relation_response(response, relations)
             return enhanced_relations
         except Exception as e:
             self.logger.error(f"Failed to enhance relations with LLM: {e}")
             return relations
-    
-    def _call_llm(self, prompt: str, **options) -> str:
-        """Call LLM API."""
-        if self.provider == "openai" and self.client:
-            response = self.client.chat.completions.create(
-                model=options.get("model", self.model),
-                messages=[{"role": "user", "content": prompt}],
-                temperature=options.get("temperature", self.temperature)
-            )
-            return response.choices[0].message.content
-        elif self.provider == "anthropic" and self.client:
-            response = self.client.messages.create(
-                model=options.get("model", self.model),
-                max_tokens=4096,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.content[0].text
-        
-        raise ProcessingError("LLM client not available")
     
     def _build_entity_prompt(self, text: str, entities: List[Entity]) -> str:
         """Build prompt for entity enhancement."""

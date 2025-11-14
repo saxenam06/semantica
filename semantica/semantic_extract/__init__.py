@@ -100,6 +100,29 @@ from .extraction_validator import (
     ExtractionValidator,
     ValidationResult
 )
+from .providers import (
+    BaseProvider,
+    OpenAIProvider,
+    GeminiProvider,
+    GroqProvider,
+    AnthropicProvider,
+    OllamaProvider,
+    HuggingFaceLLMProvider,
+    HuggingFaceModelLoader,
+    create_provider
+)
+from .registry import (
+    ProviderRegistry,
+    MethodRegistry,
+    provider_registry,
+    method_registry
+)
+from .config import Config, config
+from .methods import (
+    get_entity_method,
+    get_relation_method,
+    get_triple_method
+)
 
 __all__ = [
     # Named Entity Recognition
@@ -157,6 +180,34 @@ __all__ = [
     # Validation
     "ExtractionValidator",
     "ValidationResult",
+    
+    # Providers
+    "BaseProvider",
+    "OpenAIProvider",
+    "GeminiProvider",
+    "GroqProvider",
+    "AnthropicProvider",
+    "OllamaProvider",
+    "HuggingFaceLLMProvider",
+    "HuggingFaceModelLoader",
+    "create_provider",
+    
+    # Registry
+    "ProviderRegistry",
+    "MethodRegistry",
+    "provider_registry",
+    "method_registry",
+    
+    # Config
+    "Config",
+    "config",
+    
+    # Methods
+    "get_entity_method",
+    "get_relation_method",
+    "get_triple_method",
+    
+    # Convenience
     "build",
 ]
 

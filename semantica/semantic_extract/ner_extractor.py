@@ -1,37 +1,76 @@
 """
 Named Entity Recognition Extractor Module
 
-This module provides core NER capabilities using spaCy and transformers for
-entity identification and classification, with fallback pattern-based extraction.
+This module provides comprehensive NER capabilities with multiple extraction methods,
+ranging from simple pattern matching to advanced LLM-based extraction, with support
+for fallback chains and ensemble voting.
+
+Supported Methods:
+    - "pattern": Pattern-based extraction using simple regex patterns
+    - "regex": Advanced regex-based extraction with custom patterns
+    - "rules": Rule-based extraction using linguistic rules
+    - "ml": ML-based extraction using spaCy (default)
+    - "huggingface": Custom HuggingFace NER models
+    - "llm": LLM-based extraction using various providers (OpenAI, Gemini, Groq, etc.)
+
+Algorithms Used:
+    - Regular Expression Matching: Pattern matching using finite automata
+    - Rule-based Extraction: Linguistic rule application and pattern matching
+    - Neural Named Entity Recognition: spaCy's CNN/Transformer-based NER models
+    - Transformer Models: BERT, RoBERTa, DistilBERT for token classification
+    - Large Language Models: GPT, Claude, Gemini for zero-shot/few-shot extraction
+    - Ensemble Voting: Majority voting and confidence-weighted aggregation
+    - Deduplication: Set-based and similarity-based entity deduplication
 
 Key Features:
-    - spaCy-based entity extraction
-    - Pattern-based fallback extraction
-    - Multiple entity type support
-    - Confidence scoring
-    - Batch processing
-    - Entity filtering by confidence
+    - Multiple extraction methods:
+        * Pattern-based: Simple regex pattern matching
+        * Regex-based: Advanced regex with custom patterns
+        * Rules-based: Linguistic rule-based extraction
+        * ML-based: spaCy-based machine learning extraction (default)
+        * HuggingFace: Custom HuggingFace NER models
+        * LLM-based: Large language model extraction
+    - Fallback chain support: Try methods in order until one succeeds
+    - Ensemble voting: Combine results from multiple methods
+    - Post-processing: Entity boundary validation and deduplication
+    - Multiple entity type support (PERSON, ORG, GPE, DATE, etc.)
+    - Confidence scoring and filtering
+    - Batch processing capabilities
+    - Entity classification and grouping
 
 Main Classes:
-    - NERExtractor: Core NER extractor
+    - NERExtractor: Core NER extractor with method selection
     - Entity: Entity representation dataclass
 
 Example Usage:
     >>> from semantica.semantic_extract import NERExtractor
-    >>> extractor = NERExtractor(model="en_core_web_sm")
+    >>> # Using ML method (default)
+    >>> extractor = NERExtractor(method="ml", model="en_core_web_sm")
     >>> entities = extractor.extract_entities("Apple Inc. was founded in 1976.")
-    >>> filtered = extractor.filter_by_confidence(entities, min_confidence=0.8)
+    >>> 
+    >>> # Using LLM method
+    >>> extractor = NERExtractor(method="llm", provider="openai", llm_model="gpt-4")
+    >>> entities = extractor.extract_entities("Apple Inc. was founded in 1976.")
+    >>> 
+    >>> # Using HuggingFace model
+    >>> extractor = NERExtractor(method="huggingface", huggingface_model="dslim/bert-base-NER")
+    >>> entities = extractor.extract_entities("Apple Inc. was founded in 1976.")
+    >>> 
+    >>> # Using fallback chain
+    >>> extractor = NERExtractor(method=["llm", "ml", "pattern"], ensemble_voting=True)
+    >>> entities = extractor.extract_entities("Apple Inc. was founded in 1976.")
 
 Author: Semantica Contributors
 License: MIT
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..utils.exceptions import ProcessingError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
+from .methods import get_entity_method
 
 try:
     import spacy
@@ -55,31 +94,49 @@ class Entity:
 class NERExtractor:
     """Named Entity Recognition extractor."""
     
-    def __init__(self, **config):
+    def __init__(self, method: Union[str, List[str]] = "ml", **config):
         """
         Initialize NER extractor.
         
         Args:
+            method: Extraction method(s). Can be:
+                - "pattern": Pattern-based extraction
+                - "regex": Regex-based extraction
+                - "rules": Rule-based extraction
+                - "ml": ML-based (spaCy) - default
+                - "huggingface": HuggingFace model
+                - "llm": LLM-based extraction
+                - List of methods for fallback chain
             **config: Configuration options:
-                - model: Model name (default: "en_core_web_sm")
-                - language: Language code (default: "en")
+                - model: Model name (for ML/HuggingFace methods)
+                - huggingface_model: HuggingFace model name
+                - provider: LLM provider (for LLM method)
+                - llm_model: LLM model name
+                - device: Device for HuggingFace models ("cuda" or "cpu")
                 - min_confidence: Minimum confidence threshold
+                - ensemble_voting: Enable ensemble voting (default: False)
+                - post_process: Enable post-processing (default: False)
         """
         self.logger = get_logger("ner_extractor")
         self.config = config
         
+        # Method configuration
+        self.method = method if isinstance(method, list) else [method]
         self.model_name = config.get("model", "en_core_web_sm")
+        self.huggingface_model = config.get("huggingface_model", config.get("model", "dslim/bert-base-NER"))
         self.language = config.get("language", "en")
         self.min_confidence = config.get("min_confidence", 0.5)
+        self.ensemble_voting = config.get("ensemble_voting", False)
+        self.post_process = config.get("post_process", False)
         self.progress_tracker = get_progress_tracker()
         
-        # Initialize spaCy model if available
+        # Initialize spaCy model if ML method is used
         self.nlp = None
-        if SPACY_AVAILABLE:
+        if "ml" in self.method and SPACY_AVAILABLE:
             try:
                 self.nlp = spacy.load(self.model_name)
             except OSError:
-                self.logger.warning(f"spaCy model {self.model_name} not found. NER capabilities limited.")
+                self.logger.warning(f"spaCy model {self.model_name} not found. ML method will fallback.")
     
     def extract_entities(self, text: str, **options) -> List[Entity]:
         """
@@ -90,6 +147,7 @@ class NERExtractor:
             **options: Extraction options:
                 - entity_types: Filter by entity types (list)
                 - min_confidence: Minimum confidence threshold
+                - method: Override method (if not set in __init__)
                 
         Returns:
             list: List of extracted entities
@@ -105,15 +163,64 @@ class NERExtractor:
                 self.progress_tracker.stop_tracking(tracking_id, status="completed", message="No text provided")
                 return []
             
+            # Use method from options if provided, otherwise use instance method
+            methods = options.get("method", self.method)
+            if isinstance(methods, str):
+                methods = [methods]
+            
             min_confidence = options.get("min_confidence", self.min_confidence)
             entity_types = options.get("entity_types")
             
-            if self.nlp:
-                self.progress_tracker.update_tracking(tracking_id, message="Extracting entities using spaCy...")
-                entities = self._extract_with_spacy(text, min_confidence, entity_types)
+            # Merge config with options
+            all_options = {**self.config, **options}
+            
+            # Try each method in order (fallback chain)
+            all_entities = []
+            for method_name in methods:
+                try:
+                    self.progress_tracker.update_tracking(tracking_id, message=f"Extracting entities using {method_name}...")
+                    method_func = get_entity_method(method_name)
+                    
+                    # Prepare method-specific options
+                    method_options = all_options.copy()
+                    if method_name == "huggingface":
+                        method_options["model"] = all_options.get("huggingface_model", self.huggingface_model)
+                        method_options["device"] = all_options.get("device")
+                    elif method_name == "llm":
+                        method_options["provider"] = all_options.get("provider", "openai")
+                        method_options["model"] = all_options.get("llm_model", all_options.get("model"))
+                    
+                    entities = method_func(text, **method_options)
+                    
+                    # Filter by confidence and entity types
+                    filtered = [e for e in entities if e.confidence >= min_confidence]
+                    if entity_types:
+                        filtered = [e for e in filtered if e.label in entity_types]
+                    
+                    if filtered:
+                        all_entities.append((method_name, filtered))
+                        
+                        # If not using ensemble, return first successful result
+                        if not self.ensemble_voting:
+                            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                                              message=f"Extracted {len(filtered)} entities using {method_name}")
+                            return filtered
+                    
+                except Exception as e:
+                    self.logger.warning(f"Method {method_name} failed: {e}")
+                    continue
+            
+            # Ensemble voting if enabled
+            if self.ensemble_voting and len(all_entities) > 1:
+                entities = self._vote_entities([entities for _, entities in all_entities])
+            elif all_entities:
+                entities = all_entities[0][1]  # Use first successful method
             else:
-                self.progress_tracker.update_tracking(tracking_id, message="Extracting entities using fallback method...")
-                entities = self._extract_fallback(text)
+                entities = []
+            
+            # Post-processing if enabled
+            if self.post_process and entities:
+                entities = self._post_process_entities(entities, text)
             
             self.progress_tracker.stop_tracking(tracking_id, status="completed",
                                               message=f"Extracted {len(entities)} entities")
@@ -122,6 +229,63 @@ class NERExtractor:
         except Exception as e:
             self.progress_tracker.stop_tracking(tracking_id, status="failed", message=str(e))
             raise
+    
+    def _vote_entities(self, results: List[List[Entity]], threshold: float = 0.5) -> List[Entity]:
+        """Vote on entities across methods."""
+        entity_counts = {}
+        total_methods = len(results)
+        
+        for entities in results:
+            for entity in entities:
+                key = (entity.text.lower(), entity.label)
+                if key not in entity_counts:
+                    entity_counts[key] = {
+                        "entity": entity,
+                        "score": 0.0,
+                        "count": 0
+                    }
+                entity_counts[key]["score"] += entity.confidence
+                entity_counts[key]["count"] += 1
+        
+        # Return entities that meet threshold
+        voted = []
+        for key, data in entity_counts.items():
+            avg_score = data["score"] / data["count"]
+            if avg_score >= threshold:
+                entity = data["entity"]
+                entity.confidence = avg_score
+                voted.append(entity)
+        
+        return voted
+    
+    def _post_process_entities(self, entities: List[Entity], text: str) -> List[Entity]:
+        """Post-process entities for refinement."""
+        processed = []
+        seen = set()
+        
+        for entity in entities:
+            # Check boundaries
+            if entity.start_char < 0 or entity.end_char > len(text):
+                continue
+            
+            # Check for duplicates
+            key = (entity.text.lower(), entity.label, entity.start_char)
+            if key in seen:
+                continue
+            seen.add(key)
+            
+            # Validate entity text matches
+            actual_text = text[entity.start_char:entity.end_char]
+            if actual_text.lower() != entity.text.lower():
+                # Try to find correct boundaries
+                start = text.lower().find(entity.text.lower(), max(0, entity.start_char - 10))
+                if start >= 0:
+                    entity.start_char = start
+                    entity.end_char = start + len(entity.text)
+            
+            processed.append(entity)
+        
+        return processed
     
     def _extract_with_spacy(self, text: str, min_confidence: float, entity_types: Optional[List[str]]) -> List[Entity]:
         """Extract entities using spaCy."""

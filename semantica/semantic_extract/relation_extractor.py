@@ -2,26 +2,61 @@
 Relation Extraction Module
 
 This module provides comprehensive relationship detection and extraction
-between entities in text documents using pattern matching and co-occurrence analysis.
+between entities in text documents using multiple extraction methods, from
+pattern matching to advanced LLM-based extraction.
+
+Supported Methods:
+    - "pattern": Pattern-based extraction using common relation patterns (default)
+    - "regex": Advanced regex-based relation extraction
+    - "cooccurrence": Co-occurrence based relation detection (proximity-based)
+    - "dependency": Dependency parsing-based extraction using spaCy
+    - "huggingface": Custom HuggingFace relation extraction models
+    - "llm": LLM-based relation extraction using various providers
+
+Algorithms Used:
+    - Pattern Matching: Regular expression and string pattern matching
+    - Co-occurrence Analysis: Proximity-based entity co-occurrence detection
+    - Dependency Parsing: Transition-based or graph-based dependency parsing
+    - Sequence Classification: Transformer-based relation classification models
+    - Large Language Models: GPT, Claude, Gemini for relation extraction
+    - Context Window Analysis: Sliding window and context extraction algorithms
 
 Key Features:
-    - Pattern-based relation extraction
-    - Co-occurrence based relation detection
-    - Multiple relation types (founded_by, located_in, works_for, etc.)
-    - Relation classification
-    - Relation validation
-    - Context extraction
+    - Multiple extraction methods:
+        * Pattern-based: Pattern matching for common relations (default)
+        * Regex-based: Advanced regex relation extraction
+        * Co-occurrence: Proximity-based relation detection
+        * Dependency: Dependency parsing-based extraction
+        * HuggingFace: Custom HuggingFace relation models
+        * LLM-based: LLM-powered relation extraction
+    - Fallback chain support: Try methods in order until one succeeds
+    - Multiple relation types (founded_by, located_in, works_for, born_in, etc.)
+    - Relation classification and grouping
+    - Relation validation and consistency checking
+    - Context extraction for each relation
+    - Confidence scoring and filtering
 
 Main Classes:
-    - RelationExtractor: Main relation extractor
+    - RelationExtractor: Main relation extractor with method selection
     - Relation: Relation representation dataclass
 
 Example Usage:
     >>> from semantica.semantic_extract import RelationExtractor
-    >>> extractor = RelationExtractor()
+    >>> # Using pattern method (default)
+    >>> extractor = RelationExtractor(method="pattern")
     >>> relations = extractor.extract_relations("Apple was founded by Steve Jobs.", entities)
-    >>> classified = extractor.classify_relations(relations)
-    >>> validated = extractor.validate_relations(relations)
+    >>> 
+    >>> # Using dependency parsing
+    >>> extractor = RelationExtractor(method="dependency", model="en_core_web_sm")
+    >>> relations = extractor.extract_relations("Apple was founded by Steve Jobs.", entities)
+    >>> 
+    >>> # Using LLM method
+    >>> extractor = RelationExtractor(method="llm", provider="openai", llm_model="gpt-4")
+    >>> relations = extractor.extract_relations("Apple was founded by Steve Jobs.", entities)
+    >>> 
+    >>> # Using fallback chain
+    >>> extractor = RelationExtractor(method=["llm", "dependency", "pattern"])
+    >>> relations = extractor.extract_relations("Apple was founded by Steve Jobs.", entities)
 
 Author: Semantica Contributors
 License: MIT
@@ -29,12 +64,13 @@ License: MIT
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..utils.exceptions import ProcessingError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
 from .ner_extractor import Entity
+from .methods import get_relation_method
 
 
 @dataclass
@@ -52,21 +88,36 @@ class Relation:
 class RelationExtractor:
     """Relation extractor for entity relationships."""
     
-    def __init__(self, **config):
+    def __init__(self, method: Union[str, List[str]] = "pattern", **config):
         """
         Initialize relation extractor.
         
         Args:
+            method: Extraction method(s). Can be:
+                - "pattern": Pattern-based extraction (default)
+                - "regex": Regex-based extraction
+                - "cooccurrence": Co-occurrence based
+                - "dependency": Dependency parsing based
+                - "huggingface": HuggingFace model
+                - "llm": LLM-based extraction
+                - List of methods for fallback chain
             **config: Configuration options:
+                - model: Model name (for dependency/HuggingFace methods)
+                - huggingface_model: HuggingFace model name
+                - provider: LLM provider (for LLM method)
+                - llm_model: LLM model name
+                - device: Device for HuggingFace models
                 - min_confidence: Minimum confidence threshold
-                - use_llm: Use LLM for relation extraction (default: False)
+                - validate: Enable validation (default: False)
         """
         self.logger = get_logger("relation_extractor")
         self.config = config
         self.progress_tracker = get_progress_tracker()
         
+        # Method configuration
+        self.method = method if isinstance(method, list) else [method]
         self.min_confidence = config.get("min_confidence", 0.5)
-        self.use_llm = config.get("use_llm", False)
+        self.validate = config.get("validate", False)
         
         # Common relation patterns
         self.relation_patterns = {
@@ -95,8 +146,11 @@ class RelationExtractor:
         Args:
             text: Input text
             entities: List of extracted entities
-            **options: Extraction options
-            
+            **options: Extraction options:
+                - method: Override method (if not set in __init__)
+                - min_confidence: Minimum confidence threshold
+                - validate: Enable validation
+                
         Returns:
             list: List of extracted relations
         """
@@ -111,15 +165,65 @@ class RelationExtractor:
                 self.progress_tracker.stop_tracking(tracking_id, status="completed", message="No text or entities provided")
                 return []
             
+            # Use method from options if provided, otherwise use instance method
+            methods = options.get("method", self.method)
+            if isinstance(methods, str):
+                methods = [methods]
+            
             min_confidence = options.get("min_confidence", self.min_confidence)
+            validate = options.get("validate", self.validate)
             
-            # Pattern-based extraction
-            self.progress_tracker.update_tracking(tracking_id, message="Extracting relations using patterns...")
-            relations = self._extract_with_patterns(text, entities)
+            # Merge config with options
+            all_options = {**self.config, **options}
             
-            # Filter by confidence
-            self.progress_tracker.update_tracking(tracking_id, message=f"Filtering {len(relations)} relations by confidence...")
-            relations = [r for r in relations if r.confidence >= min_confidence]
+            # Try each method in order (fallback chain)
+            all_relations = []
+            for method_name in methods:
+                try:
+                    self.progress_tracker.update_tracking(tracking_id, message=f"Extracting relations using {method_name}...")
+                    method_func = get_relation_method(method_name)
+                    
+                    # Prepare method-specific options
+                    method_options = all_options.copy()
+                    if method_name == "huggingface":
+                        method_options["model"] = all_options.get("huggingface_model", all_options.get("model"))
+                        method_options["device"] = all_options.get("device")
+                    elif method_name == "llm":
+                        method_options["provider"] = all_options.get("provider", "openai")
+                        method_options["model"] = all_options.get("llm_model", all_options.get("model"))
+                    elif method_name == "dependency":
+                        method_options["model"] = all_options.get("model", "en_core_web_sm")
+                    
+                    relations = method_func(text, entities, **method_options)
+                    
+                    # Filter by confidence
+                    filtered = [r for r in relations if r.confidence >= min_confidence]
+                    
+                    if filtered:
+                        all_relations.append((method_name, filtered))
+                        
+                        # If not using ensemble, return first successful result
+                        if len(methods) == 1:
+                            result = filtered
+                            if validate:
+                                result = self.validate_relations(result)
+                            self.progress_tracker.stop_tracking(tracking_id, status="completed",
+                                                              message=f"Extracted {len(result)} relations using {method_name}")
+                            return result
+                    
+                except Exception as e:
+                    self.logger.warning(f"Method {method_name} failed: {e}")
+                    continue
+            
+            # Use first successful method or combine
+            if all_relations:
+                relations = all_relations[0][1]  # Use first successful method
+            else:
+                relations = []
+            
+            # Validate if enabled
+            if validate:
+                relations = self.validate_relations(relations)
             
             self.progress_tracker.stop_tracking(tracking_id, status="completed",
                                               message=f"Extracted {len(relations)} relations")

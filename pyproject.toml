@@ -141,6 +141,28 @@ monitoring = [
     "grafana-api>=1.0.0",
     "elasticsearch>=8.5.0"
 ]
+llm-openai = [
+    "openai>=1.0.0"
+]
+llm-gemini = [
+    "google-generativeai>=0.3.0"
+]
+llm-groq = [
+    "groq>=0.4.0"
+]
+llm-anthropic = [
+    "anthropic>=0.18.0"
+]
+llm-ollama = [
+    "ollama>=0.1.0"
+]
+llm-all = [
+    "semantica[llm-openai,llm-gemini,llm-groq,llm-anthropic,llm-ollama]"
+]
+models-huggingface = [
+    "transformers>=4.20.0",
+    "torch>=1.12.0"
+]
 
 [project.urls]
 Homepage = "https://semantica.dev"

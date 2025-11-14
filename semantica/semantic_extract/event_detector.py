@@ -3,7 +3,26 @@ Event Detection Module
 
 This module provides comprehensive event detection and extraction capabilities,
 enabling identification of events, their participants, temporal information,
-and relationships between events.
+and relationships between events. Supports multiple extraction methods for
+entity and relation extraction used in event detection.
+
+Supported Methods (for underlying NER/Relation extractors):
+    - "pattern": Pattern-based extraction
+    - "regex": Regex-based extraction
+    - "rules": Rule-based extraction
+    - "ml": ML-based extraction (spaCy)
+    - "huggingface": HuggingFace model extraction
+    - "llm": LLM-based extraction
+    - Any method supported by NERExtractor and RelationExtractor
+
+Algorithms Used:
+    - Pattern Matching: Regular expression matching for event triggers
+    - Temporal Extraction: Date/time pattern recognition and parsing
+    - Location Extraction: Named entity recognition for locations
+    - Participant Extraction: Capitalization-based and pattern-based participant detection
+    - Event Classification: Rule-based and ML-based event type classification
+    - Temporal Sorting: Chronological ordering algorithms
+    - Event Relationship Detection: Graph-based event relationship extraction
 
 Key Features:
     - Event detection and classification
@@ -12,6 +31,8 @@ Key Features:
     - Event confidence scoring
     - Custom event pattern detection
     - Participant and location extraction
+    - Integration with multiple NER and relation extraction methods
+    - Method parameter support for underlying extractors
 
 Main Classes:
     - EventDetector: Main event detection coordinator
@@ -22,8 +43,14 @@ Main Classes:
 
 Example Usage:
     >>> from semantica.semantic_extract import EventDetector
+    >>> # Using default methods
     >>> detector = EventDetector()
     >>> events = detector.detect_events("Apple was founded in 1976 by Steve Jobs.")
+    >>> 
+    >>> # Using LLM-based extraction for entities
+    >>> detector = EventDetector(ner_method="llm", provider="openai")
+    >>> events = detector.detect_events("Apple was founded in 1976 by Steve Jobs.")
+    >>> 
     >>> classified = detector.classify_events(events)
 
 Author: Semantica Contributors
@@ -32,7 +59,7 @@ License: MIT
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from ..utils.exceptions import ProcessingError
 from ..utils.logging import get_logger
@@ -58,12 +85,28 @@ class Event:
 class EventDetector:
     """Event detection and extraction handler."""
     
-    def __init__(self, config=None, **kwargs):
-        """Initialize event detector."""
+    def __init__(self, method: Union[str, List[str]] = None, config=None, **kwargs):
+        """
+        Initialize event detector.
+        
+        Args:
+            method: Extraction method(s) for underlying NER/relation extractors.
+                   Can be passed to ner_method and relation_method in config.
+            config: Legacy config dict (deprecated, use kwargs)
+            **kwargs: Configuration options:
+                - ner_method: Method for NER extraction (if entities need to be extracted)
+                - relation_method: Method for relation extraction (if relations need to be extracted)
+                - Other options passed to sub-components
+        """
         self.logger = get_logger("event_detector")
         self.config = config or {}
         self.config.update(kwargs)
         self.progress_tracker = get_progress_tracker()
+        
+        # Store method for passing to extractors if needed
+        if method is not None:
+            self.config["ner_method"] = method
+            self.config["relation_method"] = method
         
         self.event_classifier = EventClassifier(**self.config.get("classifier", {}))
         self.temporal_processor = TemporalEventProcessor(**self.config.get("temporal", {}))

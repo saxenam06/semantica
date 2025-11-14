@@ -3,6 +3,20 @@ Extraction Validator Module
 
 This module provides comprehensive quality validation for semantic extractions,
 ensuring accuracy, consistency, and reliability of extracted entities and relations.
+Supports method parameter for future extensibility with method-specific validation.
+
+Supported Methods (for future extensibility):
+    - Method parameter reserved for method-specific validation strategies
+    - Currently supports general validation for all extraction methods
+    - Future: Method-specific validation rules (e.g., "llm", "ml", "pattern")
+
+Algorithms Used:
+    - Confidence Thresholding: Statistical threshold-based filtering
+    - Duplicate Detection: Set-based and similarity-based deduplication
+    - Consistency Checking: Rule-based and graph-based consistency validation
+    - Quality Scoring: Weighted scoring algorithms for extraction quality
+    - Validation Metrics: Precision, recall, F1-score calculations
+    - Boundary Validation: Character position and text boundary checking
 
 Key Features:
     - Entity validation with confidence checking
@@ -11,6 +25,7 @@ Key Features:
     - Duplicate detection
     - Confidence-based filtering
     - Validation result reporting
+    - Method parameter support for future method-specific validation
 
 Main Classes:
     - ExtractionValidator: Main validation coordinator
@@ -18,10 +33,14 @@ Main Classes:
 
 Example Usage:
     >>> from semantica.semantic_extract import ExtractionValidator
+    >>> # Using default validation
     >>> validator = ExtractionValidator()
     >>> result = validator.validate_entities(entities)
     >>> if result.valid:
     ...     print(f"Quality score: {result.score}")
+    >>> 
+    >>> # Using method-specific validation (future extensibility)
+    >>> validator = ExtractionValidator(method="llm")
     >>> filtered = validator.filter_by_confidence(entities, min_confidence=0.8)
 
 Author: Semantica Contributors
@@ -52,11 +71,12 @@ class ValidationResult:
 class ExtractionValidator:
     """Validator for semantic extractions."""
     
-    def __init__(self, **config):
+    def __init__(self, method: Optional[str] = None, **config):
         """
         Initialize extraction validator.
         
         Args:
+            method: Validation method (for future extensibility, currently unused)
             **config: Configuration options:
                 - min_confidence: Minimum confidence threshold (default: 0.5)
                 - validate_consistency: Check consistency (default: True)
@@ -65,6 +85,7 @@ class ExtractionValidator:
         self.config = config
         self.progress_tracker = get_progress_tracker()
         
+        self.method = method  # Reserved for future method-based validation
         self.min_confidence = config.get("min_confidence", 0.5)
         self.validate_consistency = config.get("validate_consistency", True)
     

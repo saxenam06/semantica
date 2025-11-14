@@ -3,7 +3,22 @@ Named Entity Recognition Module
 
 This module provides comprehensive named entity recognition capabilities for
 extracting and classifying entities from text with confidence scoring and
-custom type support.
+custom type support. Uses NERExtractor internally with method parameter support.
+
+Supported Methods (passed to NERExtractor):
+    - "pattern": Pattern-based extraction using simple regex patterns
+    - "regex": Advanced regex-based extraction with custom patterns
+    - "rules": Rule-based extraction using linguistic rules
+    - "ml": ML-based extraction using spaCy (default)
+    - "huggingface": Custom HuggingFace NER models
+    - "llm": LLM-based extraction using various providers (OpenAI, Gemini, Groq, etc.)
+
+Algorithms Used:
+    - Entity Classification: Rule-based and ML-based entity type classification
+    - Confidence Scoring: Statistical and model-based confidence calculation
+    - Entity Disambiguation: Context-aware entity disambiguation algorithms
+    - Batch Processing: Parallel and sequential batch processing algorithms
+    - Custom Entity Detection: Pattern-based custom entity type detection
 
 Key Features:
     - Multi-type entity recognition (PERSON, ORG, GPE, DATE, etc.)
@@ -51,15 +66,25 @@ class NamedEntityRecognizer:
     • Processes batch text collections
     """
     
-    def __init__(self, config=None, **kwargs):
-        """Initialize named entity recognizer."""
+    def __init__(self, method=None, config=None, **kwargs):
+        """
+        Initialize named entity recognizer.
+        
+        Args:
+            method: Extraction method(s) - passed to NERExtractor
+            config: Legacy config dict (deprecated, use kwargs)
+            **kwargs: Configuration options passed to NERExtractor
+        """
         self.logger = get_logger("named_entity_recognizer")
         self.config = config or {}
         self.config.update(kwargs)
         self.progress_tracker = get_progress_tracker()
         
         # Use NERExtractor for actual extraction
-        self.ner_extractor = NERExtractor(**self.config.get("ner", {}))
+        ner_config = self.config.get("ner", {})
+        if method is not None:
+            ner_config["method"] = method
+        self.ner_extractor = NERExtractor(**ner_config, **self.config)
         self.entity_classifier = EntityClassifier(**self.config.get("classifier", {}))
         self.confidence_scorer = EntityConfidenceScorer(**self.config.get("scorer", {}))
     

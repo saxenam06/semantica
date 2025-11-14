@@ -3,7 +3,25 @@ Coreference Resolution Module
 
 This module provides comprehensive coreference resolution capabilities for resolving
 pronoun references and entity coreferences in text, enabling better understanding
-of entity mentions and references.
+of entity mentions and references. Supports multiple extraction methods for
+underlying entity extraction.
+
+Supported Methods (for underlying NER extractors):
+    - "pattern": Pattern-based extraction
+    - "regex": Regex-based extraction
+    - "rules": Rule-based extraction
+    - "ml": ML-based extraction (spaCy)
+    - "huggingface": HuggingFace model extraction
+    - "llm": LLM-based extraction
+    - Any method supported by NERExtractor
+
+Algorithms Used:
+    - Pronoun Resolution: Rule-based and distance-based antecedent resolution
+    - Entity Coreference: String matching and similarity-based coreference detection
+    - Coreference Chain Building: Graph-based chain construction algorithms
+    - Mention Extraction: Pattern-based and ML-based mention detection
+    - Ambiguity Resolution: Context-aware disambiguation algorithms
+    - Distance Metrics: Character distance and sentence distance calculations
 
 Key Features:
     - Pronoun resolution (he, she, it, they, etc.)
@@ -12,6 +30,8 @@ Key Features:
     - Ambiguity resolution
     - Cross-document coreference support
     - Mention extraction and tracking
+    - Integration with multiple NER extraction methods
+    - Method parameter support for underlying extractors
 
 Main Classes:
     - CoreferenceResolver: Main coreference resolution coordinator
@@ -23,8 +43,14 @@ Main Classes:
 
 Example Usage:
     >>> from semantica.semantic_extract import CoreferenceResolver
+    >>> # Using default methods
     >>> resolver = CoreferenceResolver()
     >>> chains = resolver.resolve_coreferences("John went to the store. He bought milk.")
+    >>> 
+    >>> # Using LLM-based extraction for entities
+    >>> resolver = CoreferenceResolver(method="llm", provider="openai")
+    >>> chains = resolver.resolve_coreferences("John went to the store. He bought milk.")
+    >>> 
     >>> pronouns = resolver.resolve_pronouns("Mary said she would come.")
 
 Author: Semantica Contributors
@@ -33,7 +59,7 @@ License: MIT
 
 from dataclasses import dataclass, field
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..utils.exceptions import ProcessingError
 from ..utils.logging import get_logger
@@ -65,12 +91,26 @@ class CoreferenceChain:
 class CoreferenceResolver:
     """Coreference resolution handler."""
     
-    def __init__(self, config=None, **kwargs):
-        """Initialize coreference resolver."""
+    def __init__(self, method: Union[str, List[str]] = None, config=None, **kwargs):
+        """
+        Initialize coreference resolver.
+        
+        Args:
+            method: Extraction method(s) for underlying NER extractors.
+                   Can be passed to ner_method in config.
+            config: Legacy config dict (deprecated, use kwargs)
+            **kwargs: Configuration options:
+                - ner_method: Method for NER extraction (if entities need to be extracted)
+                - Other options passed to sub-components
+        """
         self.logger = get_logger("coreference_resolver")
         self.config = config or {}
         self.config.update(kwargs)
         self.progress_tracker = get_progress_tracker()
+        
+        # Store method for passing to extractors if needed
+        if method is not None:
+            self.config["ner_method"] = method
         
         self.pronoun_resolver = PronounResolver(**self.config.get("pronoun", {}))
         self.entity_detector = EntityCoreferenceDetector(**self.config.get("entity", {}))
