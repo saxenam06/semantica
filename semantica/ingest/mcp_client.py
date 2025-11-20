@@ -2,21 +2,26 @@
 MCP Client Module
 
 This module provides a generic MCP (Model Context Protocol) client implementation
-for communicating with ANY Python-based MCP server across diverse domains.
+for communicating with Python-based MCP servers and FastMCP servers via URL connections.
+
+**IMPORTANT**: This implementation supports ONLY Python MCP servers and FastMCP servers.
+JavaScript, TypeScript, C#, Java, and other language implementations are NOT supported.
 
 Key Features:
-    - Generic JSON-RPC communication with any MCP server
-    - Support for stdio, HTTP, and SSE transports
+    - URL-based connection (primary interface)
+    - Generic JSON-RPC communication with Python/FastMCP servers
+    - Support for HTTP, HTTPS, and SSE transports (auto-detected from URL)
     - Dynamic discovery of server capabilities
     - Authentication support (API keys, OAuth, custom headers)
     - Error handling and connection management
 
 Main Classes:
-    - MCPClient: Generic MCP client for any Python MCP server
+    - MCPClient: Generic MCP client for Python/FastMCP MCP servers
 
 Example Usage:
     >>> from semantica.ingest import MCPClient
-    >>> client = MCPClient(transport="stdio", command="python", args=["-m", "mcp_server"])
+    >>> # Connect via URL (primary method)
+    >>> client = MCPClient(url="http://localhost:8000/mcp")
     >>> client.connect()
     >>> resources = client.list_resources()
     >>> tools = client.list_tools()
@@ -61,52 +66,100 @@ class MCPTool:
 
 class MCPClient:
     """
-    Generic MCP client for communicating with any Python MCP server.
+    Generic MCP client for communicating with Python MCP servers and FastMCP servers.
+    
+    **IMPORTANT**: This client supports ONLY Python-based MCP servers and FastMCP servers.
+    JavaScript, TypeScript, C#, Java, and other language implementations are NOT supported.
     
     This class provides a domain-agnostic implementation that works with
-    any Python-based MCP server following the MCP protocol specification.
-    It supports multiple transport methods and dynamically discovers server
+    any Python or FastMCP server following the MCP protocol specification.
+    It supports URL-based connections and dynamically discovers server
     capabilities without requiring domain-specific code.
     
-    Supported Transports:
-        - stdio: Standard input/output (for local MCP servers)
-        - http: HTTP/HTTPS transport
-        - sse: Server-Sent Events transport
+    Supported URL Schemes:
+        - http://, https://: HTTP/HTTPS transport (auto-detected)
+        - mcp://: MCP protocol URL (auto-detected as HTTP)
+        - sse://: Server-Sent Events transport (auto-detected)
     
     Example Usage:
-        >>> client = MCPClient(transport="stdio", command="python", args=["-m", "mcp_server"])
+        >>> # Connect via URL (primary method)
+        >>> client = MCPClient(url="http://localhost:8000/mcp")
         >>> client.connect()
         >>> resources = client.list_resources()
         >>> data = client.read_resource("resource://example")
+        
+        >>> # With authentication
+        >>> client = MCPClient(
+        ...     url="https://api.example.com/mcp",
+        ...     headers={"Authorization": "Bearer token"}
+        ... )
     """
     
     def __init__(
         self,
-        transport: str = "stdio",
-        command: Optional[str] = None,
-        args: Optional[List[str]] = None,
         url: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        transport: Optional[str] = None,
         **config
     ):
         """
         Initialize MCP client.
         
+        **IMPORTANT**: Supports only Python MCP servers and FastMCP servers.
+        
         Args:
-            transport: Transport method ("stdio", "http", "sse")
-            command: Command to run for stdio transport (e.g., "python")
-            args: Arguments for command (e.g., ["-m", "mcp_server"])
-            url: URL for HTTP/SSE transport
-            headers: Custom headers for HTTP/SSE transport
-            **config: Additional configuration options
+            url: MCP server URL (primary parameter)
+                - http://localhost:8000/mcp
+                - https://api.example.com/mcp
+                - mcp://server-name
+            headers: Custom headers for authentication (e.g., {"Authorization": "Bearer token"})
+            transport: Optional transport override (auto-detected from URL if not provided)
+                - "http": HTTP/HTTPS transport
+                - "sse": Server-Sent Events transport
+            **config: Additional configuration options (timeout, etc.)
+        
+        Raises:
+            ValidationError: If URL is invalid or transport cannot be determined
         """
         self.logger = get_logger("mcp_client")
-        self.transport = transport.lower()
-        self.command = command
-        self.args = args or []
         self.url = url
         self.headers = headers or {}
         self.config = config
+        
+        # Auto-detect transport from URL if not provided
+        if url:
+            parsed_url = url.lower()
+            if parsed_url.startswith(("http://", "https://", "mcp://")):
+                self.transport = "http"
+            elif parsed_url.startswith("sse://"):
+                self.transport = "sse"
+            else:
+                # Default to HTTP if scheme not recognized
+                self.transport = "http"
+                self.logger.warning(f"Unknown URL scheme, defaulting to HTTP: {url}")
+        elif transport:
+            self.transport = transport.lower()
+        else:
+            raise ValidationError(
+                "Either 'url' or 'transport' parameter is required. "
+                "URL-based connection is the primary method."
+            )
+        
+        # Validate transport
+        if self.transport not in ("http", "sse"):
+            raise ValidationError(
+                f"Unsupported transport: {self.transport}. "
+                f"Supported: http, sse. "
+                f"Note: stdio transport is not supported in public API."
+            )
+        
+        # Validate URL for HTTP/SSE transports
+        if self.transport in ("http", "sse") and not self.url:
+            raise ValidationError(f"{self.transport} transport requires 'url' parameter")
+        
+        # Internal stdio support (not exposed in public API)
+        self._command: Optional[str] = None
+        self._args: Optional[List[str]] = None
         
         # Connection state
         self._process: Optional[subprocess.Popen] = None
@@ -115,24 +168,13 @@ class MCPClient:
         self._server_info: Optional[Dict[str, Any]] = None
         self._request_id: int = 0
         
-        # Validate transport
-        if self.transport not in ("stdio", "http", "sse"):
-            raise ValidationError(
-                f"Unsupported transport: {self.transport}. "
-                f"Supported: stdio, http, sse"
-            )
-        
-        # Validate transport-specific requirements
-        if self.transport == "stdio" and not self.command:
-            raise ValidationError("stdio transport requires 'command' parameter")
-        if self.transport in ("http", "sse") and not self.url:
-            raise ValidationError(f"{self.transport} transport requires 'url' parameter")
-        
-        self.logger.debug(f"MCP client initialized: transport={transport}")
+        self.logger.debug(f"MCP client initialized: url={url}, transport={self.transport}")
     
     def connect(self) -> bool:
         """
-        Connect to MCP server.
+        Connect to MCP server via URL.
+        
+        **IMPORTANT**: Supports only Python MCP servers and FastMCP servers.
         
         Returns:
             bool: True if connection successful
@@ -141,9 +183,7 @@ class MCPClient:
             ProcessingError: If connection fails
         """
         try:
-            if self.transport == "stdio":
-                return self._connect_stdio()
-            elif self.transport == "http":
+            if self.transport == "http":
                 return self._connect_http()
             elif self.transport == "sse":
                 return self._connect_sse()

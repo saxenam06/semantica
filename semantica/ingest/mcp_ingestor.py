@@ -2,11 +2,15 @@
 MCP Ingestion Module
 
 This module provides comprehensive MCP (Model Context Protocol) server ingestion
-capabilities, allowing users to ingest data from any Python-based MCP server
-across diverse domains.
+capabilities, allowing users to ingest data from Python MCP servers and FastMCP servers
+via URL connections.
+
+**IMPORTANT**: This implementation supports ONLY Python-based MCP servers and FastMCP servers.
+JavaScript, TypeScript, C#, Java, and other language implementations are NOT supported.
 
 Key Features:
-    - Generic implementation that works with ANY Python MCP server
+    - URL-based connection (primary interface)
+    - Generic implementation that works with Python/FastMCP MCP servers
     - Dynamic discovery of resources and tools
     - Resource-based and tool-based ingestion
     - Multiple MCP server support
@@ -19,7 +23,8 @@ Main Classes:
 Example Usage:
     >>> from semantica.ingest import MCPIngestor
     >>> ingestor = MCPIngestor()
-    >>> ingestor.connect("server1", transport="stdio", command="python", args=["-m", "mcp_server"])
+    >>> # Connect via URL (primary method)
+    >>> ingestor.connect("server1", url="http://localhost:8000/mcp")
     >>> resources = ingestor.list_available_resources("server1")
     >>> data = ingestor.ingest_resources("server1", resource_uris=["resource://example"])
     >>> result = ingestor.ingest_tool_output("server1", tool_name="get_data", arguments={})
@@ -54,15 +59,20 @@ class MCPData:
 
 class MCPIngestor:
     """
-    Generic MCP server ingestion handler.
+    Generic MCP server ingestion handler for Python and FastMCP servers.
+    
+    **IMPORTANT**: This class supports ONLY Python-based MCP servers and FastMCP servers.
+    Users can bring their own Python or FastMCP MCP servers via URL connections.
+    JavaScript, TypeScript, and other language implementations are NOT supported.
     
     This class provides comprehensive MCP server ingestion capabilities,
-    working generically with ANY Python-based MCP server. It dynamically
+    working generically with Python and FastMCP servers. It dynamically
     discovers resources and tools from connected servers without requiring
     domain-specific code.
     
     Features:
-        - Generic implementation for any Python MCP server
+        - URL-based connection (primary interface)
+        - Generic implementation for Python/FastMCP MCP servers
         - Multiple MCP server support
         - Dynamic resource and tool discovery
         - Resource-based and tool-based ingestion
@@ -71,8 +81,9 @@ class MCPIngestor:
     
     Example Usage:
         >>> ingestor = MCPIngestor()
-        >>> ingestor.connect("db_server", transport="stdio", command="python", args=["-m", "mcp_db"])
-        >>> ingestor.connect("file_server", transport="http", url="http://localhost:8000/mcp")
+        >>> # Connect via URL (primary method)
+        >>> ingestor.connect("db_server", url="http://localhost:8000/mcp")
+        >>> ingestor.connect("file_server", url="https://api.example.com/mcp", headers={"Authorization": "Bearer token"})
         >>> resources = ingestor.list_available_resources("db_server")
         >>> data = ingestor.ingest_resources("db_server", resource_uris=["resource://database/tables"])
     """
@@ -105,30 +116,36 @@ class MCPIngestor:
     def connect(
         self,
         server_name: str,
-        transport: str = "stdio",
-        command: Optional[str] = None,
-        args: Optional[List[str]] = None,
         url: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         **config
     ) -> bool:
         """
-        Connect to an MCP server.
+        Connect to an MCP server via URL.
+        
+        **IMPORTANT**: Supports only Python MCP servers and FastMCP servers.
+        Users can bring their own Python/FastMCP MCP servers via URL.
         
         Args:
             server_name: Unique name for this MCP server connection
-            transport: Transport method ("stdio", "http", "sse")
-            command: Command for stdio transport (e.g., "python")
-            args: Arguments for command (e.g., ["-m", "mcp_server"])
-            url: URL for HTTP/SSE transport
-            headers: Custom headers for HTTP/SSE transport
-            **config: Additional configuration options
+            url: MCP server URL (primary parameter)
+                - http://localhost:8000/mcp
+                - https://api.example.com/mcp
+                - mcp://server-name
+            headers: Custom headers for authentication (e.g., {"Authorization": "Bearer token"})
+            **config: Additional configuration options (timeout, etc.)
             
         Returns:
             bool: True if connection successful
             
         Raises:
             ProcessingError: If connection fails
+            ValidationError: If URL is not provided or invalid
+        
+        Example:
+            >>> ingestor = MCPIngestor()
+            >>> ingestor.connect("db_server", url="http://localhost:8000/mcp")
+            >>> ingestor.connect("api_server", url="https://api.example.com/mcp", headers={"Authorization": "Bearer token"})
         """
         try:
             # Check if already connected
@@ -136,11 +153,15 @@ class MCPIngestor:
                 self.logger.warning(f"Server {server_name} already connected, reconnecting...")
                 self.disconnect(server_name)
             
-            # Create and connect client
+            # Validate URL
+            if not url:
+                raise ValidationError(
+                    f"URL is required for MCP server connection. "
+                    f"Provide MCP server URL: http://, https://, or mcp://"
+                )
+            
+            # Create and connect client (transport auto-detected from URL)
             client = MCPClient(
-                transport=transport,
-                command=command,
-                args=args,
                 url=url,
                 headers=headers,
                 **config
@@ -148,7 +169,7 @@ class MCPIngestor:
             
             if client.connect():
                 self._clients[server_name] = client
-                self.logger.info(f"Connected to MCP server: {server_name}")
+                self.logger.info(f"Connected to MCP server: {server_name} at {url}")
                 return True
             else:
                 raise ProcessingError(f"Failed to connect to MCP server: {server_name}")

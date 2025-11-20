@@ -95,11 +95,10 @@ class IngestConfig:
             "INGEST_RESPECT_ROBOTS": ("respect_robots", bool),
             "INGEST_BATCH_SIZE": ("batch_size", int),
             "INGEST_TIMEOUT": ("timeout", float),
-            # MCP server configuration
+            # MCP server configuration (URL-based, Python/FastMCP only)
+            # Note: MCP servers are connected via URL (http://, https://, mcp://)
+            # Command/args are not supported in public API
             "MCP_SERVER_URL": ("mcp_server_url", str),
-            "MCP_SERVER_TRANSPORT": ("mcp_server_transport", str),
-            "MCP_SERVER_COMMAND": ("mcp_server_command", str),
-            "MCP_SERVER_ARGS": ("mcp_server_args", str),
             "MCP_SERVER_TIMEOUT": ("mcp_server_timeout", float),
         }
         
@@ -129,10 +128,6 @@ class IngestConfig:
                         self._configs[config_key] = float(value)
                     except ValueError:
                         self._configs[config_key] = value
-        
-        # Parse MCP_SERVER_ARGS if it's a comma-separated string
-        if "mcp_server_args" in self._configs and isinstance(self._configs["mcp_server_args"], str):
-            self._configs["mcp_server_args"] = [arg.strip() for arg in self._configs["mcp_server_args"].split(",") if arg.strip()]
         
         # Also check for MCP_ prefixed variables
         mcp_prefix = "MCP_"

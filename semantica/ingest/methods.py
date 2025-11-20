@@ -610,22 +610,23 @@ def ingest_mcp(
     """
     Ingest data from MCP server (convenience function).
     
+    **IMPORTANT**: Supports only Python MCP servers and FastMCP servers.
+    Users can bring their own Python/FastMCP MCP servers via URL.
+    
     This is a user-friendly wrapper that ingests data from MCP servers using
-    the specified method. Works with any Python-based MCP server.
+    the specified method. Works with Python and FastMCP MCP servers.
     
     Args:
-        source: MCP server configuration (dict) or server name (str) if already connected
+        source: MCP server URL (str) or configuration dict with "url" key, or server name (str) if already connected
+            - URL string: "http://localhost:8000/mcp"
+            - Dict: {"url": "http://localhost:8000/mcp", "headers": {...}}
         method: Ingestion method (default: "resources")
             - "resources": Ingest from MCP server resources
             - "tools": Ingest by calling MCP tools
             - "all": Ingest all resources
         server_name: Name for MCP server connection (auto-generated if not provided)
         **kwargs: Additional options:
-            - transport: Transport method ("stdio", "http", "sse")
-            - command: Command for stdio transport
-            - args: Arguments for command
-            - url: URL for HTTP/SSE transport
-            - headers: Custom headers
+            - headers: Custom headers for authentication
             - resource_uris: List of resource URIs to ingest
             - tool_name: Tool name to call
             - tool_arguments: Tool arguments
@@ -635,10 +636,12 @@ def ingest_mcp(
         
     Examples:
         >>> from semantica.ingest.methods import ingest_mcp
-        >>> # Connect and ingest resources
+        >>> # Connect via URL and ingest resources
+        >>> data = ingest_mcp("http://localhost:8000/mcp", method="resources")
+        >>> # Connect via URL dict and ingest all resources
         >>> data = ingest_mcp(
-        ...     {"transport": "stdio", "command": "python", "args": ["-m", "mcp_server"]},
-        ...     method="resources"
+        ...     {"url": "https://api.example.com/mcp", "headers": {"Authorization": "Bearer token"}},
+        ...     method="all"
         ... )
         >>> # Ingest from already connected server
         >>> data = ingest_mcp("server1", method="resources", resource_uris=["resource://example"])
@@ -660,27 +663,46 @@ def ingest_mcp(
         
         ingestor = MCPIngestor(**config)
         
-        # If source is a string, assume it's a server name (already connected)
+        # If source is a string, check if it's a URL or server name
         if isinstance(source, str):
-            server_name = source
-            if not ingestor.is_connected(server_name):
-                raise ProcessingError(f"MCP server '{server_name}' not connected. Provide connection config.")
+            # Check if it looks like a URL
+            if source.startswith(("http://", "https://", "mcp://", "sse://")):
+                # It's a URL, connect to it
+                if not server_name:
+                    server_name = f"mcp_server_{len(ingestor.get_connected_servers())}"
+                ingestor.connect(server_name=server_name, url=source, headers=kwargs.get("headers"))
+            else:
+                # Assume it's a server name (already connected)
+                server_name = source
+                if not ingestor.is_connected(server_name):
+                    raise ProcessingError(
+                        f"MCP server '{server_name}' not connected. "
+                        f"Provide MCP server URL: http://, https://, or mcp://"
+                    )
         elif isinstance(source, dict):
             # Connect to MCP server
             if not server_name:
                 server_name = source.get("server_name", f"mcp_server_{len(ingestor.get_connected_servers())}")
             
+            # Extract URL (required)
+            url = source.get("url")
+            if not url:
+                raise ProcessingError(
+                    "MCP server URL is required. Provide 'url' in configuration dict: "
+                    "http://, https://, or mcp://"
+                )
+            
             ingestor.connect(
                 server_name=server_name,
-                transport=source.get("transport", "stdio"),
-                command=source.get("command"),
-                args=source.get("args"),
-                url=source.get("url"),
+                url=url,
                 headers=source.get("headers"),
-                **{k: v for k, v in source.items() if k not in ("transport", "command", "args", "url", "headers", "server_name")}
+                **{k: v for k, v in source.items() if k not in ("url", "headers", "server_name")}
             )
         else:
-            raise ProcessingError("Source must be server name (str) or configuration (dict)")
+            raise ProcessingError(
+                "Source must be MCP server URL (str), configuration dict with 'url' key, "
+                "or server name (str) if already connected"
+            )
         
         # Ingest based on method
         if method == "resources" or method == "all":
