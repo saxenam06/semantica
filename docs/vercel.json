@@ -1,0 +1,12 @@
+{
+  "buildCommand": "cd docs && bundle install && bundle exec jekyll build -d ../_site",
+  "outputDirectory": "_site",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+

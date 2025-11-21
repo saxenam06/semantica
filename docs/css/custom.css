@@ -1,0 +1,118 @@
+/* Custom CSS for Semantica Documentation */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Enhanced code blocks */
+.md-typeset pre > code {
+  border-radius: 8px;
+  padding: 1.2em;
+}
+
+/* Custom card styles */
+.feature-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Diagram containers */
+.mermaid {
+  background: var(--md-default-bg-color);
+  border-radius: 8px;
+  padding: 1em;
+  margin: 1em 0;
+}
+
+/* Enhanced tables */
+.md-typeset table:not([class]) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Better spacing for sections */
+.md-typeset h2 {
+  margin-top: 2em;
+  margin-bottom: 1em;
+}
+
+.md-typeset h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+}
+
+/* Enhanced badges */
+.badge {
+  display: inline-block;
+  padding: 0.25em 0.75em;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+/* Custom button styles */
+.md-button {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.md-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Improved code copy button */
+.md-clipboard {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.md-clipboard:hover {
+  opacity: 1;
+}
+
+/* Chart and diagram containers */
+.chart-container {
+  background: var(--md-code-bg-color);
+  border-radius: 8px;
+  padding: 1.5em;
+  margin: 1.5em 0;
+  border: 1px solid var(--md-code-hl-color);
+}
+
+/* Responsive improvements */
+@media screen and (max-width: 76.1875em) {
+  .md-nav--primary .md-nav__title {
+    font-size: 1.1rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .md-sidebar,
+  .md-header {
+    display: none;
+  }
+}
+
