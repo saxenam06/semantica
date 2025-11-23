@@ -4,13 +4,13 @@ Semantica is built with a modular architecture, designed to be flexible and exte
 
 ## 🏗️ Architecture Overview
 
-The framework is organized into several core layers:
+The framework is organized into several core layers, each handling specific aspects of the semantic processing pipeline.
 
 ```mermaid
 graph TD
     subgraph Ingest [Ingestion Layer]
-        I[Ingest] --> P[Parse]
-        P --> N[Normalize]
+        I[Ingest Module] --> P[Parse Module]
+        P --> N[Normalize Module]
     end
 
     subgraph Core [Core Processing]
@@ -29,86 +29,279 @@ graph TD
         KG --> V[Visualization]
         KG --> R[Reasoning]
     end
+    
+    style Ingest fill:#e1f5fe,stroke:#01579b
+    style Core fill:#e8f5e9,stroke:#1b5e20
+    style Storage fill:#fff3e0,stroke:#e65100
+    style Output fill:#f3e5f5,stroke:#4a148c
 ```
+
+---
 
 ## 📦 Core Modules
 
-<div class="grid cards" markdown>
+Semantica is organized into 12 core modules. Below is a detailed breakdown of each.
 
--   :material-cube-outline: **[Core](reference/core.md)**
-    ---
-    The foundation of the framework. Handles configuration, logging, and base classes.
+### 1. Ingest Module
+**Purpose**: Ingest data from various sources into a unified format.
 
--   :material-file-import: **[Ingest](reference/ingest.md)**
-    ---
-    Handles the loading of data from various sources (50+ formats).
+The `ingest` module is the entry point for data. It handles the complexity of connecting to different data sources, from local files to web streams.
 
--   :material-file-code: **[Parse](reference/parse.md)**
-    ---
-    Parses raw data into structured text and metadata, including OCR.
+- **Components**:
+    - `FileIngestor`: Read files (PDF, DOCX, HTML, JSON, CSV, etc.)
+    - `WebIngestor`: Scrape and ingest web pages
+    - `FeedIngestor`: Process RSS/Atom feeds
+    - `StreamIngestor`: Real-time data streaming
+    - `DBIngestor`: Database queries and ingestion
+    - `EmailIngestor`: Process email messages
+    - `RepoIngestor`: Git repository analysis
 
--   :material-format-align-left: **[Normalize](reference/normalize.md)**
-    ---
-    Cleans and standardizes extracted text and encoding.
+```python
+from semantica.ingest import FileIngestor, WebIngestor
 
--   :material-brain: **[Semantic Extract](reference/semantic_extract.md)**
-    ---
-    Extracts meaning, entities, and relations using LLMs and NLP.
+# Ingest local files
+file_ingestor = FileIngestor()
+documents = file_ingestor.ingest("data/")
 
--   :material-graph: **[Knowledge Graph](reference/kg.md)**
-    ---
-    The central module for building and managing knowledge graphs.
+# Ingest web content
+web_ingestor = WebIngestor()
+web_docs = web_ingestor.ingest("https://example.com")
+```
 
--   :material-vector-curve: **[Embeddings](reference/embeddings.md)**
-    ---
-    Generates vector embeddings for text and graph nodes.
+### 2. Parse Module
+**Purpose**: Parse and extract content from various raw formats.
 
--   :material-database: **[Vector Store](reference/vector_store.md)**
-    ---
-    Manages vector storage (Pinecone, Chroma, Qdrant).
+Once data is ingested, the `parse` module extracts the raw text and metadata. It supports a wide range of formats and includes OCR capabilities.
 
--   :material-database-search: **[Triple Store](reference/triple_store.md)**
-    ---
-    Manages RDF triple storage (Neo4j, RDFLib).
+- **Components**:
+    - `DocumentParser`: Main parser orchestrator
+    - `PDFParser`: Extract text, tables, images from PDFs
+    - `DOCXParser`: Parse Word documents
+    - `HTMLParser`: Extract content from HTML
+    - `JSONParser`: Parse structured JSON data
+    - `ExcelParser`: Process spreadsheets
+    - `ImageParser`: OCR and image analysis
+    - `CodeParser`: Parse source code files
 
--   :material-shape: **[Ontology](reference/ontology.md)**
-    ---
-    Defines and validates the schema of the knowledge graph.
+```python
+from semantica.parse import DocumentParser
 
--   :material-lightbulb: **[Reasoning](reference/reasoning.md)**
-    ---
-    Performs logical reasoning and inference over the graph.
+parser = DocumentParser()
+parsed_docs = parser.parse(documents)
+```
 
--   :material-pipe: **[Pipeline](reference/pipeline.md)**
-    ---
-    Orchestrates the end-to-end processing flow.
+### 3. Normalize Module
+**Purpose**: Clean and normalize text for processing.
 
--   :material-export: **[Export](reference/export.md)**
-    ---
-    Exports the knowledge graph to JSON, RDF, CSV, GEXF, etc.
+Raw text is often noisy. The `normalize` module cleans, standardizes, and prepares text for semantic extraction.
 
--   :material-chart-bubble: **[Visualization](reference/visualization.md)**
-    ---
-    Tools for interactive graph plotting and HTML export.
+- **Components**:
+    - `TextNormalizer`: Main normalization orchestrator
+    - `TextCleaner`: Remove noise, fix encoding
+    - `DataCleaner`: Clean structured data
+    - `EntityNormalizer`: Normalize entity names
+    - `DateNormalizer`: Standardize date formats
+    - `NumberNormalizer`: Normalize numeric values
+    - `LanguageDetector`: Detect document language
+    - `EncodingHandler`: Handle character encoding
 
--   :material-tools: **[Utils](reference/utils.md)**
-    ---
-    General utility functions for file I/O and string manipulation.
+```python
+from semantica.normalize import TextNormalizer
 
-</div>
+normalizer = TextNormalizer()
+normalized = normalizer.normalize(parsed_docs)
+```
 
-## 🧩 Submodules
+### 4. Semantic Extract Module
+**Purpose**: Extract entities, relationships, and semantic information.
 
-Each module contains specialized submodules. For example:
+This is the brain of the operation. It uses LLMs and NLP techniques to understand the text and extract structured knowledge.
 
-- **`semantica.ingest`**
-    - `loaders`: Specific file loaders
-    - `stream`: Streaming data handlers
-- **`semantica.kg`**
-    - `builder`: Graph construction logic
-    - `query`: Graph query interface
-- **`semantica.semantic_extract`**
-    - `llm`: LLM-based extraction
-    - `spacy`: NLP-based extraction
+- **Components**:
+    - `NERExtractor`: Named Entity Recognition
+    - `RelationExtractor`: Extract relationships between entities
+    - `SemanticAnalyzer`: Deep semantic analysis
+    - `SemanticNetworkExtractor`: Extract semantic networks
 
-For detailed API documentation, please refer to the specific **API Reference** pages linked above.
+```python
+from semantica.semantic_extract import NERExtractor, RelationExtractor
+
+# Extract entities
+extractor = NERExtractor()
+entities = extractor.extract(normalized_docs)
+
+# Extract relationships
+relation_extractor = RelationExtractor()
+relationships = relation_extractor.extract(normalized_docs, entities)
+```
+
+### 5. Knowledge Graph (KG) Module
+**Purpose**: Build and manage knowledge graphs.
+
+The `kg` module constructs the graph from extracted entities and relationships, handling complex tasks like resolution and analysis.
+
+- **Components**:
+    - `GraphBuilder`: Construct knowledge graphs from entities/relationships
+    - `GraphAnalyzer`: Analyze graph structure and properties
+    - `GraphValidator`: Validate graph quality and consistency
+    - `EntityResolver`: Resolve entity conflicts and duplicates
+    - `ConflictDetector`: Detect conflicting information
+    - `CentralityCalculator`: Calculate node importance metrics
+    - `CommunityDetector`: Detect communities in graphs
+    - `ConnectivityAnalyzer`: Analyze graph connectivity
+    - `TemporalQuery`: Query temporal knowledge graphs
+    - `Deduplicator`: Remove duplicate entities/relationships
+
+```python
+from semantica.kg import GraphBuilder, GraphAnalyzer
+
+# Build graph
+builder = GraphBuilder()
+kg = builder.build(entities, relationships)
+
+# Analyze graph
+analyzer = GraphAnalyzer()
+metrics = analyzer.analyze(kg)
+```
+
+### 6. Embeddings Module
+**Purpose**: Generate vector embeddings for various data types.
+
+Embeddings are crucial for semantic search. This module generates vectors for text, images, and graph nodes.
+
+- **Components**:
+    - `EmbeddingGenerator`: Main embedding orchestrator
+    - `TextEmbedder`: Generate text embeddings
+    - `ImageEmbedder`: Generate image embeddings
+    - `AudioEmbedder`: Generate audio embeddings
+    - `MultimodalEmbedder`: Combine multiple modalities
+    - `EmbeddingOptimizer`: Optimize embedding quality
+    - `ProviderAdapters`: Support for OpenAI, Cohere, etc.
+
+```python
+from semantica.embeddings import EmbeddingGenerator
+
+generator = EmbeddingGenerator()
+embeddings = generator.generate(documents)
+```
+
+### 7. Vector Store Module
+**Purpose**: Store and search vector embeddings.
+
+Manages the storage and retrieval of high-dimensional vectors, supporting hybrid search strategies.
+
+- **Components**:
+    - `VectorStore`: Main vector store interface
+    - `FAISSAdapter`: FAISS integration
+    - `HybridSearch`: Combine vector and keyword search
+    - `VectorRetriever`: Retrieve relevant vectors
+
+```python
+from semantica.vector_store import VectorStore, HybridSearch
+
+vector_store = VectorStore()
+vector_store.store(embeddings, documents, metadata)
+
+hybrid_search = HybridSearch(vector_store)
+results = hybrid_search.search(query, top_k=10)
+```
+
+### 8. Reasoning Module
+**Purpose**: Perform logical inference and reasoning.
+
+Goes beyond simple retrieval to infer new facts and validate existing knowledge using logical rules.
+
+- **Components**:
+    - `InferenceEngine`: Main inference orchestrator
+    - `RuleManager`: Manage inference rules
+    - `DeductiveReasoner`: Deductive reasoning
+    - `AbductiveReasoner`: Abductive reasoning
+    - `ExplanationGenerator`: Generate explanations for inferences
+    - `RETEEngine`: RETE algorithm for rule matching
+
+```python
+from semantica.reasoning import InferenceEngine, RuleManager
+
+inference_engine = InferenceEngine()
+rule_manager = RuleManager()
+new_facts = inference_engine.forward_chain(kg, rule_manager)
+```
+
+### 9. Ontology Module
+**Purpose**: Generate and manage ontologies.
+
+Defines the schema and structure of your knowledge domain, ensuring consistency and enabling interoperability.
+
+- **Components**:
+    - `OntologyGenerator`: Generate ontologies from knowledge graphs
+    - `OntologyValidator`: Validate ontology structure
+    - `OWLGenerator`: Generate OWL format ontologies
+    - `PropertyGenerator`: Generate ontology properties
+    - `ClassInferrer`: Infer ontology classes
+
+```python
+from semantica.ontology import OntologyGenerator
+
+generator = OntologyGenerator()
+ontology = generator.generate_from_graph(kg)
+```
+
+### 10. Export Module
+**Purpose**: Export data in various formats.
+
+Allows you to take your knowledge graph and data out of Semantica for use in other tools.
+
+- **Components**:
+    - `JSONExporter`: Export to JSON
+    - `RDFExporter`: Export to RDF/XML
+    - `CSVExporter`: Export to CSV
+    - `GraphExporter`: Export to graph formats (GraphML, GEXF)
+    - `OWLExporter`: Export to OWL
+    - `VectorExporter`: Export vectors
+
+```python
+from semantica.export import JSONExporter, RDFExporter
+
+json_exporter = JSONExporter()
+json_exporter.export(kg, "output.json")
+```
+
+### 11. Visualization Module
+**Purpose**: Visualize knowledge graphs and analytics.
+
+Provides tools to visually explore your data, making it easier to understand complex relationships.
+
+- **Components**:
+    - `KGVisualizer`: Visualize knowledge graphs
+    - `EmbeddingVisualizer`: Visualize embeddings (t-SNE, PCA, UMAP)
+    - `QualityVisualizer`: Visualize quality metrics
+    - `AnalyticsVisualizer`: Visualize graph analytics
+    - `TemporalVisualizer`: Visualize temporal data
+
+```python
+from semantica.visualization import KGVisualizer
+
+visualizer = KGVisualizer()
+visualizer.visualize(kg)
+```
+
+### 12. Pipeline Module
+**Purpose**: Build and execute processing pipelines.
+
+Orchestrates the entire flow, connecting modules together into robust, executable workflows.
+
+- **Components**:
+    - `PipelineBuilder`: Build complex pipelines
+    - `ExecutionEngine`: Execute pipelines
+    - `FailureHandler`: Handle pipeline failures
+    - `ParallelismManager`: Enable parallel processing
+    - `ResourceScheduler`: Schedule resources
+
+```python
+from semantica.pipeline import PipelineBuilder
+
+builder = PipelineBuilder()
+pipeline = builder.add_step("ingest", FileIngestor()) \
+              .add_step("parse", DocumentParser()) \
+              .build()
+```

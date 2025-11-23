@@ -1,20 +1,23 @@
 # Core Concepts
 
-Understand the fundamental concepts behind Semantica.
+Understand the fundamental concepts behind Semantica. This guide covers the theoretical foundations, key components, and best practices for building semantic applications.
 
-!!! note "Conceptual Foundation"
-    This guide covers the theoretical foundations of Semantica. For hands-on examples, see the [Quickstart Guide](quickstart.md) or [Examples](examples.md).
+## 🧠 Core Concepts
 
-## What is a Knowledge Graph?
+### 1. Knowledge Graphs
 
-A knowledge graph is a structured representation of information where:
+**Definition**: A knowledge graph is a structured representation of entities (nodes) and their relationships (edges) with properties and attributes.
 
-!!! tip "Visual Understanding"
-    The diagram below shows how entities (nodes) are connected by relationships (edges) to form a knowledge graph. This structure enables powerful querying and reasoning capabilities.
+- **Nodes**: Represent entities (people, places, concepts, events)
+- **Edges**: Represent relationships (works_for, located_in, causes)
+- **Properties**: Attributes of entities and relationships
+- **Metadata**: Additional information (sources, timestamps, confidence)
 
-- **Entities** are the nodes (people, places, concepts, etc.)
-- **Relationships** are the edges connecting entities
-- **Properties** describe attributes of entities
+**Benefits**:
+- Structured representation of unstructured data
+- Enables complex queries and reasoning
+- Supports temporal tracking
+- Facilitates knowledge discovery
 
 ```mermaid
 graph LR
@@ -22,149 +25,179 @@ graph LR
     A -->|located_in| C[Cupertino<br/>Location]
     C -->|in_state| D[California<br/>Location]
     
-    style A fill:#e3f2fd
-    style B fill:#fff3e0
-    style C fill:#f3e5f5
-    style D fill:#f3e5f5
+    style A fill:#e3f2fd,stroke:#1565c0
+    style B fill:#fff3e0,stroke:#ef6c00
+    style C fill:#f3e5f5,stroke:#7b1fa2
+    style D fill:#f3e5f5,stroke:#7b1fa2
 ```
 
-## Semantic Layer
+### 2. Entity Extraction (NER)
 
-A semantic layer provides:
+**Definition**: The process of identifying and classifying named entities in text into predefined categories.
 
-- **Structured meaning** from unstructured data
-- **Contextual relationships** between concepts
-- **Queryable knowledge** for AI systems
-- **Quality-assured data** with conflict resolution
+| Entity Type | Description | Example |
+| :--- | :--- | :--- |
+| **Person** | Names of people | Steve Jobs, Elon Musk |
+| **Organization** | Companies, institutions | Apple Inc., NASA |
+| **Location** | Places, geographic entities | Cupertino, Mars |
+| **Date/Time** | Temporal expressions | 1976, next Monday |
+| **Money** | Monetary values | $100 million |
+| **Event** | Events and occurrences | WWDC 2024 |
 
-## Key Components
-
-### 1. Data Ingestion
-
-Import data from various sources:
-
-- Documents (PDF, DOCX, HTML)
-- Databases
-- APIs and web content
-- Structured data (JSON, CSV)
-
-### 2. Entity Extraction
-
-Identify and extract:
-
-- **Named Entities**: People, organizations, locations
-- **Concepts**: Ideas, topics, themes
-- **Events**: Actions, occurrences
-- **Relations**: Connections between entities
+**Methods**:
+- **Rule-based**: Pattern matching (Regex)
+- **Machine Learning**: Trained models (spaCy, transformers)
+- **LLM-based**: Using large language models (GPT-4, Claude)
 
 ### 3. Relationship Extraction
 
-Discover relationships:
+**Definition**: Identifying and extracting relationships between entities in text.
 
-- **Explicit**: Directly stated in text
-- **Implicit**: Inferred from context
-- **Temporal**: Time-based relationships
-- **Causal**: Cause-and-effect connections
+- **Semantic**: `works_for`, `located_in`, `causes`
+- **Temporal**: `before`, `after`, `during`
+- **Causal**: `causes`, `results_in`, `prevents`
+- **Hierarchical**: `part_of`, `subclass_of`, `instance_of`
 
-### 4. Knowledge Graph Construction
+### 4. Embeddings
 
-Build structured graphs:
+**Definition**: Dense vector representations of text, images, or other data that capture semantic meaning in a continuous vector space.
 
-- **Node creation**: Entities as nodes
-- **Edge creation**: Relationships as edges
-- **Property assignment**: Attributes and metadata
-- **Graph validation**: Quality checks
+- **Properties**:
+    - Similar entities have similar embeddings (close in vector space).
+    - Enable semantic search and similarity calculations.
+    - Fixed dimensions (typically 128-4096).
 
-### 5. Conflict Resolution
+**Example**:
+```python
+Text: "machine learning"
+Embedding: [0.123, -0.456, 0.789, ..., 0.234] 
+# (vector of 1536 dimensions)
+```
 
-Handle conflicting information:
+### 5. Temporal Graphs
 
-- **Multiple sources**: Same entity, different facts
-- **Resolution strategies**: Voting, credibility, recency
-- **Quality assurance**: Validation and verification
+**Definition**: Knowledge graphs that track changes over time, allowing queries about the state of the graph at specific time points.
 
-### 6. Embedding Generation
+- **Features**:
+    - Timestamps on entities and relationships
+    - Version history
+    - Time-point queries
+    - Temporal pattern detection
 
-Create vector representations:
+### 6. GraphRAG
 
-- **Text embeddings**: Semantic text vectors
-- **Graph embeddings**: Node and edge vectors
-- **Multimodal**: Text, image, audio embeddings
+**Definition**: An advanced RAG (Retrieval Augmented Generation) approach that combines vector search with knowledge graph traversal to provide more accurate and contextually relevant information to LLMs.
 
-## Workflow
-
-Typical Semantica workflow:
+**Advantages over Traditional RAG**:
+- Better handling of complex queries
+- Relationship-aware retrieval
+- Reduced hallucinations
+- More accurate answers
 
 ```mermaid
 flowchart TD
-    A[Data Source] --> B[Ingestion]
-    B --> C[Parsing]
-    C --> D[Extraction<br/>Entities & Relationships]
-    D --> E[Normalization]
-    E --> F[Conflict Resolution]
-    F --> G[Knowledge Graph]
-    G --> H[Embeddings]
-    H --> I[Export]
+    Q[User Query] --> VS[Vector Search]
+    Q --> KG[Graph Traversal]
+    VS --> C[Context]
+    KG --> C
+    C --> LLM[LLM Generation]
+    LLM --> A[Answer]
     
-    style A fill:#e3f2fd
-    style G fill:#c8e6c9
-    style I fill:#fff9c4
+    style Q fill:#e1f5fe
+    style LLM fill:#e8f5e9
+    style A fill:#fff9c4
 ```
 
-## Use Cases
+### 7. Ontology
 
-### GraphRAG
+**Definition**: A formal specification of concepts, relationships, and constraints in a domain, typically expressed in OWL (Web Ontology Language).
 
-Enhance RAG systems with knowledge graphs:
+- **Classes**: Categories of entities (e.g., `Person`, `Company`)
+- **Properties**: Relationships and attributes (e.g., `worksFor`)
+- **Individuals**: Specific instances (e.g., `John Doe`)
+- **Axioms**: Rules and constraints
 
-- **Context expansion**: Follow relationships
-- **Multi-hop reasoning**: Traverse graph paths
-- **Structured queries**: Query graph directly
+### 8. Quality Assurance
 
-### AI Agents
+**Definition**: Processes and metrics to ensure knowledge graph quality.
 
-Provide agents with:
+- **Completeness**: Percentage of entities with required properties
+- **Consistency**: Absence of contradictions
+- **Accuracy**: Correctness of extracted information
+- **Coverage**: Breadth of domain coverage
 
-- **Persistent memory**: Knowledge graph as memory
-- **Context understanding**: Semantic relationships
-- **Action validation**: Check against knowledge
+---
 
-### Data Integration
+## 🌟 Best Practices
 
-Unify data from multiple sources:
-
-- **Schema mapping**: Automatic schema discovery
-- **Entity resolution**: Match entities across sources
-- **Conflict resolution**: Handle contradictions
-
-## Best Practices
-
-!!! note "Best Practices"
-    Following these practices will help you build high-quality knowledge graphs and avoid common pitfalls.
+Following these practices will help you build high-quality knowledge graphs and avoid common pitfalls.
 
 ### 1. Start Small
+- Begin with simple documents.
+- Validate each step before moving forward.
+- Build incrementally.
 
-Begin with a single document or small dataset to understand the workflow.
+### 2. Configure Properly
+- Use environment variables for sensitive data.
+- Set up proper logging.
+- Configure appropriate model sizes.
 
-### 2. Iterate
+### 3. Validate Data
+- Always validate extracted entities.
+- Check relationship quality.
+- Use quality assurance tools.
 
-Build knowledge graphs incrementally, refining as you learn.
+### 4. Handle Errors
+- Implement error handling.
+- Use retry mechanisms.
+- Log errors for debugging.
 
-### 3. Validate
+### 5. Optimize Performance
+- Use batch processing for large datasets.
+- Enable parallel processing where possible.
+- Cache embeddings and results.
 
-Always validate extracted entities and relationships.
+### 6. Document Workflows
+- Document data sources.
+- Track processing steps.
+- Maintain metadata.
 
-### 4. Resolve Conflicts
+---
 
-Use appropriate conflict resolution strategies for your use case.
+## 🔧 Troubleshooting
 
-### 5. Export Regularly
+Common issues and solutions:
 
-Export your knowledge graphs for backup and analysis.
+!!! failure "Import Errors"
+    **Solution**:
+    - Ensure Semantica is properly installed.
+    - Check Python version (3.8+).
+    - Verify virtual environment is activated.
+    - Install missing dependencies: `pip install -r requirements.txt`
 
-## Next Steps
+!!! failure "API Key Errors"
+    **Solution**:
+    - Set environment variables: `export SEMANTICA_API_KEY=your_key`
+    - Check config file for correct key format.
+    - Verify API key is valid and has sufficient credits.
 
-- **[Quick Start](quickstart.md)** - Build your first knowledge graph
-- **[Examples](examples.md)** - See real-world applications
-- **[API Reference](api.md)** - Explore the full API
+!!! failure "Memory Issues"
+    **Solution**:
+    - Process documents in batches.
+    - Use smaller embedding models.
+    - Enable garbage collection.
+    - Consider using streaming for large datasets.
 
+!!! failure "Low Quality Extractions"
+    **Solution**:
+    - Preprocess and normalize text.
+    - Use domain-specific models.
+    - Adjust extraction parameters.
+    - Validate and clean extracted entities.
+
+!!! failure "Slow Processing"
+    **Solution**:
+    - Enable parallel processing.
+    - Use GPU acceleration if available.
+    - Cache intermediate results.
+    - Optimize batch sizes.

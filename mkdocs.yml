@@ -92,11 +92,15 @@ plugins:
 extra_css:
   - css/custom.css
 
+# Custom JavaScript
+extra_javascript:
+  - js/version-selector.js
+
 # Navigation
 nav:
   - Home: index.md
   - Getting Started:
-    - getting-started.md
+    - Overview: getting-started.md
     - installation.md
     - quickstart.md
   - Guides:
@@ -105,26 +109,7 @@ nav:
     - use-cases.md
     - examples.md
     - learning-more.md
-  - Cookbook:
-    - Introduction:
-      - cookbook/introduction/Welcome_to_Semantica.ipynb
-      - cookbook/introduction/Configuration_Basics.ipynb
-      - cookbook/introduction/Your_First_Knowledge_Graph.ipynb
-      - cookbook/introduction/Data_Ingestion.ipynb
-      - cookbook/introduction/Document_Parsing.ipynb
-      - cookbook/introduction/Data_Normalization.ipynb
-      - cookbook/introduction/Entity_Extraction.ipynb
-      - cookbook/introduction/Relation_Extraction.ipynb
-      - cookbook/introduction/Embedding_Generation.ipynb
-      - cookbook/introduction/Vector_Store.ipynb
-      - cookbook/introduction/Ontology.ipynb
-      - cookbook/introduction/Conflict_Detection.ipynb
-      - cookbook/introduction/Deduplication.ipynb
-      - cookbook/introduction/Building_Knowledge_Graphs.ipynb
-      - cookbook/introduction/Graph_Analytics.ipynb
-      - cookbook/introduction/Graph_Quality.ipynb
-      - cookbook/introduction/Visualization.ipynb
-      - cookbook/introduction/Export.ipynb
+  - Cookbook: cookbook.md
   - Reference:
     - Core: reference/core.md
     - Ingest: reference/ingest.md

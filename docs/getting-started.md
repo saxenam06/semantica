@@ -1,107 +1,118 @@
 # Getting Started
 
-Welcome to Semantica! This guide will help you get up and running quickly with the framework.
+## Welcome to Semantica
 
-## 📋 Prerequisites
+**Semantica** is a comprehensive knowledge graph and semantic processing framework designed for building production-ready semantic AI applications.
 
-Before you begin, ensure you have the following:
+### 🎯 What You'll Learn
+- What Semantica is and why it's useful
+- How to install and configure the framework
+- Understanding the framework architecture
+- Key concepts and terminology
+- Next steps for getting started
 
-- **Python 3.8+** installed on your system
+---
+
+## 🚀 What is Semantica?
+
+Semantica is a powerful, production-ready framework for:
+
+- **Building Knowledge Graphs**: Transform unstructured data into structured knowledge graphs.
+- **Semantic Processing**: Extract entities, relationships, and meaning from text, images, and audio.
+- **GraphRAG**: Next-generation retrieval augmented generation using knowledge graphs.
+- **Temporal Analysis**: Time-aware knowledge graphs for tracking changes over time.
+- **Multi-Modal Processing**: Handle text, images, audio, and structured data.
+- **Enterprise Features**: Quality assurance, conflict resolution, ontology generation, and more.
+
+---
+
+## 💡 Use Cases
+
+| Domain | Application |
+| :--- | :--- |
+| **Cybersecurity** | Threat intelligence and analysis |
+| **Healthcare** | Medical research and patient data analysis |
+| **Finance** | Fraud detection and financial analysis |
+| **Supply Chain** | Optimization and risk management |
+| **Research** | Knowledge management and literature review |
+| **AI Systems** | Multi-agent memory and reasoning |
+
+---
+
+## 📦 Installation & Setup
+
+### Prerequisites
+Before installing Semantica, ensure you have:
+- **Python 3.8** or higher
 - **pip** package manager
-- Basic understanding of Python programming
-- (Optional) An OpenAI API key or other LLM provider credentials if you plan to use semantic extraction features
+- (Optional) Virtual environment for isolation
 
-## 🎯 What You Will Learn
+### Installation Methods
 
-By following this guide, you will learn how to:
+=== "PyPI (Stable)"
+    ```bash
+    pip install semantica
+    ```
 
-1. Install Semantica and its dependencies
-2. Build your first Knowledge Graph from raw data
-3. Query and visualize the extracted knowledge
-4. Integrate Semantica into your own applications
+=== "Source (Dev)"
+    ```bash
+    git clone https://github.com/your-org/semantica.git
+    cd semantica
+    pip install -e .
+    ```
 
----
+=== "Extras"
+    ```bash
+    pip install semantica[all]           # Install all optional dependencies
+    pip install semantica[gpu]           # Install GPU support
+    pip install semantica[visualization] # Install visualization tools
+    ```
 
-## 🛣️ Choose Your Path
+### Verify Installation
 
-Select the path that best fits your goals:
-
-<div class="grid cards" markdown>
-
--   **🚀 Quick Start (5 min)**
-    ---
-    Perfect for trying Semantica quickly.
-    
-    1. **[Install Semantica](installation.md#basic-installation)**
-    2. **[Run Your First Example](quickstart.md#step-2-your-first-knowledge-graph)**
-    3. **[Explore Examples](examples.md)**
-
--   **📚 Complete Guide (30 min)**
-    ---
-    Perfect for learning the framework properly.
-    
-    1. **[Installation](installation.md)** - Complete setup
-    2. **[Quick Start](quickstart.md)** - Step-by-step
-    3. **[Core Concepts](concepts.md)** - Deep dive
-    4. **[Examples](examples.md)** - Real-world use cases
-
--   **🎓 Interactive Learning**
-    ---
-    Perfect for hands-on learners using Jupyter.
-    
-    1. **[Cookbook Overview](cookbook.md)**
-    2. **[Start with Introduction](cookbook.md#introduction)**
-    3. **[Try Use Cases](cookbook.md#use-cases)**
-
-</div>
-
-!!! tip "Recommendation"
-    If you're new to knowledge graphs, we highly recommend starting with the **[Core Concepts](concepts.md)** page to understand the terminology before diving into the code.
+```python
+import semantica
+print(semantica.version)
+```
 
 ---
 
-## 🏗️ What Can You Build?
+## ⚙️ Configuration
 
-Semantica helps you transform unstructured data into intelligent knowledge:
+Semantica can be configured using environment variables or a configuration file.
 
-- **Knowledge Graphs** from documents, websites, databases
-- **Semantic Layers** for AI applications
-- **Entity & Relationship Extraction** from text
-- **Conflict Resolution** across multiple data sources
-- **GraphRAG Systems** for enhanced AI responses
+### Environment Variables
 
-## 💡 Common Use Cases
+```bash
+export SEMANTICA_API_KEY=your_openai_key
+export SEMANTICA_EMBEDDING_PROVIDER=openai
+export SEMANTICA_MODEL_NAME=gpt-4
+```
 
-### Research & Analysis
-- Extract knowledge from research papers
-- Build domain-specific knowledge graphs
-- Analyze relationships in literature
+### Config File (`config.yaml`)
 
-### Business Intelligence
-- Process company documents
-- Build organizational knowledge bases
-- Integrate multiple data sources
+```yaml
+api_keys:
+  openai: your_key_here
+  anthropic: your_key_here
 
-### AI Applications
-- Power GraphRAG systems
-- Enhance AI agent memory
-- Build semantic search systems
+embedding:
+  provider: openai
+  model: text-embedding-3-large
+  dimensions: 3072
 
-!!! warning "Installation First"
-    Make sure you have Semantica installed before proceeding. If you encounter any issues, check the [Installation Guide](installation.md) troubleshooting section.
+knowledge_graph:
+  backend: networkx # or neo4j, arangodb
+  temporal: true
+```
+
+---
 
 ## ⏭️ Next Steps
 
-Once you're ready:
+Now that you understand the basics, here are recommended next steps:
 
-1. Head to the **[Installation Guide](installation.md)** to set up your environment.
-2. Follow the **[Quick Start](quickstart.md)** to build your first graph.
-3. Check out the **[Modules Guide](modules.md)** to understand the architecture.
-
-## 🆘 Need Help?
-
-- **Installation Issues?** → [Troubleshooting Guide](installation.md#troubleshooting)
-- **First Time User?** → [Quick Start Guide](quickstart.md)
-- **Looking for Examples?** → [Examples Page](examples.md)
-- **API Questions?** → [API Reference](api.md)
-
+1. **[Your First Knowledge Graph](cookbook/introduction/Your_First_Knowledge_Graph.ipynb)**: Build your first knowledge graph from a document.
+2. **[Configuration Basics](cookbook/introduction/Configuration_Basics.ipynb)**: Set up configuration files and API keys.
+3. **[Core Workflows](cookbook.md#core-workflows)**: Learn common patterns and workflows.
+4. **[Use Cases](cookbook.md#use-cases)**: Explore domain-specific applications.

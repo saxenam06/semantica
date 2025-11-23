@@ -151,3 +151,104 @@ html {
 [data-md-color-scheme="slate"] ::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.2);
 }
+
+/* 
+   ==========================================================================
+   Version Selector
+   ========================================================================== 
+*/
+.version-scroll-container {
+  display: flex;
+  align-items: center;
+  margin-left: 1.5rem;
+  /* Increased spacing */
+  overflow-x: auto;
+  white-space: nowrap;
+  max-width: 300px;
+  padding: 4px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  height: 100%;
+  /* Match header height context */
+}
+
+.version-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.version-list {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.version-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  /* Larger touch target and better visibility */
+  border-radius: 4px;
+  /* Slightly more squared to match material design */
+  font-size: 0.8rem;
+  /* Slightly larger text */
+  font-weight: 700;
+  /* Bolder for visibility */
+  line-height: 1.2;
+  color: var(--md-default-fg-color);
+  /* Darker text for contrast */
+  background-color: rgba(0, 0, 0, 0.08);
+  /* Slightly darker bg */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  /* Subtle border */
+  transition: all 0.2s ease;
+  text-decoration: none !important;
+  font-family: var(--md-text-font-family);
+}
+
+.version-tag:hover {
+  background-color: rgba(0, 0, 0, 0.12);
+  color: var(--md-primary-fg-color);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.version-tag.active {
+  background-color: var(--md-accent-fg-color);
+  color: white;
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  /* Subtle shadow for depth */
+}
+
+/* Dark Mode Adjustments */
+[data-md-color-scheme="slate"] .version-tag {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--md-default-fg-color);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-md-color-scheme="slate"] .version-tag:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-md-color-scheme="slate"] .version-tag.active {
+  background-color: var(--md-accent-fg-color);
+  color: white;
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Mobile adjustments */
+@media screen and (max-width: 76.1875em) {
+  .version-scroll-container {
+    margin-left: 1rem;
+    max-width: 120px;
+  }
+
+  .version-tag {
+    padding: 3px 8px;
+    font-size: 0.75rem;
+  }
+}
