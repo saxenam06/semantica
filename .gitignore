@@ -4,13 +4,36 @@ site/
 
 # Testing
 /coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache/
+.tox/
 
-# Misc
-.DS_Store
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# API Keys and Secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+*.secret
+config/secrets.yaml
+config/secrets.yml
+credentials.json
+credentials.yaml
+*.credentials
 
 # Python
 __pycache__/
@@ -21,6 +44,7 @@ __pycache__/
 env/
 venv/
 ENV/
+.venv/
 build/
 develop-eggs/
 dist/
@@ -36,6 +60,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # IDE
 .vscode/
@@ -43,3 +68,41 @@ wheels/
 *.swp
 *.swo
 *~
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+*.log.*
+logs/
+*.cache
+
+# Test data and databases
+test_data/
+sample_data/
+*.test.db
+*.test.sqlite
+*.test.sqlite3
+*.db-journal
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.old
+*.orig
+
+# Personal/Development
+.personal/
+.local/
+*.local
