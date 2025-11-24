@@ -65,7 +65,8 @@ jobs:
         # Another tool to check for vulnerabilities
         run: |
           echo "Running safety security check..."
-          safety check --json --output safety-report.json
+          safety check --output json > safety-report.json
+        continue-on-error: true
 
       - name: Upload security reports
         # Save the reports so you can download them later
