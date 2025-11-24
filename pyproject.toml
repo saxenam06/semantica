@@ -38,13 +38,6 @@ keywords = [
     "embeddings", "entity-extraction", "relationship-extraction", "rdf",
     "ontology", "semantic-analysis", "ai", "machine-learning"
 ]
-[project.urls]
-Homepage = "https://github.com/Hawksight-AI/semantica"
-Documentation = "https://semantica.readthedocs.io"
-Repository = "https://github.com/Hawksight-AI/semantica"
-"Bug Tracker" = "https://github.com/Hawksight-AI/semantica/issues"
-Discussions = "https://github.com/Hawksight-AI/semantica/discussions"
-Discord = "https://discord.gg/semantica"
 dependencies = [
     "numpy>=1.21.0",
     "pandas>=1.3.0",
@@ -108,6 +101,13 @@ dependencies = [
     "mypy>=0.971",
     "pre-commit>=2.19.0"
 ]
+[project.urls]
+Homepage = "https://github.com/Hawksight-AI/semantica"
+Documentation = "https://semantica.readthedocs.io"
+Repository = "https://github.com/Hawksight-AI/semantica"
+"Bug Tracker" = "https://github.com/Hawksight-AI/semantica/issues"
+Discussions = "https://github.com/Hawksight-AI/semantica/discussions"
+Discord = "https://discord.gg/semantica"
 
 [project.optional-dependencies]
 dev = [
