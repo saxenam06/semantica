@@ -13,6 +13,7 @@ The ingest module supports **50+ file formats** and multiple data sources:
 - **Stream Processing**: Real-time data streams
 - **Email Processing**: EML, MSG, MBOX, PST archives
 - **Repository Analysis**: Git repositories and code analysis
+- **MCP Server Ingestion**: Connect to your own Python/FastMCP MCP servers via URL for resource and tool-based data ingestion
 
 ---
 
@@ -307,6 +308,151 @@ ingestor = RepoIngestor(
 
 docs = ingestor.ingest("path/to/local/repo")
 ```
+
+---
+
+### MCPIngestor
+
+**Bring Your Own MCP Server**: The MCP (Model Context Protocol) ingestion allows you to connect to your own Python-based or FastMCP MCP servers via URL. You can bring any MCP server you've built or have access to, and Semantica will dynamically discover and ingest data from its resources and tools.
+
+**IMPORTANT**: This implementation supports **ONLY Python-based MCP servers and FastMCP servers**. Users can bring their own Python or FastMCP MCP servers via URL connections. JavaScript, TypeScript, C#, Java, and other language implementations are **NOT supported**.
+
+**Key Features:**
+- **URL-based connection**: Connect to any Python/FastMCP MCP server via HTTP/HTTPS URL
+- **Generic implementation**: Works with any Python/FastMCP MCP server across diverse domains
+- **Dynamic discovery**: Automatically discovers available resources and tools
+- **Multiple servers**: Connect to multiple MCP servers simultaneously
+- **Resource ingestion**: Ingest data from MCP server resources
+- **Tool execution**: Execute MCP server tools and ingest their outputs
+- **Authentication support**: API keys, OAuth, and custom headers
+
+**Example Usage:**
+
+```python
+from semantica.ingest import MCPIngestor
+
+# Create ingestor
+ingestor = MCPIngestor()
+
+# Connect to your MCP server via URL (primary method)
+ingestor.connect(
+    "my_server",  # Server identifier
+    url="http://localhost:8000/mcp"  # Your MCP server URL
+)
+
+# List available resources from your server
+resources = ingestor.list_available_resources("my_server")
+print(f"Available resources: {[r.uri for r in resources]}")
+
+# List available tools from your server
+tools = ingestor.list_available_tools("my_server")
+print(f"Available tools: {[t.name for t in tools]}")
+```
+
+**Resource-Based Ingestion:**
+
+```python
+from semantica.ingest import MCPIngestor
+
+ingestor = MCPIngestor()
+ingestor.connect("file_server", url="http://localhost:8000/mcp")
+
+# Ingest specific resources
+data = ingestor.ingest_resources(
+    "file_server",
+    resource_uris=["resource://file/documents", "resource://file/reports"]
+)
+
+for item in data:
+    print(f"Resource: {item.resource_uri}")
+    print(f"Content type: {item.data_type}")
+    print(f"Metadata: {item.metadata}")
+
+# Ingest all available resources
+all_data = ingestor.ingest_all_resources("file_server")
+print(f"Ingested {len(all_data)} resources")
+```
+
+**Tool-Based Ingestion:**
+
+```python
+from semantica.ingest import MCPIngestor
+
+ingestor = MCPIngestor()
+ingestor.connect("db_server", url="http://localhost:8000/mcp")
+
+# Execute a tool and ingest its output
+result = ingestor.ingest_tool_output(
+    "db_server",
+    tool_name="query_database",
+    arguments={"query": "SELECT * FROM users LIMIT 10"}
+)
+
+print(f"Tool result: {result.content}")
+print(f"Metadata: {result.metadata}")
+```
+
+**Multiple MCP Servers:**
+
+```python
+from semantica.ingest import MCPIngestor
+
+ingestor = MCPIngestor()
+
+# Connect to multiple MCP servers simultaneously
+ingestor.connect("db_server", url="http://localhost:8001/mcp")
+ingestor.connect("file_server", url="http://localhost:8002/mcp")
+ingestor.connect(
+    "api_server",
+    url="https://api.example.com/mcp",
+    headers={"Authorization": "Bearer your_token"}
+)
+
+# Ingest from different servers
+db_data = ingestor.ingest_resources("db_server", resource_uris=["resource://database/tables"])
+file_data = ingestor.ingest_all_resources("file_server")
+api_result = ingestor.ingest_tool_output("api_server", tool_name="fetch_data", arguments={})
+
+# List all connected servers
+servers = ingestor.get_connected_servers()
+print(f"Connected servers: {servers}")
+```
+
+**Authentication and HTTPS:**
+
+```python
+from semantica.ingest import MCPIngestor
+
+ingestor = MCPIngestor()
+
+# Connect via HTTPS with authentication (transport auto-detected from URL)
+ingestor.connect(
+    "secure_server",
+    url="https://api.example.com/mcp",
+    headers={
+        "Authorization": "Bearer your_api_token",
+        "X-API-Key": "your_api_key"
+    }
+)
+
+# The client automatically handles HTTPS and authentication headers
+resources = ingestor.list_available_resources("secure_server")
+```
+
+**Use Cases:**
+
+- **Database Integration**: Connect to a database MCP server to ingest table schemas, query results, or metadata
+- **File System Access**: Connect to a file system MCP server to ingest documents, logs, or configuration files
+- **API Integration**: Connect to an API MCP server to ingest data from external services
+- **Custom Data Sources**: Bring your own MCP server to expose any data source through the MCP protocol
+
+**Best Practices:**
+
+1. **Server Naming**: Use descriptive names for your MCP servers to easily identify them
+2. **Connection Management**: Reuse the same MCPIngestor instance for multiple servers
+3. **Error Handling**: Always handle connection errors and check server availability
+4. **Resource Discovery**: List available resources and tools before ingestion to understand server capabilities
+5. **Authentication**: Store credentials securely and use environment variables for sensitive data
 
 ---
 

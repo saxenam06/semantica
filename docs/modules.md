@@ -45,7 +45,7 @@ Semantica is organized into 12 core modules. Below is a detailed breakdown of ea
 ### 1. Ingest Module
 **Purpose**: Ingest data from various sources into a unified format.
 
-The `ingest` module is the entry point for data. It handles the complexity of connecting to different data sources, from local files to web streams.
+The `ingest` module is the entry point for data. It handles the complexity of connecting to different data sources, from local files to web streams, and supports connecting to your own MCP (Model Context Protocol) servers.
 
 - **Components**:
     - `FileIngestor`: Read files (PDF, DOCX, HTML, JSON, CSV, etc.)
@@ -55,6 +55,7 @@ The `ingest` module is the entry point for data. It handles the complexity of co
     - `DBIngestor`: Database queries and ingestion
     - `EmailIngestor`: Process email messages
     - `RepoIngestor`: Git repository analysis
+    - `MCPIngestor`: Connect to your own Python/FastMCP MCP servers via URL for resource and tool-based data ingestion
 
 ```mermaid
 classDiagram
