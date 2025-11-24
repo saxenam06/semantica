@@ -63,20 +63,19 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create Pull Request
-        # If files changed, create a PR with the fixes
+      - name: Check for formatting changes
+        # Fail if code needs formatting (instead of auto-creating PR)
         if: github.event_name != 'pull_request' && steps.verify-changed-files.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "style: Auto-format code with black and isort"
-          title: "Auto-format code"
-          body: |
-            This PR automatically formats code using black and isort.
-            
-            **Changes:**
-            - Code formatted with black
-            - Imports sorted with isort
-          branch: auto-format-code
-          delete-branch: true
+        run: |
+          echo "❌ Code formatting required!"
+          echo ""
+          echo "The following files need formatting:"
+          git status --porcelain
+          echo ""
+          echo "Please run the following commands locally:"
+          echo "  black semantica/"
+          echo "  isort semantica/"
+          echo ""
+          echo "Then commit and push the changes."
+          exit 1
 
