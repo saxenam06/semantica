@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contributing guidelines and code of conduct
 - Security policy and vulnerability reporting process
 
+## [0.0.2] - 2025-11-25
+
+### Changed
+- Updated README with streamlined content and better examples
+- Added more notebooks to cookbook
+- Improved documentation structure
+
 ## [0.0.1] - 2024-01-XX
 
 ### Added
