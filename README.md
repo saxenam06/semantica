@@ -55,8 +55,6 @@ In the era of AI agents and autonomous systems, data alone isn't enough. **Conte
 
 Organizations today face a **fundamental mismatch** between how data exists and how AI systems need it.
 
-<div align="center">
-
 #### 📊 What Organizations Have
 
 | **🗂️ Unstructured Data** | **🧹 Messy, Noisy Data** | **🔗 Disconnected, Siloed Data** |
@@ -72,9 +70,7 @@ Organizations today face a **fundamental mismatch** between how data exists and 
 | 📚 Formal ontologies | ✅ Validated entities | 🔗 Semantic connections |
 | 🕸️ Graphs & Networks | 📖 Domain Knowledge | 🧠 Context-Aware Reasoning |
 
-
-# **SEMANTICA FRAMEWORK**
-<div align="center">
+### **SEMANTICA FRAMEWORK**
 
 | **📥 Input Layer** | **🧠 Semantic Layer** | **📤 Output Layer** |
 |:------------------:|:----------------------:|:--------------------:|
@@ -83,8 +79,6 @@ Organizations today face a **fundamental mismatch** between how data exists and 
 | APIs & streams | Ontology generation | Ontologies |
 | Archives | Context engineering | — |
 | Multi-modal | Quality assurance | — |
-
-</div>
 ### **✅ Powers: GraphRAG, AI Agents, Multi-Agent Systems**
 
 ### 💥 The Core Problem
@@ -92,8 +86,6 @@ Organizations today face a **fundamental mismatch** between how data exists and 
 Most AI tooling assumes your data is already **clean, structured, and semantically rich**. 
 
 But **real-world enterprise data** actually looks like this:
-
-<div align="center">
 
 #### 📦 Data Format Challenges
 
@@ -113,8 +105,6 @@ But **real-world enterprise data** actually looks like this:
 |:------------------:|:---------------------:|:----------------------:|
 | 📚 No domain model | 🔗 Disconnected facts | 🏝️ Isolated knowledge |
 
-</div>
-
 **And then we push this directly into:**
 - 🔍 RAG systems
 - 🤖 AI agents  
@@ -123,14 +113,10 @@ But **real-world enterprise data** actually looks like this:
 
 ### ⚠️ What Happens?
 
-<div align="center">
-
 | **💥 They Break** | **🎭 They Hallucinate** | **🔇 They Fail Silently** |
 |:-----------------:|:----------------------:|:------------------------:|
 | 💣 System crashes | 🎪 Generate false information | 🤐 Return wrong answers without warning |
 | 📉 Poor performance | 🧠 Make up facts | ⚠️ No error indicators |
-
-</div>
 
 ### ❓ Why?
 
@@ -223,9 +209,7 @@ It **closes the semantic gap** between real-world messy data and the structured 
 
 Semantica fills this gap with a **complete semantic intelligence framework** that transforms raw data into AI-ready knowledge:
 
-<div align="center">
-
-# **SEMANTICA FRAMEWORK**
+### **SEMANTICA FRAMEWORK**
 
 | **📥 Input Layer** | **🧠 Semantic Layer** | **📤 Output Layer** |
 |:------------------:|:----------------------:|:--------------------:|
@@ -234,8 +218,6 @@ Semantica fills this gap with a **complete semantic intelligence framework** tha
 | APIs & streams | Ontology generation | Ontologies |
 | Archives | Context engineering | — |
 | Multi-modal | Quality assurance | — |
-
-</div>
 
 ### **✅ Powers: GraphRAG, AI Agents, Multi-Agent Systems**
 
@@ -302,8 +284,6 @@ Semantica is designed for **developers, data engineers, and organizations** buil
 
 ### 🏗️ Built For
 
-<div align="center">
-
 | **Role** | **Use Case** |
 |:--------:|:------------|
 | 👨‍🔬 **Data Scientists** | Transform messy data into clean knowledge graphs |
@@ -315,13 +295,9 @@ Semantica is designed for **developers, data engineers, and organizations** buil
 | 🧠 **ML Engineers** | Create semantic features for machine learning models |
 | 🏢 **Enterprises** | Unify data silos into a semantic layer |
 
-</div>
-
 ### 🎯 Primary Audiences
 
 Semantica serves **developers, engineers, and organizations** who need to transform unstructured data into semantic knowledge:
-
-<div align="center">
 
 | **Audience** | **Key Use Cases** | **Why Semantica** |
 |:------------:|:------------------|:------------------|
@@ -332,8 +308,6 @@ Semantica serves **developers, engineers, and organizations** who need to transf
 | 📊 **Analysts & Researchers** | Data exploration, literature analysis, BI | Transform data into queryable knowledge graphs |
 | 🛡️ **Security & Compliance Teams** | Threat intelligence, regulatory reporting, audit trails | Relationship mapping & provenance tracking |
 | 🚀 **Product Teams & Startups** | Rapid prototyping, AI products, semantic intelligence | Production-ready framework for fast development |
-
-</div>
 
 ### 🎓 Skill Level Requirements
 
@@ -366,8 +340,6 @@ Semantica serves **developers, engineers, and organizations** who need to transf
 
 ### Install from PyPI (Recommended)
 
-<div>
-
 ```bash
 # Install latest version from PyPI
 pip install semantica
@@ -379,13 +351,9 @@ pip install semantica[all]
 python -c "import semantica; print(semantica.__version__)"
 ```
 
-</div>
-
 **Current Version:** [![PyPI version](https://badge.fury.io/py/semantica.svg)](https://pypi.org/project/semantica/0.0.1/) • [View on PyPI](https://pypi.org/project/semantica/0.0.1/)
 
 ### Install from Source (Development)
-
-<div>
 
 ```bash
 # Clone and install in editable mode
@@ -400,19 +368,13 @@ pip install -e ".[all]"
 pip install -e ".[dev]"
 ```
 
-</div>
-
 ---
 
 ## 📚 Documentation & Resources
 
-<div align="center">
-
 | **📖 Documentation** | **🍳 Cookbook** | **🎯 Use Cases** | **🚀 Quick Start** |
 |:--------------------:|:--------------:|:---------------:|:-----------------:|
 | [API Reference & Guides](https://semantica.readthedocs.io/) | [50+ Interactive Notebooks](https://semantica.readthedocs.io/cookbook/) | [Industry Applications](https://semantica.readthedocs.io/use-cases/) | [Get Started in Minutes](https://semantica.readthedocs.io/getting-started/) |
-
-</div>
 
 > 💡 **New to Semantica?** Start with the [**Cookbook**](https://semantica.readthedocs.io/cookbook/) for hands-on examples!
 
@@ -420,23 +382,17 @@ pip install -e ".[dev]"
 
 ## ✨ Core Capabilities
 
-<div align="center">
-
 | **📊 Data Ingestion** | **🧠 Semantic Extract** | **🕸️ Knowledge Graphs** | **📚 Ontology** |
 |:--------------------:|:----------------------:|:----------------------:|:--------------:|
 | [50+ Formats](#-universal-data-ingestion) | [Entity & Relations](#-semantic-intelligence-engine) | [Graph Analytics](#-knowledge-graph-construction) | [Auto Generation](#-ontology-generation--management) |
 | **🔗 Context** | **🎯 GraphRAG** | **🔄 Pipeline** | **🔧 QA** |
 | [Agent Memory](#-context-engineering-for-ai-agents) | [Hybrid RAG](#-knowledge-graph-powered-rag-graphrag) | [Parallel Workers](#-pipeline-orchestration--parallel-processing) | [Conflict Resolution](#-production-ready-quality-assurance) |
 
-</div>
-
 ---
 
 ### 📊 Universal Data Ingestion
 
 > **50+ file formats** • PDF, DOCX, HTML, JSON, CSV, databases, feeds, archives
-
-<div>
 
 ```python
 from semantica.ingest import FileIngestor, WebIngestor, DBIngestor
@@ -453,8 +409,6 @@ sources.extend(db_ingestor.ingest(query="SELECT * FROM articles"))
 print(f"✅ Ingested {len(sources)} sources")
 ```
 
-</div>
-
 📖 [**Guide**](https://semantica.readthedocs.io/reference/ingest/) • 🍳 [**Cookbook**](https://semantica.readthedocs.io/cookbook/)
 
 ---
@@ -462,8 +416,6 @@ print(f"✅ Ingested {len(sources)} sources")
 ### 🧠 Semantic Intelligence Engine
 
 > **Entity & Relation Extraction** • NER, Relationships, Events, Triples with LLM Enhancement
-
-<div>
 
 ```python
 from semantica import Semantica
@@ -476,8 +428,6 @@ results = core.extract_semantics(text)
 print(f"Entities: {len(results.entities)}, Relationships: {len(results.relationships)}")
 ```
 
-</div>
-
 📖 [**Guide**](https://semantica.readthedocs.io/reference/semantic_extract/) • 🍳 [**Cookbook**](https://semantica.readthedocs.io/cookbook/)
 
 ---
@@ -485,8 +435,6 @@ print(f"Entities: {len(results.entities)}, Relationships: {len(results.relations
 ### 🕸️ Knowledge Graph Construction
 
 > **Production-Ready KGs** • Entity Resolution • Temporal Support • Graph Analytics
-
-<div>
 
 ```python
 from semantica import Semantica
@@ -504,8 +452,6 @@ result = kg.query("Who founded the company?", return_format="structured")
 print(f"Nodes: {kg.node_count}, Answer: {result.answer}")
 ```
 
-</div>
-
 📖 [**Guide**](https://semantica.readthedocs.io/reference/kg/) • 🍳 [**Cookbook**](https://semantica.readthedocs.io/cookbook/)
 
 ---
@@ -513,8 +459,6 @@ print(f"Nodes: {kg.node_count}, Answer: {result.answer}")
 ### 📚 Ontology Generation & Management
 
 > **6-Stage LLM Pipeline** • Automatic OWL Generation • HermiT/Pellet Validation
-
-<div>
 
 ```python
 from semantica.ontology import OntologyGenerator, OntologyValidator
@@ -528,8 +472,6 @@ validation = validator.validate(ontology)
 print(f"Classes: {len(ontology.classes)}, Valid: {validation.is_consistent}")
 ```
 
-</div>
-
 📖 [**Guide**](https://semantica.readthedocs.io/reference/ontology/) • 🍳 [**Cookbook**](https://semantica.readthedocs.io/cookbook/)
 
 ---
@@ -537,8 +479,6 @@ print(f"Classes: {len(ontology.classes)}, Valid: {validation.is_consistent}")
 ### 🔗 Context Engineering for AI Agents
 
 > **Persistent Memory** • RAG + Knowledge Graphs • MCP-Compatible Tools
-
-<div>
 
 ```python
 from semantica.context import AgentMemory, ContextRetriever
@@ -551,8 +491,6 @@ retriever = ContextRetriever(memory_store=memory)
 context = retriever.retrieve("What are user preferences?", max_results=5)
 ```
 
-</div>
-
 📖 [**Guide**](https://semantica.readthedocs.io/reference/context/) • 🍳 [**Cookbook**](https://semantica.readthedocs.io/cookbook/)
 
 ---
@@ -560,8 +498,6 @@ context = retriever.retrieve("What are user preferences?", max_results=5)
 ### 🎯 Knowledge Graph-Powered RAG (GraphRAG)
 
 > **30% Accuracy Improvement** • Vector + Graph Hybrid Search • 91% Accuracy
-
-<div>
 
 ```python
 from semantica.qa_rag import GraphRAGEngine
@@ -575,8 +511,6 @@ result = graphrag.query("Who founded the company?", top_k=5, expand_graph=True)
 print(f"Answer: {result.answer} (Confidence: {result.confidence:.2f})")
 ```
 
-</div>
-
 📖 [**Guide**](https://semantica.readthedocs.io/reference/qa_rag/) • 🍳 [**Cookbook**](https://semantica.readthedocs.io/cookbook/)
 
 ---
@@ -584,8 +518,6 @@ print(f"Answer: {result.answer} (Confidence: {result.confidence:.2f})")
 ### 🔄 Pipeline Orchestration & Parallel Processing
 
 > **Orchestrator-Worker Pattern** • Parallel Execution • Scalable Processing
-
-<div>
 
 ```python
 from semantica.pipeline import PipelineBuilder, ExecutionEngine
@@ -599,8 +531,6 @@ pipeline = PipelineBuilder() \
 result = ExecutionEngine().execute_pipeline(pipeline, parallel=True)
 ```
 
-</div>
-
 📖 [**Guide**](https://semantica.readthedocs.io/reference/pipeline/) • 🍳 [**Cookbook**](https://semantica.readthedocs.io/cookbook/)
 
 ---
@@ -608,8 +538,6 @@ result = ExecutionEngine().execute_pipeline(pipeline, parallel=True)
 ### 🔧 Production-Ready Quality Assurance
 
 > **Enterprise-Grade QA** • Conflict Detection • Deduplication • Quality Scoring
-
-<div>
 
 ```python
 from semantica.kg_qa import QualityAssessor
@@ -624,8 +552,6 @@ duplicates = detector.find_duplicates(entities=kg.entities, similarity_threshold
 
 print(f"Quality Score: {report.overall_score}/100, Duplicates: {len(duplicates)}")
 ```
-
-</div>
 
 📖 [**Guide**](https://semantica.readthedocs.io/reference/quality/) • 🍳 [**Cookbook**](https://semantica.readthedocs.io/cookbook/)
 
@@ -674,8 +600,6 @@ print(f"Quality Score: {report.overall_score}/100, Duplicates: {len(duplicates)}
 
 > 💡 **For comprehensive examples, see the [**Cookbook**](https://semantica.readthedocs.io/cookbook/) with 50+ interactive notebooks!**
 
-<div>
-
 ```python
 from semantica import Semantica
 
@@ -688,8 +612,6 @@ kg = core.build_knowledge_graph(documents, merge_entities=True)
 result = kg.query("Who founded the company?", return_format="structured")
 print(f"Answer: {result.answer} | Nodes: {kg.node_count}, Edges: {kg.edge_count}")
 ```
-
-</div>
 
 🍳 **[See 50+ comprehensive examples in the Cookbook →](https://semantica.readthedocs.io/cookbook/)**
 
