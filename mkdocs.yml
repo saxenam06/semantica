@@ -118,6 +118,7 @@ nav:
     - Pipeline: reference/pipeline.md
     - Export: reference/export.md
     - Visualization: reference/visualization.md
+    - Evals: reference/evals.md
     - Utils: reference/utils.md
   - Guides:
     - concepts.md
