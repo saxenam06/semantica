@@ -36,8 +36,7 @@ classifiers = [
 keywords = [
     "semantic-layer", "knowledge-engineering", "nlp", "knowledge-graph",
     "embeddings", "entity-extraction", "relationship-extraction", "rdf",
-    "ontology", "semantic-analysis", "ai", "machine-learning",
-    "graph-database", "property-graph", "neo4j", "falkordb", "kuzu"
+    "ontology", "semantic-analysis", "ai", "machine-learning"
 ]
 dependencies = [
     "numpy>=1.21.0",
@@ -197,7 +196,6 @@ graph-falkordb = [
 graph-all = [
     "semantica[graph-neo4j,graph-kuzu,graph-falkordb]"
 ]
-# Complete installation with all optional dependencies
 all = [
     "semantica[dev,viz,gpu,cloud,monitoring,llm-all,models-huggingface,split-all,graph-all]"
 ]
