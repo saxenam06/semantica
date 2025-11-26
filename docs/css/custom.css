@@ -255,7 +255,7 @@ html {
 
 /* 
    ==========================================================================
-   Footer - Keep All Elements Clearly Visible
+   Footer Attribution - Keep MkDocs Credit Visible
    ========================================================================== 
 */
 .md-footer-meta__inner {
@@ -265,69 +265,21 @@ html {
   align-items: center;
 }
 
-/* Footer Copyright and Attribution */
 .md-footer-copyright {
   opacity: 1 !important;
-  color: rgba(0, 0, 0, 0.7) !important;
+  color: var(--md-default-fg-color--light) !important;
 }
 
 .md-footer-copyright__highlight {
   opacity: 1 !important;
-  color: rgba(0, 0, 0, 0.87) !important;
-  font-weight: 600 !important;
+  color: var(--md-default-fg-color) !important;
+  font-weight: 500 !important;
 }
 
 [data-md-color-scheme="slate"] .md-footer-copyright {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
 [data-md-color-scheme="slate"] .md-footer-copyright__highlight {
-  color: rgba(255, 255, 255, 1) !important;
-}
-
-/* Footer Social Links (GitHub, PyPI, etc.) */
-.md-footer__link,
-.md-footer-social__link {
-  opacity: 1 !important;
-  color: rgba(0, 0, 0, 0.7) !important;
-  transition: all 0.2s ease;
-}
-
-.md-footer__link:hover,
-.md-footer-social__link:hover {
-  color: rgba(0, 0, 0, 0.9) !important;
-  transform: scale(1.1);
-}
-
-[data-md-color-scheme="slate"] .md-footer__link,
-[data-md-color-scheme="slate"] .md-footer-social__link {
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-
-[data-md-color-scheme="slate"] .md-footer__link:hover,
-[data-md-color-scheme="slate"] .md-footer-social__link:hover {
-  color: rgba(255, 255, 255, 1) !important;
-}
-
-/* Footer Social Icons */
-.md-social__link svg {
-  opacity: 1 !important;
-  fill: currentColor !important;
-}
-
-/* Ensure footer background has good contrast */
-.md-footer {
-  background-color: #F5F5F5 !important;
-}
-
-[data-md-color-scheme="slate"] .md-footer {
-  background-color: #1a1a1a !important;
-}
-
-.md-footer-meta {
-  background-color: rgba(0, 0, 0, 0.025) !important;
-}
-
-[data-md-color-scheme="slate"] .md-footer-meta {
-  background-color: rgba(0, 0, 0, 0.2) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
 }
