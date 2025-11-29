@@ -5,14 +5,35 @@ Real-world examples and use cases for Semantica.
 !!! tip "Interactive Learning"
     For hands-on interactive tutorials, check out our [Cookbook](cookbook.md) with Jupyter notebooks covering everything from basics to advanced use cases.
 
-## Basic Examples
+---
 
-!!! note "Code Examples"
-    All examples assume you have Semantica installed and imported. See the [Installation Guide](installation.md) if you need to set it up first.
+## Table of Contents
+
+- [Getting Started (5 min examples)](#getting-started-5-min-examples)
+- [Core Workflows (15 min examples)](#core-workflows-15-min-examples)
+- [Advanced Patterns (30+ min examples)](#advanced-patterns-30-min-examples)
+- [Production Patterns](#production-patterns)
+
+---
+
+!!! note "Prerequisites"
+    All examples assume you have Semantica installed. See the [Installation Guide](installation.md) if you need to set it up first.
+
+---
+
+## Getting Started (5 min examples)
+
+Quick examples to get you up and running with Semantica.
 
 ### Example 1: Basic Knowledge Graph
 
-Build a knowledge graph from a single document:
+**Difficulty**: Beginner  
+**Time**: 5 minutes  
+**Prerequisites**: Semantica installed, sample PDF
+
+Build a knowledge graph from a single document.
+
+**Code**:
 
 ```python
 from semantica import Semantica
@@ -31,9 +52,34 @@ print(f"Entities: {len(kg['entities'])}")
 print(f"Relationships: {len(kg['relationships'])}")
 ```
 
+**Expected Output**:
+
+```
+Entities: 45
+Relationships: 32
+```
+
+**Common Errors**:
+
+- `FileNotFoundError`: Ensure the PDF file exists in the current directory
+- `ImportError`: Make sure Semantica is installed: `pip install semantica`
+
+**Next Steps**:
+
+- [Example 2: Entity Extraction](#example-2-entity-extraction)
+- [Core Workflows](#core-workflows-15-min-examples)
+
+---
+
 ### Example 2: Entity Extraction
 
-Extract entities from text:
+**Difficulty**: Beginner  
+**Time**: 5 minutes  
+**Prerequisites**: Semantica installed
+
+Extract entities from text using Named Entity Recognition.
+
+**Code**:
 
 ```python
 from semantica import Semantica
@@ -51,7 +97,8 @@ for entity in entities["entities"]:
     print(f"{entity['text']}: {entity['type']}")
 ```
 
-**Output:**
+**Expected Output**:
+
 ```
 Apple Inc.: ORGANIZATION
 Steve Jobs: PERSON
@@ -60,9 +107,27 @@ California: LOCATION
 Tim Cook: PERSON
 ```
 
+**Common Errors**:
+
+- `AttributeError`: Ensure you're using the correct API: `semantica.semantic_extract.extract_entities()`
+- Empty results: Check that your text contains named entities
+
+**Next Steps**:
+
+- [Example 3: Multi-Source Integration](#example-3-multi-source-integration)
+- [Core Workflows](#core-workflows-15-min-examples)
+
+---
+
 ### Example 3: Multi-Source Integration
 
-Combine data from multiple sources:
+**Difficulty**: Beginner  
+**Time**: 5 minutes  
+**Prerequisites**: Multiple data sources
+
+Combine data from multiple sources into a unified knowledge graph.
+
+**Code**:
 
 ```python
 from semantica import Semantica
@@ -81,9 +146,32 @@ kg = result["knowledge_graph"]
 print(f"Unified knowledge graph with {len(kg['entities'])} entities")
 ```
 
+**Expected Output**:
+
+```
+Unified knowledge graph with 120 entities
+```
+
+**Common Errors**:
+
+- Network errors for URLs: Check internet connection and URL accessibility
+- File format errors: Ensure all file formats are supported
+
+**Next Steps**:
+
+- [Core Workflows](#core-workflows-15-min-examples)
+
+---
+
 ### Example 4: Export Formats
 
-Export knowledge graph to multiple formats:
+**Difficulty**: Beginner  
+**Time**: 5 minutes  
+**Prerequisites**: Knowledge graph built
+
+Export knowledge graph to multiple formats.
+
+**Code**:
 
 ```python
 from semantica import Semantica
@@ -98,11 +186,21 @@ semantica.export.to_csv(kg, "output.csv")
 semantica.export.to_owl(kg, "output.owl")
 ```
 
-## Advanced Examples
+---
+
+## Core Workflows (15 min examples)
+
+Common workflows for building production-ready knowledge graphs.
 
 ### Example 5: Conflict Resolution
 
-Resolve conflicts in data from multiple sources:
+**Difficulty**: Intermediate  
+**Time**: 15 minutes  
+**Prerequisites**: Multiple data sources with potential conflicts
+
+Resolve conflicts in data from multiple sources.
+
+**Code**:
 
 ```python
 from semantica import Semantica
@@ -129,7 +227,13 @@ print(f"Resolved {len(resolved)} conflicts")
 
 ### Example 6: Custom Configuration
 
-Use custom configuration for specific use cases:
+**Difficulty**: Intermediate  
+**Time**: 15 minutes  
+**Prerequisites**: Understanding of configuration options
+
+Use custom configuration for specific use cases.
+
+**Code**:
 
 ```python
 from semantica import Semantica, Config
@@ -148,7 +252,13 @@ result = semantica.build_knowledge_base(["document.pdf"])
 
 ### Example 7: Incremental Graph Building
 
-Build knowledge graph incrementally:
+**Difficulty**: Intermediate  
+**Time**: 15 minutes  
+**Prerequisites**: Multiple data sources to process incrementally
+
+Build knowledge graph incrementally.
+
+**Code**:
 
 ```python
 from semantica import Semantica
@@ -168,7 +278,13 @@ print(f"Merged graph: {len(merged_kg['entities'])} entities")
 
 ### Example 8: Visualization
 
-Create interactive visualizations:
+**Difficulty**: Beginner  
+**Time**: 10 minutes  
+**Prerequisites**: Knowledge graph built
+
+Create interactive visualizations.
+
+**Code**:
 
 ```python
 from semantica import Semantica
@@ -188,9 +304,21 @@ print(f"Graph density: {analysis['density']}")
 print(f"Connected components: {analysis['components']}")
 ```
 
+---
+
+## Advanced Patterns (30+ min examples)
+
+Advanced patterns for complex use cases and production deployments.
+
 ### Example 9: Graph Store (Persistent Storage)
 
-Store and query knowledge graphs in a persistent graph database:
+**Difficulty**: Intermediate  
+**Time**: 30 minutes  
+**Prerequisites**: Neo4j or KuzuDB installed
+
+Store and query knowledge graphs in a persistent graph database.
+
+**Code**:
 
 ```python
 from semantica.graph_store import GraphStore
@@ -235,7 +363,13 @@ store.close()
 
 ### Example 10: Using KuzuDB (Embedded)
 
-For embedded graph storage without external dependencies:
+**Difficulty**: Intermediate  
+**Time**: 20 minutes  
+**Prerequisites**: KuzuDB installed
+
+For embedded graph storage without external dependencies.
+
+**Code**:
 
 ```python
 from semantica.graph_store import GraphStore
@@ -255,7 +389,13 @@ store.close()
 
 ### Example 11: FalkorDB for Real-Time Applications
 
-Ultra-fast graph queries for LLM applications:
+**Difficulty**: Intermediate  
+**Time**: 25 minutes  
+**Prerequisites**: Redis and FalkorDB installed
+
+Ultra-fast graph queries for LLM applications.
+
+**Code**:
 
 ```python
 from semantica.graph_store import GraphStore
@@ -278,6 +418,109 @@ results = store.execute_query("""
 
 store.close()
 ```
+
+---
+
+## Production Patterns
+
+Production-ready patterns for scalable deployments.
+
+### Example 12: Streaming Data Processing
+
+**Difficulty**: Advanced  
+**Time**: 45 minutes  
+**Prerequisites**: Understanding of streaming architectures
+
+Process data streams in real-time.
+
+**Code**:
+
+```python
+from semantica.ingest import StreamIngestor
+from semantica import Semantica
+
+semantica = Semantica()
+
+# Set up stream ingestor
+stream_ingestor = StreamIngestor(stream_uri="kafka://localhost:9092/topic")
+
+# Process stream
+for batch in stream_ingestor.stream(batch_size=100):
+    result = semantica.build_knowledge_base(
+        sources=batch,
+        embeddings=True,
+        graph=True
+    )
+    # Process and store results
+    process_results(result)
+```
+
+**Expected Output**:
+```
+Processing batch 1: 100 documents
+Processing batch 2: 100 documents
+...
+```
+
+---
+
+### Example 13: Custom Extractors
+
+**Difficulty**: Advanced  
+**Time**: 60 minutes  
+**Prerequisites**: Understanding of extraction patterns
+
+Create custom entity extractors for domain-specific entities.
+
+**Code**:
+
+```python
+from semantica.semantic_extract import BaseExtractor
+
+class CustomProductExtractor(BaseExtractor):
+    def extract(self, text):
+        # Your custom extraction logic
+        products = []
+        # Pattern matching or ML model
+        return products
+
+# Use custom extractor
+extractor = CustomProductExtractor()
+entities = extractor.extract(text)
+```
+
+---
+
+### Example 14: Batch Processing Large Datasets
+
+**Difficulty**: Intermediate  
+**Time**: 30 minutes  
+**Prerequisites**: Large dataset to process
+
+Process large datasets efficiently with batching.
+
+**Code**:
+
+```python
+from semantica import Semantica
+import os
+
+semantica = Semantica()
+sources = [f"data/doc_{i}.pdf" for i in range(1000)]
+batch_size = 50
+
+for i in range(0, len(sources), batch_size):
+    batch = sources[i:i+batch_size]
+    result = semantica.build_knowledge_base(
+        sources=batch,
+        embeddings=True,
+        graph=True
+    )
+    # Save intermediate results
+    save_batch_result(result, batch_num=i//batch_size)
+```
+
+---
 
 ## Use Case Examples
 
@@ -361,9 +604,30 @@ For more interactive examples and tutorials, check out our [Cookbook](cookbook.m
 - **Advanced**: Advanced techniques and patterns
 - **Use Cases**: Real-world applications in various domains
 
+---
+
+## Example Gallery
+
+Visual previews of what you can build with Semantica:
+
+- **Knowledge Graph Visualization**: Interactive network graphs
+- 📈 **Analytics Dashboards**: Quality metrics and insights
+- 🔍 **Semantic Search**: Vector-based document retrieval
+- 🧠 **GraphRAG Applications**: Enhanced LLM responses
+
+---
+
 ## More Resources
 
 - **[Quick Start Guide](quickstart.md)** - Step-by-step tutorial
-- **[API Reference](api.md)** - Complete API documentation
+- **[API Reference](reference/core.md)** - Complete API documentation
 - **[Cookbook](cookbook.md)** - Interactive Jupyter notebooks
-- **[Code Examples](../CodeExamples.md)** - Additional code samples
+- **[Use Cases](use-cases.md)** - Real-world applications
+- **[Modules Guide](modules.md)** - Module documentation
+
+---
+
+!!! info "Contribute"
+    Have an example to share? [Contribute on GitHub](https://github.com/Hawksight-AI/semantica)
+
+**Last Updated**: 2024
