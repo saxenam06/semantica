@@ -6,12 +6,9 @@ images, audio, and multi-modal content, with support for multiple embedding
 models and optimization strategies.
 
 Key Features:
-    - Text embedding generation (multiple models: sentence-transformers, OpenAI, BGE, etc.)
+    - Text embedding generation (multiple models: sentence-transformers, OpenAI, BGE, FastEmbed, etc.)
     - Image embedding generation
-    - Audio embedding generation
-    - Multi-modal embedding support
     - Batch processing for efficiency
-    - Embedding optimization and compression
     - Similarity comparison utilities
 
 Example Usage:
@@ -31,10 +28,6 @@ import numpy as np
 
 from ..utils.exceptions import ProcessingError
 from ..utils.logging import get_logger
-from .audio_embedder import AudioEmbedder
-from .embedding_optimizer import EmbeddingOptimizer
-from .image_embedder import ImageEmbedder
-from .multimodal_embedder import MultimodalEmbedder
 from .text_embedder import TextEmbedder
 
 
@@ -43,14 +36,14 @@ class EmbeddingGenerator:
     Main embedding generation handler.
 
     This class provides a unified interface for generating embeddings from
-    various data types (text, images, audio) using multiple embedding models.
-    It handles batch processing, optimization, and similarity calculations.
+    text data using multiple embedding models.
+    It handles batch processing and similarity calculations.
 
     Supported Models:
         - sentence-transformers: High-quality sentence embeddings
         - openai: OpenAI text-embedding models
         - bge: BAAI General Embedding models
-        - clip: CLIP for image-text embeddings
+        - fastembed: Fast and efficient text embeddings
 
     Example Usage:
         >>> generator = EmbeddingGenerator()
@@ -64,16 +57,12 @@ class EmbeddingGenerator:
         """
         Initialize embedding generator.
 
-        Sets up embedders for different data types and the embedding optimizer.
+        Sets up embedders for different data types.
         Configuration can be provided via config dict or keyword arguments.
 
         Args:
             config: Configuration dictionary with keys:
                 - text: Text embedder configuration
-                - image: Image embedder configuration
-                - audio: Audio embedder configuration
-                - multimodal: Multi-modal embedder configuration
-                - optimizer: Embedding optimizer configuration
             **kwargs: Additional configuration (merged into config)
         """
         self.logger = get_logger("embedding_generator")
@@ -85,19 +74,11 @@ class EmbeddingGenerator:
         # Initialize embedders for different data types
         # These are lazy-loaded and only initialized when needed
         text_config = self.config.get("text", {})
-        image_config = self.config.get("image", {})
-        audio_config = self.config.get("audio", {})
-        multimodal_config = self.config.get("multimodal", {})
-        optimizer_config = self.config.get("optimizer", {})
 
         self.text_embedder = TextEmbedder(**text_config)
-        self.image_embedder = ImageEmbedder(**image_config)
-        self.audio_embedder = AudioEmbedder(**audio_config)
-        self.multimodal_embedder = MultimodalEmbedder(**multimodal_config)
-        self.embedding_optimizer = EmbeddingOptimizer(**optimizer_config)
 
         # List of supported embedding models
-        self.supported_models = ["sentence-transformers", "openai", "bge", "clip"]
+        self.supported_models = ["sentence-transformers", "openai", "bge", "fastembed"]
 
         # Initialize progress tracker
         from ..utils.progress_tracker import get_progress_tracker
@@ -105,6 +86,36 @@ class EmbeddingGenerator:
         self.progress_tracker = get_progress_tracker()
 
         self.logger.info("Embedding generator initialized")
+
+    def get_text_method(self) -> str:
+        """
+        Get the active text embedding method being used.
+
+        Returns:
+            str: Active text embedding method name
+
+        Example:
+            >>> generator = EmbeddingGenerator()
+            >>> method = generator.get_text_method()
+            >>> print(f"Text method: {method}")
+        """
+        return self.text_embedder.get_method()
+
+    def get_methods_info(self) -> Dict[str, Any]:
+        """
+        Get detailed information about all active embedding methods.
+
+        Returns:
+            dict: Dictionary containing information about text embedder
+
+        Example:
+            >>> generator = EmbeddingGenerator()
+            >>> info = generator.get_methods_info()
+            >>> print(f"Text method: {info['text']['method']}")
+        """
+        return {
+            "text": self.text_embedder.get_model_info(),
+        }
 
     def generate_embeddings(
         self,
@@ -120,11 +131,10 @@ class EmbeddingGenerator:
 
         Args:
             data: Input data to embed:
-                - str: Text string or file path
-                - Path: File path object
-                - List: Batch of texts or file paths
-            data_type: Explicit data type ("text", "image", "audio")
-                      If None, auto-detects from input
+                - str: Text string
+                - List: Batch of texts
+            data_type: Explicit data type ("text")
+                      If None, defaults to "text"
             **options: Additional generation options passed to embedder
 
         Returns:
@@ -140,13 +150,11 @@ class EmbeddingGenerator:
             >>> emb = generator.generate_embeddings("Hello world")
             >>> # Batch of texts
             >>> embs = generator.generate_embeddings(["text1", "text2"])
-            >>> # Image file
-            >>> emb = generator.generate_embeddings("image.jpg", data_type="image")
         """
-        # Auto-detect data type if not provided
+        # Default to text if not provided
         if data_type is None:
-            data_type = self._detect_data_type(data)
-            self.logger.debug(f"Auto-detected data type: {data_type}")
+            data_type = "text"
+            self.logger.debug(f"Using data type: {data_type}")
 
         # Route to appropriate embedder based on data type
         if data_type == "text":
@@ -154,93 +162,13 @@ class EmbeddingGenerator:
                 return self.text_embedder.embed_text(data, **options)
             elif isinstance(data, list):
                 return self.text_embedder.embed_batch(data, **options)
-        elif data_type == "image":
-            if isinstance(data, (str, Path)):
-                return self.image_embedder.embed_image(data, **options)
-            elif isinstance(data, list):
-                return self.image_embedder.embed_batch(data, **options)
-        elif data_type == "audio":
-            if isinstance(data, (str, Path)):
-                return self.audio_embedder.embed_audio(data, **options)
-            elif isinstance(data, list):
-                return self.audio_embedder.embed_batch(data, **options)
         else:
             error_msg = (
                 f"Unsupported data type: {data_type}. "
-                f"Supported types: text, image, audio"
+                f"Supported types: text"
             )
             raise ProcessingError(error_msg)
 
-    def _detect_data_type(self, data: Union[str, Path, List]) -> str:
-        """
-        Detect data type from input automatically.
-
-        This method analyzes the input to determine whether it's text, image,
-        or audio data. For file paths, it uses file extensions. For strings,
-        it defaults to text.
-
-        Args:
-            data: Input data to analyze
-
-        Returns:
-            str: Detected data type ("text", "image", or "audio")
-        """
-        # Handle list inputs - check first item
-        if isinstance(data, list):
-            if not data:
-                # Empty list defaults to text
-                return "text"
-            # Recursively check first item
-            return self._detect_data_type(data[0])
-
-        # Check if input is a file path
-        file_path = None
-        if isinstance(data, Path):
-            file_path = data
-        elif isinstance(data, str):
-            # Check if string is a valid file path
-            potential_path = Path(data)
-            if potential_path.exists():
-                file_path = potential_path
-
-        # If it's a file path, detect type by extension
-        if file_path:
-            suffix = file_path.suffix.lower()
-
-            # Common image file extensions
-            image_extensions = [
-                ".jpg",
-                ".jpeg",
-                ".png",
-                ".gif",
-                ".bmp",
-                ".tiff",
-                ".webp",
-                ".svg",
-            ]
-            # Common audio file extensions
-            audio_extensions = [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma"]
-
-            if suffix in image_extensions:
-                return "image"
-            elif suffix in audio_extensions:
-                return "audio"
-
-        # Default to text for strings or unknown file types
-        return "text"
-
-    def optimize_embeddings(self, embeddings: np.ndarray, **options) -> np.ndarray:
-        """
-        Optimize embedding quality and performance.
-
-        Args:
-            embeddings: Input embeddings
-            **options: Optimization options
-
-        Returns:
-            np.ndarray: Optimized embeddings
-        """
-        return self.embedding_optimizer.compress(embeddings, **options)
 
     def compare_embeddings(
         self, embedding1: np.ndarray, embedding2: np.ndarray, **options
@@ -335,15 +263,3 @@ class EmbeddingGenerator:
                 tracking_id, status="failed", message=str(e)
             )
             raise
-
-
-from .embedding_optimizer import EmbeddingOptimizer as EmbeddingOptimizerImpl
-from .multimodal_embedder import MultimodalEmbedder as MultimodalEmbedderImpl
-
-# Re-export classes from other modules for convenience
-from .text_embedder import TextEmbedder as TextEmbedderImpl
-
-# Make classes available with same names
-TextEmbedder = TextEmbedderImpl
-MultiModalEmbedder = MultimodalEmbedderImpl
-EmbeddingOptimizer = EmbeddingOptimizerImpl

@@ -191,6 +191,81 @@ class LlamaAdapter(ProviderAdapter):
         return placeholder
 
 
+class FastEmbedAdapter(ProviderAdapter):
+    """FastEmbed adapter for fast and efficient embedding generation."""
+
+    def __init__(self, **config):
+        """Initialize FastEmbed adapter."""
+        super().__init__(**config)
+
+        self.model_name = config.get("model_name", "BAAI/bge-small-en-v1.5")
+        self.model = None
+
+        self._initialize_model()
+
+    def _initialize_model(self):
+        """Initialize FastEmbed model."""
+        try:
+            from fastembed import TextEmbedding
+
+            self.model = TextEmbedding(model_name=self.model_name)
+            self.logger.info(f"Loaded FastEmbed model: {self.model_name}")
+        except ImportError:
+            self.logger.warning(
+                "fastembed not available. Install with: pip install fastembed"
+            )
+        except Exception as e:
+            self.logger.warning(f"Failed to load FastEmbed model: {e}")
+
+    def embed(self, text: str, **options) -> np.ndarray:
+        """
+        Generate embedding using FastEmbed.
+
+        Args:
+            text: Input text
+            **options: Embedding options
+
+        Returns:
+            np.ndarray: Embedding vector
+        """
+        if not self.model:
+            raise ProcessingError("FastEmbed model not initialized")
+
+        try:
+            # FastEmbed returns an iterator, get first item
+            embeddings = list(self.model.embed([text]))
+            if embeddings:
+                embedding = np.array(embeddings[0], dtype=np.float32)
+                return embedding
+            else:
+                raise ProcessingError("FastEmbed returned empty embedding")
+        except Exception as e:
+            self.logger.error(f"Failed to get FastEmbed embedding: {e}")
+            raise ProcessingError(f"Failed to get FastEmbed embedding: {e}")
+
+    def embed_batch(self, texts: List[str], **options) -> np.ndarray:
+        """
+        Generate embeddings for multiple texts using FastEmbed's efficient batch processing.
+
+        Args:
+            texts: List of texts
+            **options: Embedding options
+
+        Returns:
+            np.ndarray: Array of embeddings
+        """
+        if not self.model:
+            raise ProcessingError("FastEmbed model not initialized")
+
+        try:
+            # FastEmbed efficiently handles batch processing
+            embeddings = list(self.model.embed(texts))
+            return np.array(embeddings, dtype=np.float32)
+        except Exception as e:
+            self.logger.error(f"Failed to get FastEmbed batch embeddings: {e}")
+            raise ProcessingError(f"Failed to get FastEmbed batch embeddings: {e}")
+
+
 class ProviderAdapterFactory:
     """Factory for creating provider adapters."""
 
@@ -200,13 +275,18 @@ class ProviderAdapterFactory:
         Create provider adapter.
 
         Args:
-            provider: Provider name ("openai", "bge", "llama")
+            provider: Provider name ("openai", "bge", "llama", "fastembed")
             **config: Provider configuration
 
         Returns:
             ProviderAdapter: Provider adapter instance
         """
-        providers = {"openai": OpenAIAdapter, "bge": BGEAdapter, "llama": LlamaAdapter}
+        providers = {
+            "openai": OpenAIAdapter,
+            "bge": BGEAdapter,
+            "llama": LlamaAdapter,
+            "fastembed": FastEmbedAdapter,
+        }
 
         adapter_class = providers.get(provider.lower())
         if not adapter_class:

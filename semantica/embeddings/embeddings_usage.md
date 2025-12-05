@@ -1,42 +1,23 @@
 # Embeddings Module Usage Guide
 
-This guide demonstrates how to use the embeddings module for generating, optimizing, and managing embeddings for text, image, audio, and multimodal content.
+This guide demonstrates how to use the embeddings module for generating and managing embeddings for text content.
 
 ## Table of Contents
 
 1. [Basic Usage](#basic-usage)
 2. [Text Embedding](#text-embedding)
-3. [Image Embedding](#image-embedding)
-4. [Audio Embedding](#audio-embedding)
-5. [Multimodal Embedding](#multimodal-embedding)
-6. [Embedding Optimization](#embedding-optimization)
-7. [Pooling Strategies](#pooling-strategies)
-8. [Similarity Calculation](#similarity-calculation)
-9. [Context Management](#context-management)
-10. [Provider Adapters](#provider-adapters)
-11. [Using Methods](#using-methods)
-12. [Using Registry](#using-registry)
-13. [Configuration](#configuration)
-14. [Advanced Examples](#advanced-examples)
+3. [Checking Embedding Methods](#checking-embedding-methods)
+4. [Pooling Strategies](#pooling-strategies)
+5. [Similarity Calculation](#similarity-calculation)
+6. [Provider Adapters](#provider-adapters)
+7. [Vector Embedding Manager](#vector-embedding-manager)
+8. [Graph Embedding Manager](#graph-embedding-manager)
+9. [Using Methods](#using-methods)
+10. [Using Registry](#using-registry)
+11. [Configuration](#configuration)
+12. [Advanced Examples](#advanced-examples)
 
 ## Basic Usage
-
-### Using the Convenience Function
-
-```python
-from semantica.embeddings import build
-
-# Generate embeddings from text data
-result = build(
-    data=["Hello world", "How are you?", "Python programming"],
-    data_type="text",
-    model="sentence-transformers"
-)
-
-print(f"Generated {len(result['embeddings'])} embeddings")
-print(f"Shape: {result['embeddings'].shape}")
-print(f"Statistics: {result['statistics']}")
-```
 
 ### Using Main Classes
 
@@ -101,6 +82,32 @@ for i, emb in enumerate(sentence_embeddings):
     print(f"Sentence {i+1}: shape {emb.shape}")
 ```
 
+### FastEmbed Embedding
+
+```python
+from semantica.embeddings import TextEmbedder
+
+# Create text embedder with FastEmbed
+embedder = TextEmbedder(
+    model_name="BAAI/bge-small-en-v1.5",
+    method="fastembed",
+    normalize=True
+)
+
+# Single text embedding
+embedding = embedder.embed_text("The quick brown fox jumps over the lazy dog")
+print(f"Embedding shape: {embedding.shape}")
+
+# Batch text embedding (FastEmbed is optimized for batch processing)
+texts = [
+    "Python is a programming language",
+    "Machine learning is fascinating",
+    "Natural language processing"
+]
+embeddings = embedder.embed_batch(texts)
+print(f"Batch embeddings shape: {embeddings.shape}")  # (3, embedding_dim)
+```
+
 ### Using Text Embedding Methods
 
 ```python
@@ -109,280 +116,99 @@ from semantica.embeddings.methods import embed_text
 # Using sentence-transformers
 emb = embed_text("Hello world", method="sentence_transformers")
 
+# Using FastEmbed (fast and efficient)
+emb = embed_text("Hello world", method="fastembed")
+
 # Using fallback (hash-based)
 emb = embed_text("Hello world", method="fallback")
 
 # Batch processing
 texts = ["text1", "text2", "text3"]
 embs = embed_text(texts, method="sentence_transformers")
+embs_fast = embed_text(texts, method="fastembed")  # Faster batch processing
 ```
 
-## Image Embedding
+## Checking Embedding Methods
 
-### CLIP Image Embedding
+### Checking Active Method in TextEmbedder
 
 ```python
-from semantica.embeddings import ImageEmbedder
+from semantica.embeddings import TextEmbedder
 
-# Create image embedder
-embedder = ImageEmbedder(
-    model_name="ViT-B/32",
-    device="cpu",
-    normalize=True
-)
+# Create embedder with specific method
+embedder = TextEmbedder(method="fastembed", model_name="BAAI/bge-small-en-v1.5")
 
-# Single image embedding
-embedding = embedder.embed_image("photo.jpg")
-print(f"Image embedding shape: {embedding.shape}")
+# Check which method is currently active
+method = embedder.get_method()
+print(f"Active method: {method}")  # "fastembed", "sentence_transformers", or "fallback"
 
-# Batch image embedding
-image_paths = ["img1.jpg", "img2.png", "img3.jpeg"]
-embeddings = embedder.embed_batch(image_paths)
-print(f"Batch embeddings shape: {embeddings.shape}")  # (3, embedding_dim)
+# Get comprehensive model information
+info = embedder.get_model_info()
+print(f"Method: {info['method']}")
+print(f"Model: {info['model_name']}")
+print(f"Model loaded: {info['model_loaded']}")
+print(f"Dimension: {info['dimension']}")
+print(f"Normalize: {info['normalize']}")
+if 'device' in info:
+    print(f"Device: {info['device']}")
 ```
 
-### Using Image Embedding Methods
+### Checking Methods in EmbeddingGenerator
 
 ```python
-from semantica.embeddings.methods import embed_image
+from semantica.embeddings import EmbeddingGenerator
 
-# Using CLIP
-emb = embed_image("image.jpg", method="clip")
+# Create generator
+generator = EmbeddingGenerator()
 
-# Using fallback
-emb = embed_image("image.jpg", method="fallback")
+# Check text embedding method
+text_method = generator.get_text_method()
+print(f"Text method: {text_method}")
 
-# Batch processing
-images = ["img1.jpg", "img2.png"]
-embs = embed_image(images, method="clip")
+# Get all methods information at once
+methods_info = generator.get_methods_info()
+print(f"Text embedder: {methods_info['text']}")
 ```
 
-## Audio Embedding
-
-### Librosa Feature Extraction
+### Checking Available Providers
 
 ```python
-from semantica.embeddings import AudioEmbedder
+from semantica.embeddings import check_available_providers
 
-# Create audio embedder
-embedder = AudioEmbedder(
-    sample_rate=16000,
-    normalize=True
-)
+# Check which embedding providers are installed and available
+providers = check_available_providers()
 
-# Single audio embedding
-embedding = embedder.embed_audio("speech.wav")
-print(f"Audio embedding shape: {embedding.shape}")
+print("Available providers:")
+for provider, available in providers.items():
+    status = "✓ Available" if available else "✗ Not available"
+    print(f"  {provider}: {status}")
 
-# Extract detailed features
-features = embedder.extract_features("speech.wav")
-print(f"MFCC shape: {features['mfcc'].shape}")
-print(f"Chroma shape: {features['chroma'].shape}")
-print(f"Tempo: {features['tempo']} BPM")
-print(f"Duration: {features['duration']:.2f}s")
+# Use providers conditionally
+if providers["fastembed"]:
+    embedder = TextEmbedder(method="fastembed")
+    print("Using FastEmbed for embeddings")
+elif providers["sentence_transformers"]:
+    embedder = TextEmbedder(method="sentence_transformers")
+    print("Using Sentence Transformers for embeddings")
+else:
+    embedder = TextEmbedder()
+    print("Using fallback method for embeddings")
 ```
 
-### Using Audio Embedding Methods
+### Listing All Available Methods
 
 ```python
-from semantica.embeddings.methods import embed_audio
+from semantica.embeddings import list_available_methods
 
-# Using librosa (MFCC + chroma + spectral contrast + tonnetz)
-emb = embed_audio("audio.wav", method="librosa")
+# List all available methods
+all_methods = list_available_methods()
+print("All available methods:")
+for task, methods in all_methods.items():
+    print(f"  {task}: {methods}")
 
-# Using fallback
-emb = embed_audio("audio.wav", method="fallback")
-
-# Batch processing
-audio_files = ["audio1.wav", "audio2.mp3"]
-embs = embed_audio(audio_files, method="librosa")
-```
-
-## Multimodal Embedding
-
-### Concatenation-Based Multimodal Embedding
-
-```python
-from semantica.embeddings import MultimodalEmbedder
-
-# Create multimodal embedder
-embedder = MultimodalEmbedder(
-    align_modalities=True,
-    normalize=True
-)
-
-# Text + Image
-embedding = embedder.embed_multimodal(
-    text="A cat sitting on a mat",
-    image_path="cat.jpg",
-    combine_method="concat"
-)
-print(f"Multimodal embedding shape: {embedding.shape}")
-
-# All three modalities
-embedding = embedder.embed_multimodal(
-    text="Speech about cats",
-    image_path="cat.jpg",
-    audio_path="speech.wav",
-    combine_method="concat"
-)
-```
-
-### Averaging-Based Multimodal Embedding
-
-```python
-from semantica.embeddings import MultimodalEmbedder
-
-embedder = MultimodalEmbedder()
-
-# Mean pooling for compact representation
-embedding = embedder.embed_multimodal(
-    text="A cat",
-    image_path="cat.jpg",
-    combine_method="mean"
-)
-print(f"Mean-pooled embedding shape: {embedding.shape}")
-```
-
-### Cross-Modal Similarity
-
-```python
-from semantica.embeddings import MultimodalEmbedder
-
-embedder = MultimodalEmbedder()
-
-# Calculate text-image similarity
-similarity = embedder.compute_cross_modal_similarity(
-    text="A cat sitting on a mat",
-    image_path="cat.jpg"
-)
-print(f"Text-Image similarity: {similarity:.3f}")
-
-# Calculate similarity across all modalities
-similarity = embedder.compute_cross_modal_similarity(
-    text="Speech about cats",
-    image_path="cat.jpg",
-    audio_path="speech.wav"
-)
-print(f"Cross-modal similarity: {similarity:.3f}")
-```
-
-### Using Multimodal Embedding Methods
-
-```python
-from semantica.embeddings.methods import embed_multimodal
-
-# Concatenation
-emb = embed_multimodal(
-    text="A cat",
-    image_path="cat.jpg",
-    method="concat"
-)
-
-# Averaging
-emb = embed_multimodal(
-    text="A cat",
-    image_path="cat.jpg",
-    method="mean"
-)
-```
-
-## Embedding Optimization
-
-### PCA Dimension Reduction
-
-```python
-from semantica.embeddings import EmbeddingOptimizer
-
-# Create optimizer
-optimizer = EmbeddingOptimizer(
-    compression_method="pca",
-    target_dimension=128
-)
-
-# Compress embeddings using PCA
-embeddings = ...  # Your embeddings array (n_samples, original_dim)
-compressed = optimizer.compress(
-    embeddings,
-    target_dim=64,
-    method="pca"
-)
-print(f"Original shape: {embeddings.shape}")
-print(f"Compressed shape: {compressed.shape}")
-```
-
-### Quantization
-
-```python
-from semantica.embeddings import EmbeddingOptimizer
-
-optimizer = EmbeddingOptimizer()
-
-# Quantize to 8-bit
-quantized = optimizer.compress(
-    embeddings,
-    method="quantization",
-    bits=8
-)
-print(f"Memory reduction: {embeddings.nbytes / quantized.nbytes:.2f}x")
-```
-
-### Dimension Truncation
-
-```python
-from semantica.embeddings import EmbeddingOptimizer
-
-optimizer = EmbeddingOptimizer()
-
-# Simple truncation
-truncated = optimizer.reduce_dimensions(
-    embeddings,
-    target_dim=64,
-    method="truncate"
-)
-```
-
-### Performance Profiling
-
-```python
-from semantica.embeddings import EmbeddingOptimizer
-
-optimizer = EmbeddingOptimizer()
-
-# Profile embedding characteristics
-metrics = optimizer.profile_performance(embeddings)
-print(f"Shape: {metrics['shape']}")
-print(f"Memory: {metrics['memory_mb']:.2f} MB")
-print(f"Mean: {metrics['mean']:.4f}")
-print(f"Std: {metrics['std']:.4f}")
-print(f"Sparsity: {metrics['sparsity']:.3f}")
-```
-
-### Using Optimization Methods
-
-```python
-from semantica.embeddings.methods import optimize_embeddings
-
-# PCA compression
-compressed = optimize_embeddings(
-    embeddings,
-    method="pca",
-    target_dim=64
-)
-
-# Quantization
-quantized = optimize_embeddings(
-    embeddings,
-    method="quantization",
-    bits=8
-)
-
-# Truncation
-truncated = optimize_embeddings(
-    embeddings,
-    method="truncate",
-    target_dim=64
-)
+# List methods for specific task
+text_methods = list_available_methods("text")
+print(f"Text embedding methods: {text_methods['text']}")
 ```
 
 ## Pooling Strategies
@@ -491,60 +317,6 @@ sim = calculate_similarity(emb1, emb2, method="cosine")
 sim = calculate_similarity(emb1, emb2, method="euclidean")
 ```
 
-## Context Management
-
-### Text Splitting into Windows
-
-```python
-from semantica.embeddings import ContextManager
-
-# Create context manager
-manager = ContextManager(
-    window_size=512,
-    overlap=50,
-    max_contexts=100
-)
-
-# Split long text into windows
-long_text = "..."  # Your long text
-windows = manager.split_into_windows(
-    long_text,
-    preserve_sentences=True
-)
-
-print(f"Created {len(windows)} context windows")
-for window in windows:
-    print(f"Window {window.context_id}: {window.start_index}-{window.end_index}")
-```
-
-### Context Merging
-
-```python
-from semantica.embeddings import ContextManager
-
-manager = ContextManager()
-
-# Merge multiple context windows
-merged = manager.merge_contexts(
-    [window1.context_id, window2.context_id, window3.context_id]
-)
-print(f"Merged text length: {len(merged.text)}")
-```
-
-### Context Retrieval
-
-```python
-from semantica.embeddings import ContextManager
-
-manager = ContextManager()
-
-# Get context by ID
-window = manager.get_context(context_id)
-if window:
-    print(f"Context text: {window.text}")
-    print(f"Metadata: {window.metadata}")
-```
-
 ## Provider Adapters
 
 ### OpenAI Embeddings
@@ -577,6 +349,26 @@ adapter = BGEAdapter(
 embedding = adapter.embed("Hello world")
 ```
 
+### FastEmbed Embeddings
+
+```python
+from semantica.embeddings import FastEmbedAdapter
+
+# Create FastEmbed adapter
+adapter = FastEmbedAdapter(
+    model_name="BAAI/bge-small-en-v1.5"
+)
+
+# Single embedding
+embedding = adapter.embed("Hello world")
+print(f"FastEmbed embedding shape: {embedding.shape}")
+
+# Batch embeddings (FastEmbed is optimized for batch processing)
+texts = ["text1", "text2", "text3"]
+embeddings = adapter.embed_batch(texts)
+print(f"Batch embeddings shape: {embeddings.shape}")
+```
+
 ### Provider Factory
 
 ```python
@@ -589,6 +381,260 @@ adapter = ProviderAdapterFactory.create(
 )
 
 embedding = adapter.embed("Hello world")
+
+# Create FastEmbed adapter using factory
+fastembed_adapter = ProviderAdapterFactory.create(
+    "fastembed",
+    model_name="BAAI/bge-small-en-v1.5"
+)
+embedding = fastembed_adapter.embed("Hello world")
+```
+
+## Vector Embedding Manager
+
+### Preparing Embeddings for Vector Databases
+
+```python
+from semantica.embeddings import VectorEmbeddingManager
+import numpy as np
+
+# Create vector embedding manager
+manager = VectorEmbeddingManager()
+
+# Generate embeddings (example)
+embeddings = np.random.rand(10, 384).astype(np.float32)
+metadata = [{"text": f"document_{i}", "category": "science"} for i in range(10)]
+
+# Prepare for FAISS
+formatted = manager.prepare_for_vector_db(
+    embeddings,
+    metadata=metadata,
+    backend="faiss"
+)
+
+print(f"Vectors shape: {formatted['vectors'].shape}")
+print(f"Number of vectors: {len(formatted['ids'])}")
+print(f"Backend: {formatted['backend']}")
+```
+
+### Preparing for Different Vector DB Backends
+
+```python
+from semantica.embeddings import VectorEmbeddingManager
+
+manager = VectorEmbeddingManager()
+
+# Prepare for Pinecone
+pinecone_data = manager.prepare_for_vector_db(
+    embeddings,
+    metadata=metadata,
+    backend="pinecone",
+    namespace="my_namespace"
+)
+
+# Prepare for Weaviate
+weaviate_data = manager.prepare_for_vector_db(
+    embeddings,
+    metadata=metadata,
+    backend="weaviate",
+    class_name="Document"
+)
+
+# Prepare for Qdrant
+qdrant_data = manager.prepare_for_vector_db(
+    embeddings,
+    metadata=metadata,
+    backend="qdrant"
+)
+
+# Prepare for Milvus
+milvus_data = manager.prepare_for_vector_db(
+    embeddings,
+    metadata=metadata,
+    backend="milvus"
+)
+```
+
+### Validating Embedding Dimensions
+
+```python
+from semantica.embeddings import VectorEmbeddingManager
+
+manager = VectorEmbeddingManager()
+
+# Validate dimensions for specific backend
+is_valid = manager.validate_dimensions(embeddings, backend="pinecone")
+if is_valid:
+    print("Embeddings meet Pinecone requirements")
+else:
+    print("Embeddings do not meet requirements")
+```
+
+### Normalizing Embeddings
+
+```python
+from semantica.embeddings import VectorEmbeddingManager
+
+manager = VectorEmbeddingManager()
+
+# Normalize embeddings for vector DB storage
+normalized = manager.normalize_for_storage(embeddings, method="l2")
+print(f"Normalized embeddings shape: {normalized.shape}")
+```
+
+### Batch Preparation
+
+```python
+from semantica.embeddings import VectorEmbeddingManager
+
+manager = VectorEmbeddingManager()
+
+# Prepare multiple batches
+embeddings_batch1 = np.random.rand(5, 384).astype(np.float32)
+embeddings_batch2 = np.random.rand(5, 384).astype(np.float32)
+
+batch_result = manager.batch_prepare(
+    [embeddings_batch1, embeddings_batch2],
+    backend="faiss"
+)
+
+print(f"Combined vectors shape: {batch_result['vectors'].shape}")
+print(f"Number of batches: {batch_result['num_batches']}")
+```
+
+## Graph Embedding Manager
+
+### Preparing Embeddings for Graph Databases
+
+```python
+from semantica.embeddings import GraphEmbeddingManager
+
+# Create graph embedding manager
+manager = GraphEmbeddingManager()
+
+# Define entities (nodes)
+entities = [
+    {"id": "e1", "text": "John Doe", "type": "Person"},
+    {"id": "e2", "text": "Acme Corporation", "type": "Organization"},
+    {"id": "e3", "text": "Software Engineer", "type": "Role"}
+]
+
+# Define relationships (edges)
+relationships = [
+    {"source": "e1", "target": "e2", "type": "WORKS_FOR", "text": "works at"},
+    {"source": "e1", "target": "e3", "type": "HAS_ROLE", "text": "has role"}
+]
+
+# Prepare for Neo4j
+result = manager.prepare_for_graph_db(
+    entities,
+    relationships,
+    backend="neo4j"
+)
+
+print(f"Node embeddings: {len(result['node_embeddings'])} nodes")
+print(f"Edge embeddings: {len(result['edge_embeddings'])} edges")
+print(f"Backend: {result['backend']}")
+```
+
+### Creating Node Embeddings
+
+```python
+from semantica.embeddings import GraphEmbeddingManager
+
+manager = GraphEmbeddingManager()
+
+# Create embeddings for graph nodes
+entities = [
+    {"id": "n1", "text": "Entity 1", "type": "Person"},
+    {"id": "n2", "text": "Entity 2", "type": "Organization"}
+]
+
+node_embeddings = manager.create_node_embeddings(entities, backend="neo4j")
+
+for node_id, embedding in node_embeddings.items():
+    print(f"Node {node_id}: embedding shape {embedding.shape}")
+```
+
+### Creating Edge Embeddings
+
+```python
+from semantica.embeddings import GraphEmbeddingManager
+
+manager = GraphEmbeddingManager()
+
+# Create embeddings for graph edges
+relationships = [
+    {"source": "n1", "target": "n2", "type": "RELATES_TO", "text": "related to"}
+]
+
+edge_embeddings = manager.create_edge_embeddings(relationships, backend="neo4j")
+
+for edge_id, embedding in edge_embeddings.items():
+    print(f"Edge {edge_id}: embedding shape {embedding.shape}")
+```
+
+### Embedding Entities and Relationships
+
+```python
+from semantica.embeddings import GraphEmbeddingManager
+
+manager = GraphEmbeddingManager()
+
+# Embed entities
+entities = [
+    {"id": "e1", "text": "Entity 1"},
+    {"id": "e2", "text": "Entity 2"}
+]
+entity_embeddings = manager.embed_entities(entities)
+
+# Embed relationships
+relationships = [
+    {"source": "e1", "target": "e2", "type": "CONNECTED_TO"}
+]
+relationship_embeddings = manager.embed_relationships(relationships)
+```
+
+### Integration with Different Graph DB Backends
+
+```python
+from semantica.embeddings import GraphEmbeddingManager
+
+manager = GraphEmbeddingManager()
+
+entities = [
+    {"id": "n1", "text": "Node 1"},
+    {"id": "n2", "text": "Node 2"}
+]
+
+# Prepare for Neo4j
+neo4j_result = manager.prepare_for_graph_db(
+    entities,
+    backend="neo4j",
+    database="my_database",
+    label="Node"
+)
+
+# Prepare for NetworkX
+networkx_result = manager.prepare_for_graph_db(
+    entities,
+    backend="networkx",
+    graph_type="DiGraph"
+)
+
+# Prepare for KuzuDB
+kuzu_result = manager.prepare_for_graph_db(
+    entities,
+    backend="kuzu",
+    database_path="./kuzu_db"
+)
+
+# Prepare for FalkorDB
+falkordb_result = manager.prepare_for_graph_db(
+    entities,
+    backend="falkordb",
+    graph_name="my_graph"
+)
 ```
 
 ## Using Methods
@@ -714,7 +760,6 @@ embeddings:
   dimension: 384
   normalize: true
   device: "cpu"
-  compression_method: "pca"
   window_size: 512
   overlap: 50
 
@@ -726,9 +771,6 @@ embeddings_methods:
   image:
     model_name: "ViT-B/32"
     device: "cpu"
-    normalize: true
-  audio:
-    sample_rate: 16000
     normalize: true
 ```
 
@@ -746,7 +788,6 @@ config = EmbeddingsConfig(config_file="config.yaml")
 ```python
 from semantica.embeddings import (
     EmbeddingGenerator,
-    EmbeddingOptimizer,
     calculate_similarity
 )
 
@@ -755,30 +796,26 @@ generator = EmbeddingGenerator()
 texts = ["text1", "text2", "text3"]
 embeddings = generator.generate_embeddings(texts, data_type="text")
 
-# Step 2: Optimize embeddings
-optimizer = EmbeddingOptimizer()
-compressed = optimizer.compress(embeddings, target_dim=64, method="pca")
-
-# Step 3: Calculate similarities
-similarity = calculate_similarity(compressed[0], compressed[1], method="cosine")
+# Step 2: Calculate similarities
+similarity = calculate_similarity(embeddings[0], embeddings[1], method="cosine")
 print(f"Similarity: {similarity:.3f}")
 ```
 
-### Multimodal Search
+### Text-Image Search
 
 ```python
-from semantica.embeddings import MultimodalEmbedder, calculate_similarity
+from semantica.embeddings import EmbeddingGenerator, calculate_similarity
 
-embedder = MultimodalEmbedder()
+generator = EmbeddingGenerator()
 
 # Embed query (text)
-query_emb = embedder.embed_text("A cat sitting on a mat")
+query_emb = generator.generate_embeddings("A cat sitting on a mat", data_type="text")
 
 # Embed documents (images)
 doc_embs = [
-    embedder.embed_image("cat1.jpg"),
-    embedder.embed_image("dog1.jpg"),
-    embedder.embed_image("cat2.jpg"),
+    generator.generate_embeddings("cat1.jpg", data_type="image"),
+    generator.generate_embeddings("dog1.jpg", data_type="image"),
+    generator.generate_embeddings("cat2.jpg", data_type="image"),
 ]
 
 # Find most similar
@@ -852,27 +889,17 @@ embedding = embed_text("Hello world", method="tfidf")
    embeddings = embedder.embed_batch(texts)  # Faster than loop
    ```
 
-3. **Dimension Optimization**: Use PCA for dimension reduction when storage is a concern
-   ```python
-   compressed = optimizer.compress(embeddings, target_dim=64, method="pca")
-   ```
-
-4. **Context Windows**: Use context windows for long texts to maintain semantic coherence
+3. **Context Windows**: Use context windows for long texts to maintain semantic coherence
    ```python
    windows = manager.split_into_windows(long_text, preserve_sentences=True)
    ```
 
-5. **Cross-Modal Similarity**: Use cross-modal similarity for multimodal search and retrieval
-   ```python
-   similarity = embedder.compute_cross_modal_similarity(text="A cat", image_path="cat.jpg")
-   ```
-
-6. **Configuration Management**: Use environment variables or config files for consistent settings
+4. **Configuration Management**: Use environment variables or config files for consistent settings
    ```python
    embeddings_config.set("model", "all-MiniLM-L6-v2")
    ```
 
-7. **Error Handling**: Always handle fallback methods when dependencies are unavailable
+5. **Error Handling**: Always handle fallback methods when dependencies are unavailable
    ```python
    try:
        emb = embed_text(text, method="sentence_transformers")
@@ -892,17 +919,12 @@ embedding = embed_text("Hello world", method="tfidf")
    embeddings_config.set("batch_size", 64)  # Larger for more memory
    ```
 
-3. **Quantization**: Use quantization for memory-constrained environments
-   ```python
-   quantized = optimize_embeddings(embeddings, method="quantization", bits=8)
-   ```
-
-4. **Caching**: Cache embeddings for repeated queries
+3. **Caching**: Cache embeddings for repeated queries
    ```python
    # Store embeddings in cache/database for reuse
    ```
 
-5. **Parallel Processing**: Process multiple files in parallel when possible
+4. **Parallel Processing**: Process multiple files in parallel when possible
    ```python
    from concurrent.futures import ThreadPoolExecutor
    with ThreadPoolExecutor() as executor:

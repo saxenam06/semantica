@@ -1,6 +1,6 @@
 # Embeddings
 
-> **Multi-modal embedding generation for Text, Images, and Audio.**
+> **Text embedding generation with multiple model support.**
 
 ---
 
@@ -12,63 +12,51 @@
 
     ---
 
-    Sentence-transformers, OpenAI, and BGE model support
+    Sentence-transformers, OpenAI, BGE, and FastEmbed model support
 
--   :material-image:{ .lg .middle } **Image Embeddings**
-
-    ---
-
-    CLIP-based vision embeddings for cross-modal search
-
--   :material-waveform:{ .lg .middle } **Audio Embeddings**
+-   :material-vector-square:{ .lg .middle } **Vector Databases**
 
     ---
 
-    MFCC, Chroma, and Spectral feature extraction via Librosa
+    Specialized managers for vector database integration (FAISS, Pinecone, Qdrant, etc.)
 
--   :material-layers-search:{ .lg .middle } **Multimodal**
-
-    ---
-
-    Unified embedding space for searching across modalities
-
--   :material-compress:{ .lg .middle } **Optimization**
+-   :material-graph:{ .lg .middle } **Graph Databases**
 
     ---
 
-    PCA reduction, Quantization, and Pooling strategies
+    Specialized managers for graph database integration (Neo4j, NetworkX, etc.)
 
--   :material-text-short:{ .lg .middle } **Context Management**
+-   :material-compress:{ .lg .middle } **Pooling Strategies**
 
     ---
 
-    Sliding window chunking with sentence boundary preservation
+    Mean, Max, CLS, Attention, and Hierarchical pooling for aggregation
 
 </div>
 
 !!! tip "When to Use"
     - **Semantic Search**: Converting text to vectors for similarity search
-    - **Clustering**: Grouping similar documents or images
+    - **Clustering**: Grouping similar documents
     - **Classification**: Using embeddings as features for ML models
     - **RAG**: Embedding chunks for retrieval
+    - **Vector Databases**: Preparing embeddings for FAISS, Pinecone, Qdrant, etc.
+    - **Graph Databases**: Creating node and edge embeddings for Neo4j, NetworkX, etc.
 
 ---
 
 ## ⚙️ Algorithms Used
 
 ### Generation
-- **Transformer Encoding**: BERT/RoBERTa based models for text.
-- **CLIP Encoding**: Vision Transformer (ViT) for images.
-- **Feature Extraction**: Signal processing (MFCC, Spectral Contrast) for audio.
+- **Transformer Encoding**: BERT/RoBERTa based models for text (sentence-transformers).
+- **FastEmbed Encoding**: Fast and efficient embedding generation using FastEmbed library.
+- **Provider Adapters**: OpenAI, BGE, Llama, and FastEmbed adapters for different providers.
 
-### Optimization
-- **PCA**: Dimensionality reduction to reduce storage costs while preserving variance.
-- **Quantization**: Converting float32 -> int8 for 4x memory savings.
-- **Pooling**: Mean, Max, or CLS token pooling to aggregate token vectors into sentence vectors.
-
-### Context
-- **Sliding Window**: `[A, B, C], [B, C, D], ...` to capture context across boundaries.
-- **Sentence Splitting**: Regex-based splitting to avoid breaking sentences mid-chunk.
+### Pooling
+- **Mean Pooling**: Arithmetic mean across embedding dimension.
+- **Max Pooling**: Element-wise maximum across embedding dimension.
+- **CLS Token Pooling**: First token/embedding extraction (for transformer models).
+- **Attention-based Pooling**: Softmax-weighted sum using dot product attention scores.
+- **Hierarchical Pooling**: Two-level pooling (chunk-level then global-level mean pooling).
 
 ---
 
@@ -76,14 +64,17 @@
 
 ### EmbeddingGenerator
 
-Unified interface for all modalities.
+Unified interface for text embedding generation.
 
 **Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `generate(data, type)` | Generate embedding |
+| `generate_embeddings(data, data_type="text")` | Generate embedding |
 | `process_batch(items)` | Batch generation |
+| `compare_embeddings(emb1, emb2, method="cosine")` | Calculate similarity |
+| `get_text_method()` | Get active text embedding method |
+| `get_methods_info()` | Get detailed method information |
 
 **Example:**
 
@@ -91,65 +82,74 @@ Unified interface for all modalities.
 from semantica.embeddings import EmbeddingGenerator
 
 gen = EmbeddingGenerator()
-vec = gen.generate("Hello world", data_type="text")
+vec = gen.generate_embeddings("Hello world", data_type="text")
 ```
 
 ### TextEmbedder
 
-Specialized text embedding.
+Specialized text embedding generation.
 
 **Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `embed(text)` | Generate vector |
+| `embed_text(text)` | Generate vector for single text |
 | `embed_batch(texts)` | Batch processing |
+| `get_method()` | Get active embedding method |
+| `get_model_info()` | Get detailed model information |
+| `get_embedding_dimension()` | Get embedding dimension |
 
-### ImageEmbedder
+**Example:**
 
-Specialized image embedding.
+```python
+from semantica.embeddings import TextEmbedder
+
+embedder = TextEmbedder(method="fastembed")
+vec = embedder.embed_text("Hello world")
+```
+
+### VectorEmbeddingManager
+
+Manages embeddings for vector databases.
 
 **Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `embed(image_path)` | Generate vector |
+| `prepare_for_vector_db(embeddings, backend, ...)` | Prepare embeddings for vector DB |
+| `batch_prepare(embeddings_list, ...)` | Batch preparation |
+| `validate_dimensions(embeddings, expected_dim)` | Validate embedding dimensions |
 
-### EmbeddingOptimizer
+### GraphEmbeddingManager
 
-Optimizes vectors.
+Manages embeddings for graph databases.
 
 **Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `reduce_dimension(vecs)` | Apply PCA |
-| `quantize(vecs)` | Apply quantization |
+| `prepare_for_graph_db(entities, relationships, ...)` | Prepare embeddings for graph DB |
+| `embed_entities(entities, ...)` | Generate entity embeddings |
+| `embed_relationships(relationships, ...)` | Generate relationship embeddings |
 
 ---
 
 ## Convenience Functions
 
 ```python
-<<<<<<< HEAD
-from semantica.embeddings import EmbeddingGenerator, embed_text, calculate_similarity
+from semantica.embeddings import embed_text, calculate_similarity, check_available_providers
 
 # Generate embeddings
-generator = EmbeddingGenerator()
-emb1 = generator.generate_embeddings("text1", data_type="text")
-emb2 = generator.generate_embeddings("text2", data_type="text")
+emb1 = embed_text("text1", method="sentence_transformers")
+emb2 = embed_text("text2", method="fastembed")
 
 # Similarity
 score = calculate_similarity(emb1, emb2)
-=======
-from semantica.embeddings import build, embed_text, calculate_similarity
 
-# One-line generation
-result = build(["text1", "text2"])
-
-# Similarity
-score = calculate_similarity(vec1, vec2)
->>>>>>> origin/main
+# Check available providers
+providers = check_available_providers()
+if providers["fastembed"]:
+    print("FastEmbed is available")
 ```
 
 ---
@@ -170,37 +170,64 @@ export OPENAI_API_KEY=sk-...
 embeddings:
   text:
     model: all-MiniLM-L6-v2
+    method: sentence_transformers
     batch_size: 32
-    
-  image:
-    model: clip-ViT-B-32
-    
-  optimization:
-    quantize: false
+    normalize: true
 ```
 
 ---
 
 ## Integration Examples
 
-### Multimodal Search
+### Text Embedding with Multiple Methods
 
 ```python
-from semantica.embeddings import MultimodalEmbedder
+from semantica.embeddings import TextEmbedder, check_available_providers
 from semantica.vector_store import VectorStore
 
-# 1. Embed Image and Text into same space
-embedder = MultimodalEmbedder()
-img_vec = embedder.embed_image("cat.jpg")
-text_vec = embedder.embed_text("A cute kitten")
+# Check available providers
+providers = check_available_providers()
 
-# 2. Store
+# Use FastEmbed if available, otherwise sentence-transformers
+if providers["fastembed"]:
+    embedder = TextEmbedder(method="fastembed", model_name="BAAI/bge-small-en-v1.5")
+else:
+    embedder = TextEmbedder(method="sentence_transformers")
+
+# Generate embeddings
+texts = ["Machine learning", "Artificial intelligence", "Deep learning"]
+embeddings = embedder.embed_batch(texts)
+
+# Store in vector database
 store = VectorStore()
-store.store_vectors([img_vec], metadata=[{"type": "image", "path": "cat.jpg"}])
+store.store_vectors(embeddings, metadata=[{"text": t} for t in texts])
 
-# 3. Search with Text
-results = store.search(text_vec, k=1)
-print(f"Found: {results[0].metadata['path']}")
+# Search
+query_emb = embedder.embed_text("neural networks")
+results = store.search(query_emb, k=2)
+print(f"Found {len(results)} similar texts")
+```
+
+### Using Vector Embedding Manager
+
+```python
+from semantica.embeddings import VectorEmbeddingManager, TextEmbedder
+
+# Generate embeddings
+embedder = TextEmbedder()
+texts = ["Document 1", "Document 2", "Document 3"]
+embeddings = embedder.embed_batch(texts)
+
+# Prepare for vector database
+manager = VectorEmbeddingManager()
+formatted = manager.prepare_for_vector_db(
+    embeddings,
+    metadata=[{"id": i, "text": t} for i, t in enumerate(texts)],
+    backend="faiss"
+)
+
+# Use formatted data with your vector database
+print(f"Prepared {len(formatted['ids'])} vectors for {formatted['backend']}")
 ```
 
 ---

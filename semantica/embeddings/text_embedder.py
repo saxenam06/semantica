@@ -37,6 +37,13 @@ try:
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
 
+try:
+    from fastembed import TextEmbedding
+
+    FASTEMBED_AVAILABLE = True
+except ImportError:
+    FASTEMBED_AVAILABLE = False
+
 
 class TextEmbedder:
     """
@@ -68,20 +75,24 @@ class TextEmbedder:
         model_name: str = "all-MiniLM-L6-v2",
         device: str = "cpu",
         normalize: bool = True,
+        method: str = "sentence_transformers",
         **config,
     ):
         """
         Initialize text embedder.
 
         Sets up the embedder with the specified model and configuration.
-        Attempts to load sentence-transformers model, falls back to hash-based
-        embeddings if unavailable.
+        Supports both sentence-transformers and FastEmbed models.
 
         Args:
-            model_name: Name of sentence-transformers model to use
-                       (default: "all-MiniLM-L6-v2")
+            model_name: Name of model to use
+                       (default: "all-MiniLM-L6-v2" for sentence-transformers,
+                        "BAAI/bge-small-en-v1.5" for FastEmbed)
             device: Device to run model on - "cpu" or "cuda" (default: "cpu")
+                   Note: FastEmbed doesn't use device parameter
             normalize: Whether to normalize embeddings to unit vectors (default: True)
+            method: Embedding method - "sentence_transformers" or "fastembed"
+                   (default: "sentence_transformers")
             **config: Additional configuration options
         """
         self.logger = get_logger("text_embedder")
@@ -91,9 +102,11 @@ class TextEmbedder:
         self.model_name = model_name
         self.device = device
         self.normalize = normalize
+        self.method = method.lower()
 
-        # Initialize model (will be None if sentence-transformers unavailable)
+        # Initialize models (will be None if unavailable)
         self.model = None
+        self.fastembed_model = None
 
         # Initialize progress tracker
         self.progress_tracker = get_progress_tracker()
@@ -104,29 +117,54 @@ class TextEmbedder:
         """
         Initialize embedding model.
 
-        Attempts to load the specified sentence-transformers model. If unavailable
-        or loading fails, falls back to hash-based embedding method. Logs warnings
-        but doesn't raise errors to allow graceful degradation.
+        Attempts to load the specified model (sentence-transformers or FastEmbed).
+        If unavailable or loading fails, falls back to hash-based embedding method.
+        Logs warnings but doesn't raise errors to allow graceful degradation.
         """
-        if SENTENCE_TRANSFORMERS_AVAILABLE:
-            try:
-                self.model = SentenceTransformer(self.model_name, device=self.device)
-                self.logger.info(
-                    f"Loaded sentence-transformers model: {self.model_name} "
-                    f"(device: {self.device})"
-                )
-            except Exception as e:
+        if self.method == "fastembed":
+            if FASTEMBED_AVAILABLE:
+                try:
+                    # Use model_name from config or default for FastEmbed
+                    fastembed_model_name = self.config.get(
+                        "fastembed_model_name", self.model_name
+                    )
+                    self.fastembed_model = TextEmbedding(model_name=fastembed_model_name)
+                    self.logger.info(
+                        f"Loaded FastEmbed model: {fastembed_model_name}"
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to load FastEmbed model '{self.model_name}': {e}. "
+                        "Using fallback embedding method."
+                    )
+                    self.fastembed_model = None
+            else:
                 self.logger.warning(
-                    f"Failed to load model '{self.model_name}': {e}. "
+                    "fastembed not available. "
+                    "Install with: pip install fastembed. "
                     "Using fallback embedding method."
                 )
-                self.model = None
         else:
-            self.logger.warning(
-                "sentence-transformers not available. "
-                "Install with: pip install sentence-transformers. "
-                "Using fallback embedding method."
-            )
+            # Default to sentence-transformers
+            if SENTENCE_TRANSFORMERS_AVAILABLE:
+                try:
+                    self.model = SentenceTransformer(self.model_name, device=self.device)
+                    self.logger.info(
+                        f"Loaded sentence-transformers model: {self.model_name} "
+                        f"(device: {self.device})"
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to load model '{self.model_name}': {e}. "
+                        "Using fallback embedding method."
+                    )
+                    self.model = None
+            else:
+                self.logger.warning(
+                    "sentence-transformers not available. "
+                    "Install with: pip install sentence-transformers. "
+                    "Using fallback embedding method."
+                )
 
     def embed_text(self, text: str, **options) -> np.ndarray:
         """
@@ -169,7 +207,12 @@ class TextEmbedder:
                 raise ProcessingError("Text cannot be empty or whitespace-only")
 
             # Use model if available, otherwise fallback
-            if self.model:
+            if self.fastembed_model:
+                self.progress_tracker.update_tracking(
+                    tracking_id, message="Using FastEmbed model..."
+                )
+                result = self._embed_with_fastembed(text, **options)
+            elif self.model:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Using sentence-transformers model..."
                 )
@@ -212,6 +255,32 @@ class TextEmbedder:
         )
 
         return embeddings[0]
+
+    def _embed_with_fastembed(self, text: str, **options) -> np.ndarray:
+        """
+        Embed text using FastEmbed model.
+
+        This method uses the loaded FastEmbed model to generate
+        high-quality semantic embeddings efficiently.
+
+        Args:
+            text: Input text to embed
+            **options: Options (unused for FastEmbed)
+
+        Returns:
+            np.ndarray: Embedding vector from FastEmbed model
+        """
+        embeddings = list(self.fastembed_model.embed([text]))
+        if embeddings:
+            embedding = np.array(embeddings[0], dtype=np.float32)
+            # Normalize if requested
+            if self.normalize:
+                norm = np.linalg.norm(embedding)
+                if norm > 0:
+                    embedding = embedding / norm
+            return embedding
+        else:
+            raise ProcessingError("FastEmbed returned empty embedding")
 
     def _embed_fallback(self, text: str, **options) -> np.ndarray:
         """
@@ -280,7 +349,17 @@ class TextEmbedder:
 
         self.logger.debug(f"Generating embeddings for {len(texts)} text(s)")
 
-        if self.model:
+        if self.fastembed_model:
+            # Use FastEmbed's efficient batch encoding
+            embeddings = list(self.fastembed_model.embed(texts))
+            embeddings_array = np.array(embeddings, dtype=np.float32)
+            # Normalize if requested
+            if self.normalize:
+                norms = np.linalg.norm(embeddings_array, axis=1, keepdims=True)
+                norms[norms == 0] = 1  # Avoid division by zero
+                embeddings_array = embeddings_array / norms
+            return embeddings_array
+        elif self.model:
             # Use model's efficient batch encoding
             embeddings = self.model.encode(
                 texts, normalize_embeddings=self.normalize, **options
@@ -349,7 +428,8 @@ class TextEmbedder:
 
         Returns:
             int: Embedding dimension (number of features in embedding vector).
-                 - Model-based: Dimension from loaded model (typically 384-768)
+                 - FastEmbed: Dimension from loaded model (typically 384-768)
+                 - Sentence-transformers: Dimension from loaded model (typically 384-768)
                  - Fallback: 128 (hash-based embedding dimension)
 
         Example:
@@ -357,7 +437,74 @@ class TextEmbedder:
             >>> dim = embedder.get_embedding_dimension()
             >>> print(f"Embedding dimension: {dim}")
         """
-        if self.model:
+        if self.fastembed_model:
+            # FastEmbed doesn't expose dimension directly, so we generate a test embedding
+            try:
+                test_emb = self._embed_with_fastembed("test")
+                return len(test_emb)
+            except Exception:
+                # Default FastEmbed dimension
+                return 384
+        elif self.model:
             return self.model.get_sentence_embedding_dimension()
         else:
             return 128  # Fallback hash-based embedding dimension
+
+    def get_method(self) -> str:
+        """
+        Get the active embedding method being used.
+
+        Returns:
+            str: Active method name - "fastembed", "sentence_transformers", or "fallback"
+
+        Example:
+            >>> embedder = TextEmbedder(method="fastembed")
+            >>> method = embedder.get_method()
+            >>> print(f"Using method: {method}")
+        """
+        if self.fastembed_model:
+            return "fastembed"
+        elif self.model:
+            return "sentence_transformers"
+        else:
+            return "fallback"
+
+    def get_model_info(self) -> Dict[str, Any]:
+        """
+        Get detailed information about the active embedding model.
+
+        Returns:
+            dict: Dictionary containing:
+                - method: Active embedding method ("fastembed", "sentence_transformers", "fallback")
+                - model_name: Model name being used
+                - model_loaded: Whether the model is successfully loaded
+                - dimension: Embedding dimension
+                - device: Device being used (for sentence-transformers)
+                - normalize: Whether embeddings are normalized
+
+        Example:
+            >>> embedder = TextEmbedder(method="fastembed", model_name="BAAI/bge-small-en-v1.5")
+            >>> info = embedder.get_model_info()
+            >>> print(f"Method: {info['method']}")
+            >>> print(f"Model: {info['model_name']}")
+            >>> print(f"Dimension: {info['dimension']}")
+        """
+        method = self.get_method()
+        model_loaded = (
+            self.fastembed_model is not None
+            if method == "fastembed"
+            else (self.model is not None if method == "sentence_transformers" else False)
+        )
+
+        info = {
+            "method": method,
+            "model_name": self.model_name,
+            "model_loaded": model_loaded,
+            "dimension": self.get_embedding_dimension(),
+            "normalize": self.normalize,
+        }
+
+        if method == "sentence_transformers":
+            info["device"] = self.device
+
+        return info
