@@ -86,9 +86,6 @@ __all__ = [
     "get_status",
     "get_orchestration_method",
     "list_available_methods",
-<<<<<<< HEAD
-]
-=======
     # Convenience
     "build",
 ]
@@ -158,4 +155,3 @@ def build(
         pipeline=pipeline_config,
         **{k: v for k, v in options.items() if k not in ["pipeline", "method"]},
     )
->>>>>>> origin/main

@@ -96,33 +96,68 @@ class Config:
             config_dict: Dictionary of configuration values
             **kwargs: Additional configuration parameters
         """
+        # Build configuration dictionary from all sources
+        config_data = self._build_config_dict(config_dict, kwargs)
+        
+        # Load from environment variables (overrides file/kwargs)
+        self._load_from_env(config_data)
+
+        # Initialize configuration sections
+        self._initialize_sections(config_data)
+
+    def _build_config_dict(
+        self, config_dict: Optional[Dict[str, Any]], kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Build configuration dictionary from multiple sources.
+
+        Priority order: defaults -> config_dict -> kwargs
+
+        Args:
+            config_dict: Optional configuration dictionary
+            kwargs: Additional configuration parameters
+
+        Returns:
+            Merged configuration dictionary
+        """
         # Start with defaults
-        default_dict = DEFAULT_CONFIG.copy()
+        result = DEFAULT_CONFIG.copy()
 
         # Merge with provided config_dict
         if config_dict:
-            default_dict = merge_dicts(default_dict, config_dict, deep=True)
+            result = merge_dicts(result, config_dict, deep=True)
 
         # Merge with kwargs
         if kwargs:
-            default_dict = merge_dicts(default_dict, kwargs, deep=True)
+            result = merge_dicts(result, kwargs, deep=True)
 
-        # Load from environment variables
-        self._load_from_env(default_dict)
+        return result
 
-        # Initialize dataclass fields
-        self.llm_provider = default_dict.get("llm_provider", {})
-        self.embedding_model = default_dict.get("embedding_model", {})
-        self.vector_store = default_dict.get("vector_store", {})
-        self.graph_db = default_dict.get("graph_db", {})
-        self.processing = default_dict.get(
+    def _initialize_sections(self, config_data: Dict[str, Any]) -> None:
+        """
+        Initialize configuration section attributes.
+
+        Args:
+            config_data: Configuration dictionary
+        """
+        self.llm_provider = config_data.get("llm_provider", {})
+        self.embedding_model = config_data.get("embedding_model", {})
+        self.vector_store = config_data.get("vector_store", {})
+        self.graph_db = config_data.get("graph_db", {})
+        self.processing = config_data.get(
             "processing", DEFAULT_CONFIG.get("processing", {})
         )
-        self.pipeline = default_dict.get("pipeline", {})
-        self.logging = default_dict.get("logging", DEFAULT_CONFIG.get("logging", {}))
-        self.quality = default_dict.get("quality", DEFAULT_CONFIG.get("quality", {}))
-        self.security = default_dict.get("security", DEFAULT_CONFIG.get("security", {}))
-        self.custom = default_dict.get("custom", {})
+        self.pipeline = config_data.get("pipeline", {})
+        self.logging = config_data.get(
+            "logging", DEFAULT_CONFIG.get("logging", {})
+        )
+        self.quality = config_data.get(
+            "quality", DEFAULT_CONFIG.get("quality", {})
+        )
+        self.security = config_data.get(
+            "security", DEFAULT_CONFIG.get("security", {})
+        )
+        self.custom = config_data.get("custom", {})
 
     def _load_from_env(self, config_dict: Dict[str, Any]) -> None:
         """
@@ -140,27 +175,35 @@ class Config:
             config_dict: Configuration dictionary to update with env values
         """
         prefix = "SEMANTICA_"
-        prefix_length = len(prefix)
-
+        
         for env_key, env_value in os.environ.items():
             if not env_key.startswith(prefix):
                 continue
 
-            # Remove prefix and convert to lowercase for consistency
-            config_key = env_key[prefix_length:].lower()
-
-            # Parse the environment variable value
-            # Try JSON first (for complex types like lists/dicts)
-            try:
-                parsed_value = json.loads(env_value)
-            except (json.JSONDecodeError, ValueError):
-                # Not valid JSON, try type conversion
-                parsed_value = self._parse_env_value(env_value)
-
+            # Extract and normalize key
+            config_key = self._normalize_env_key(env_key, prefix)
+            
+            # Parse value (try JSON first, then type conversion)
+            parsed_value = self._parse_env_value(env_value)
+            
             # Set nested value using dot notation
-            # e.g., "processing_batch_size" -> "processing.batch_size"
-            normalized_key = config_key.replace("_", ".")
-            set_nested_value(config_dict, normalized_key, parsed_value)
+            set_nested_value(config_dict, config_key, parsed_value)
+
+    def _normalize_env_key(self, env_key: str, prefix: str) -> str:
+        """
+        Normalize environment variable key to configuration key path.
+
+        Args:
+            env_key: Environment variable key (e.g., "SEMANTICA_PROCESSING_BATCH_SIZE")
+            prefix: Prefix to remove (e.g., "SEMANTICA_")
+
+        Returns:
+            Normalized key path (e.g., "processing.batch_size")
+        """
+        # Remove prefix and convert to lowercase
+        key = env_key[len(prefix):].lower()
+        # Convert underscores to dots for nested access
+        return key.replace("_", ".")
 
     def _parse_env_value(self, value: str) -> Union[str, int, float, bool]:
         """
@@ -202,59 +245,11 @@ class Config:
             ConfigurationError: If configuration is invalid with detailed error messages
         """
         validation_errors = []
-
-        # Validate processing settings
-        processing_config = self.processing
-        if processing_config:
-            # Validate batch_size
-            if "batch_size" in processing_config:
-                batch_size = processing_config["batch_size"]
-                if not isinstance(batch_size, int):
-                    validation_errors.append(
-                        f"processing.batch_size must be an integer, got {type(batch_size).__name__}"
-                    )
-                elif batch_size <= 0:
-                    validation_errors.append(
-                        f"processing.batch_size must be positive, got {batch_size}"
-                    )
-
-            # Validate max_workers
-            if "max_workers" in processing_config:
-                max_workers = processing_config["max_workers"]
-                if not isinstance(max_workers, int):
-                    validation_errors.append(
-                        f"processing.max_workers must be an integer, got {type(max_workers).__name__}"
-                    )
-                elif max_workers <= 0:
-                    validation_errors.append(
-                        f"processing.max_workers must be positive, got {max_workers}"
-                    )
-
-        # Validate quality settings
-        quality_config = self.quality
-        if quality_config:
-            # Validate min_confidence
-            if "min_confidence" in quality_config:
-                confidence = quality_config["min_confidence"]
-                if not isinstance(confidence, (int, float)):
-                    validation_errors.append(
-                        f"quality.min_confidence must be a number, got {type(confidence).__name__}"
-                    )
-                elif not (0.0 <= confidence <= 1.0):
-                    validation_errors.append(
-                        f"quality.min_confidence must be between 0.0 and 1.0, got {confidence}"
-                    )
-
-        # Validate logging settings
-        logging_config = self.logging
-        if logging_config:
-            valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-            if "level" in logging_config:
-                level = logging_config["level"]
-                if level not in valid_levels:
-                    validation_errors.append(
-                        f"logging.level must be one of {valid_levels}, got {level}"
-                    )
+        
+        # Validate each configuration section
+        validation_errors.extend(self._validate_processing())
+        validation_errors.extend(self._validate_quality())
+        validation_errors.extend(self._validate_logging())
 
         # Raise error if any validation failures
         if validation_errors:
@@ -265,6 +260,74 @@ class Config:
                 error_message,
                 config_context=self.to_dict(),
             )
+
+    def _validate_processing(self) -> List[str]:
+        """Validate processing configuration section."""
+        errors = []
+        if not self.processing:
+            return errors
+
+        # Validate batch_size
+        if "batch_size" in self.processing:
+            batch_size = self.processing["batch_size"]
+            if not isinstance(batch_size, int):
+                errors.append(
+                    f"processing.batch_size must be an integer, got {type(batch_size).__name__}"
+                )
+            elif batch_size <= 0:
+                errors.append(
+                    f"processing.batch_size must be positive, got {batch_size}"
+                )
+
+        # Validate max_workers
+        if "max_workers" in self.processing:
+            max_workers = self.processing["max_workers"]
+            if not isinstance(max_workers, int):
+                errors.append(
+                    f"processing.max_workers must be an integer, got {type(max_workers).__name__}"
+                )
+            elif max_workers <= 0:
+                errors.append(
+                    f"processing.max_workers must be positive, got {max_workers}"
+                )
+
+        return errors
+
+    def _validate_quality(self) -> List[str]:
+        """Validate quality configuration section."""
+        errors = []
+        if not self.quality:
+            return errors
+
+        # Validate min_confidence
+        if "min_confidence" in self.quality:
+            confidence = self.quality["min_confidence"]
+            if not isinstance(confidence, (int, float)):
+                errors.append(
+                    f"quality.min_confidence must be a number, got {type(confidence).__name__}"
+                )
+            elif not (0.0 <= confidence <= 1.0):
+                errors.append(
+                    f"quality.min_confidence must be between 0.0 and 1.0, got {confidence}"
+                )
+
+        return errors
+
+    def _validate_logging(self) -> List[str]:
+        """Validate logging configuration section."""
+        errors = []
+        if not self.logging:
+            return errors
+
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if "level" in self.logging:
+            level = self.logging["level"]
+            if level not in valid_levels:
+                errors.append(
+                    f"logging.level must be one of {valid_levels}, got {level}"
+                )
+
+        return errors
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -308,12 +371,12 @@ class Config:
             key_path: Dot-separated key path (e.g., "processing.batch_size")
             value: Value to set
         """
+        # Update the dictionary representation
         config_dict = self.to_dict()
         set_nested_value(config_dict, key_path, value)
 
-        # Reinitialize from updated dict
-        updated = Config(config_dict=config_dict)
-        self.__dict__.update(updated.__dict__)
+        # Reinitialize sections from updated dict
+        self._initialize_sections(config_dict)
 
     def update(self, updates: Dict[str, Any], merge: bool = True) -> None:
         """
@@ -325,14 +388,14 @@ class Config:
         """
         current_dict = self.to_dict()
 
+        # Merge or replace based on merge flag
         if merge:
             updated_dict = merge_dicts(current_dict, updates, deep=True)
         else:
             updated_dict = {**current_dict, **updates}
 
-        # Reinitialize from updated dict
-        updated = Config(config_dict=updated_dict)
-        self.__dict__.update(updated.__dict__)
+        # Reinitialize sections from updated dict
+        self._initialize_sections(updated_dict)
 
 
 class ConfigManager:
@@ -396,63 +459,104 @@ class ConfigManager:
 
         try:
             file_path = Path(file_path)
+            self._validate_file_exists(file_path)
 
-            if not file_path.exists():
-                raise ConfigurationError(
-                    f"Configuration file not found: {file_path}",
-                    config_context={"file_path": str(file_path)},
-                )
+            # Load configuration dictionary from file
+            config_dict = self._load_file_content(file_path)
 
-            # Detect format from extension
-            suffix = file_path.suffix.lower()
+            # Create and validate config object
+            config = Config(config_dict=config_dict)
+            if validate:
+                config.validate()
 
-            try:
-                if suffix in (".yaml", ".yml"):
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        config_dict = yaml.safe_load(f)
+            # Store config and file path for potential reload
+            self._config = config
+            self._last_file_path = file_path
 
-                elif suffix == ".json":
-                    config_dict = read_json_file(file_path)
-                else:
-                    raise ConfigurationError(
-                        f"Unsupported configuration file format: {suffix}. "
-                        "Supported formats: .yaml, .yml, .json"
-                    )
+            self.progress_tracker.stop_tracking(
+                tracking_id,
+                status="completed",
+                message="Configuration loaded successfully",
+            )
+            return config
 
-                # Create config object from loaded dictionary
-                config = Config(config_dict=config_dict)
-
-                # Validate configuration if requested
-                if validate:
-                    config.validate()
-
-                # Store config and file path for potential reload
-                self._config = config
-                self._last_file_path = file_path
-
-                self.progress_tracker.stop_tracking(
-                    tracking_id,
-                    status="completed",
-                    message="Configuration loaded successfully",
-                )
-                return config
-            except Exception as e:
-                # Re-raise as ConfigurationError if inner try fails
-                raise ConfigurationError(
-                    f"Failed to parse configuration file: {str(e)}",
-                    config_context={"file_path": str(file_path)},
-                ) from e
-
+        except ConfigurationError:
+            # Re-raise configuration errors as-is
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message="Configuration error"
+            )
+            raise
         except Exception as e:
+            # Wrap other exceptions
             self.progress_tracker.stop_tracking(
                 tracking_id, status="failed", message=str(e)
             )
-            if isinstance(e, ConfigurationError):
-                raise
             raise ConfigurationError(
                 f"Failed to load configuration file: {str(e)}",
                 config_context={"file_path": str(file_path)},
+            ) from e
+
+    def _validate_file_exists(self, file_path: Path) -> None:
+        """
+        Validate that configuration file exists.
+
+        Args:
+            file_path: Path to configuration file
+
+        Raises:
+            ConfigurationError: If file does not exist
+        """
+        if not file_path.exists():
+            raise ConfigurationError(
+                f"Configuration file not found: {file_path}",
+                config_context={"file_path": str(file_path)},
             )
+
+    def _load_file_content(self, file_path: Path) -> Dict[str, Any]:
+        """
+        Load configuration dictionary from file.
+
+        Args:
+            file_path: Path to configuration file
+
+        Returns:
+            Configuration dictionary
+
+        Raises:
+            ConfigurationError: If file format is unsupported or parsing fails
+        """
+        suffix = file_path.suffix.lower()
+
+        if suffix in (".yaml", ".yml"):
+            return self._load_yaml_file(file_path)
+        elif suffix == ".json":
+            return self._load_json_file(file_path)
+        else:
+            raise ConfigurationError(
+                f"Unsupported configuration file format: {suffix}. "
+                "Supported formats: .yaml, .yml, .json"
+            )
+
+    def _load_yaml_file(self, file_path: Path) -> Dict[str, Any]:
+        """Load YAML configuration file."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            raise ConfigurationError(
+                f"Failed to parse YAML file: {str(e)}",
+                config_context={"file_path": str(file_path)},
+            ) from e
+
+    def _load_json_file(self, file_path: Path) -> Dict[str, Any]:
+        """Load JSON configuration file."""
+        try:
+            return read_json_file(file_path)
+        except Exception as e:
+            raise ConfigurationError(
+                f"Failed to parse JSON file: {str(e)}",
+                config_context={"file_path": str(file_path)},
+            ) from e
 
     def load_from_dict(
         self, config_dict: Dict[str, Any], validate: bool = True

@@ -135,53 +135,17 @@ class LifecycleManager:
 
         try:
             # Check if already started
-            if self.state in (SystemState.READY, SystemState.RUNNING):
-                self.logger.warning(
-                    f"System already in {self.state.value} state, skipping startup"
-                )
+            if self._is_already_started():
                 self.progress_tracker.stop_tracking(
                     tracking_id, status="completed", message="System already started"
                 )
                 return
 
-            # Transition to initializing state
-            self.state = SystemState.INITIALIZING
-            self.logger.info("Starting system lifecycle")
+            # Execute startup sequence
+            self._execute_startup_sequence()
 
-            # Sort hooks by priority (lower priority = earlier execution)
-            sorted_hooks = sorted(self.startup_hooks, key=lambda x: x[1])
-
-            if sorted_hooks:
-                self.logger.debug(f"Executing {len(sorted_hooks)} startup hook(s)")
-
-            # Execute all startup hooks in priority order
-            for hook_fn, priority in sorted_hooks:
-                try:
-                    self.logger.debug(
-                        f"Executing startup hook with priority {priority}"
-                    )
-                    hook_fn()
-                except Exception as e:
-                    error_msg = f"Startup hook (priority {priority}) failed: {e}"
-                    self.logger.error(error_msg)
-                    self.state = SystemState.ERROR
-                    raise SemanticaError(error_msg) from e
-
-            # Verify all registered components are properly initialized
-            self._verify_components()
-
-            # Run initial health checks on all components
-            health_results = self.health_check()
-            unhealthy_components = [
-                name for name, status in health_results.items() if not status.healthy
-            ]
-
-            if unhealthy_components:
-                self.logger.warning(
-                    f"Some components are unhealthy after startup: {unhealthy_components}"
-                )
-            else:
-                self.logger.debug("All components are healthy")
+            # Verify and check health
+            self._verify_and_check_health()
 
             # Transition to ready state
             self.state = SystemState.READY
@@ -201,6 +165,41 @@ class LifecycleManager:
                 tracking_id, status="failed", message=str(e)
             )
             raise
+
+    def _is_already_started(self) -> bool:
+        """Check if system is already in a started state."""
+        if self.state in (SystemState.READY, SystemState.RUNNING):
+            self.logger.warning(
+                f"System already in {self.state.value} state, skipping startup"
+            )
+            return True
+        return False
+
+    def _execute_startup_sequence(self) -> None:
+        """Execute startup hooks in priority order."""
+        self.state = SystemState.INITIALIZING
+        self.logger.info("Starting system lifecycle")
+
+        # Execute hooks
+        self._execute_hooks(self.startup_hooks, "startup")
+
+    def _verify_and_check_health(self) -> None:
+        """Verify components and check their health."""
+        # Verify all registered components are properly initialized
+        self._verify_components()
+
+        # Run initial health checks
+        health_results = self.health_check()
+        unhealthy_components = [
+            name for name, status in health_results.items() if not status.healthy
+        ]
+
+        if unhealthy_components:
+            self.logger.warning(
+                f"Some components are unhealthy after startup: {unhealthy_components}"
+            )
+        else:
+            self.logger.debug("All components are healthy")
 
     def shutdown(self, graceful: bool = True) -> None:
         """
@@ -232,42 +231,16 @@ class LifecycleManager:
 
         try:
             # Check if already stopped
-            if self.state == SystemState.STOPPED:
-                self.logger.warning("System already in STOPPED state")
+            if self._is_already_stopped():
                 self.progress_tracker.stop_tracking(
                     tracking_id, status="completed", message="System already stopped"
                 )
                 return
 
-            # Transition to stopping state
-            self.state = SystemState.STOPPING
-            self.logger.info(f"Shutting down system (graceful={graceful})")
+            # Execute shutdown sequence
+            self._execute_shutdown_sequence(graceful)
 
-            # Sort hooks by priority (lower priority = earlier execution)
-            sorted_hooks = sorted(self.shutdown_hooks, key=lambda x: x[1])
-
-            if sorted_hooks:
-                self.logger.debug(f"Executing {len(sorted_hooks)} shutdown hook(s)")
-
-            # Execute all shutdown hooks in priority order
-            for hook_fn, priority in sorted_hooks:
-                try:
-                    self.logger.debug(
-                        f"Executing shutdown hook with priority {priority}"
-                    )
-                    hook_fn()
-                except Exception as e:
-                    error_msg = f"Shutdown hook (priority {priority}) failed: {e}"
-
-                    if graceful:
-                        # In graceful mode, log warning but continue
-                        self.logger.warning(error_msg)
-                    else:
-                        # In non-graceful mode, stop on first error
-                        self.logger.error(error_msg)
-                        raise SemanticaError(error_msg) from e
-
-            # Cleanup all registered components
+            # Cleanup resources
             self._cleanup_resources()
 
             # Transition to stopped state
@@ -290,6 +263,57 @@ class LifecycleManager:
             if not graceful:
                 raise
 
+    def _is_already_stopped(self) -> bool:
+        """Check if system is already stopped."""
+        if self.state == SystemState.STOPPED:
+            self.logger.warning("System already in STOPPED state")
+            return True
+        return False
+
+    def _execute_shutdown_sequence(self, graceful: bool) -> None:
+        """Execute shutdown hooks in priority order."""
+        self.state = SystemState.STOPPING
+        self.logger.info(f"Shutting down system (graceful={graceful})")
+
+        # Execute hooks with graceful error handling
+        self._execute_hooks(self.shutdown_hooks, "shutdown", graceful=graceful)
+
+    def _execute_hooks(
+        self, hooks: List[Tuple[Callable[[], None], int]], hook_type: str, graceful: bool = False
+    ) -> None:
+        """
+        Execute hooks in priority order.
+
+        Args:
+            hooks: List of (hook_function, priority) tuples
+            hook_type: Type of hooks ("startup" or "shutdown")
+            graceful: Whether to continue on errors (only for shutdown)
+
+        Raises:
+            SemanticaError: If hook fails and not graceful
+        """
+        # Sort hooks by priority (lower priority = earlier execution)
+        sorted_hooks = sorted(hooks, key=lambda x: x[1])
+
+        if sorted_hooks:
+            self.logger.debug(f"Executing {len(sorted_hooks)} {hook_type} hook(s)")
+
+        # Execute all hooks in priority order
+        for hook_fn, priority in sorted_hooks:
+            try:
+                self.logger.debug(f"Executing {hook_type} hook with priority {priority}")
+                hook_fn()
+            except Exception as e:
+                error_msg = f"{hook_type.capitalize()} hook (priority {priority}) failed: {e}"
+
+                if graceful:
+                    # In graceful mode, log warning but continue
+                    self.logger.warning(error_msg)
+                else:
+                    # In non-graceful mode, stop on first error
+                    self.logger.error(error_msg)
+                    raise SemanticaError(error_msg) from e
+
     def health_check(self) -> Dict[str, HealthStatus]:
         """
         Perform comprehensive system health check.
@@ -310,65 +334,87 @@ class LifecycleManager:
         # Record health check timestamp
         self._last_health_check = time.time()
 
-        health_results = {}
-
         # Check health of each registered component
-        for component_name, component in self._component_registry.items():
-            try:
-                # Try to get health status from component
-                if hasattr(component, "health_check"):
-                    # Component has its own health check method
-                    component_health = component.health_check()
+        health_results = {
+            name: self._check_component_health(name, component)
+            for name, component in self._component_registry.items()
+        }
 
-                    # Handle different return types
-                    if isinstance(component_health, dict):
-                        # Dictionary format: {"healthy": bool, "message": str, "details": dict}
-                        healthy = component_health.get("healthy", True)
-                        message = component_health.get("message", "")
-                        details = component_health.get("details", {})
-                    elif isinstance(component_health, bool):
-                        # Simple boolean
-                        healthy = component_health
-                        message = ""
-                        details = {}
-                    else:
-                        # Other types: convert to boolean
-                        healthy = bool(component_health)
-                        message = ""
-                        details = {}
-                else:
-                    # No health_check method: assume healthy if component exists
-                    healthy = component is not None
-                    message = "Component exists" if healthy else "Component is None"
-                    details = {}
+        # Update cached health status
+        self.health_status.update(health_results)
 
-                # Create health status object
-                status = HealthStatus(
-                    component=component_name,
-                    healthy=healthy,
-                    message=message,
-                    details=details,
-                )
+        # Log summary
+        self._log_health_summary(health_results)
 
-            except Exception as e:
-                # Health check failed: mark as unhealthy
-                error_msg = f"Health check failed: {e}"
-                self.logger.warning(
-                    f"Component {component_name} health check error: {e}"
-                )
+        return health_results
 
-                status = HealthStatus(
-                    component=component_name,
-                    healthy=False,
-                    message=error_msg,
-                    details={"error": str(e), "error_type": type(e).__name__},
-                )
+    def _check_component_health(self, component_name: str, component: Any) -> HealthStatus:
+        """
+        Check health of a single component.
 
-            # Store results
-            health_results[component_name] = status
-            self.health_status[component_name] = status
+        Args:
+            component_name: Name of the component
+            component: Component instance
 
-        # Log summary of unhealthy components
+        Returns:
+            HealthStatus object for the component
+        """
+        try:
+            if hasattr(component, "health_check"):
+                # Component has its own health check method
+                component_health = component.health_check()
+                healthy, message, details = self._parse_health_result(component_health)
+            else:
+                # No health_check method: assume healthy if component exists
+                healthy = component is not None
+                message = "Component exists" if healthy else "Component is None"
+                details = {}
+
+            return HealthStatus(
+                component=component_name,
+                healthy=healthy,
+                message=message,
+                details=details,
+            )
+
+        except Exception as e:
+            # Health check failed: mark as unhealthy
+            error_msg = f"Health check failed: {e}"
+            self.logger.warning(f"Component {component_name} health check error: {e}")
+
+            return HealthStatus(
+                component=component_name,
+                healthy=False,
+                message=error_msg,
+                details={"error": str(e), "error_type": type(e).__name__},
+            )
+
+    def _parse_health_result(self, health_result: Any) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        Parse component health check result into standardized format.
+
+        Args:
+            health_result: Health check result (dict, bool, or other)
+
+        Returns:
+            Tuple of (healthy, message, details)
+        """
+        if isinstance(health_result, dict):
+            # Dictionary format: {"healthy": bool, "message": str, "details": dict}
+            return (
+                health_result.get("healthy", True),
+                health_result.get("message", ""),
+                health_result.get("details", {}),
+            )
+        elif isinstance(health_result, bool):
+            # Simple boolean
+            return health_result, "", {}
+        else:
+            # Other types: convert to boolean
+            return bool(health_result), "", {}
+
+    def _log_health_summary(self, health_results: Dict[str, HealthStatus]) -> None:
+        """Log summary of health check results."""
         unhealthy_components = [
             name for name, status in health_results.items() if not status.healthy
         ]
@@ -382,8 +428,6 @@ class LifecycleManager:
             self.logger.debug(
                 f"Health check passed for all {len(health_results)} component(s)"
             )
-
-        return health_results
 
     def register_component(self, name: str, component: Any) -> None:
         """
