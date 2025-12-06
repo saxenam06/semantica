@@ -119,6 +119,51 @@ Handles code repositories.
 |--------|-------------|
 | `ingest_repo(url)` | Clone and process |
 
+### FeedIngestor
+
+Handles RSS and Atom feeds.
+
+**Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `ingest_feed(url)` | Parse feed items |
+| `monitor(url)` | Watch for updates |
+
+### EmailIngestor
+
+Handles IMAP and POP3 servers.
+
+**Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `connect_imap(host)` | Connect to server |
+| `ingest_mailbox(name)` | Fetch emails |
+
+### DBIngestor
+
+Handles SQL databases.
+
+**Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `ingest_database(conn)` | Export tables |
+| `execute_query(sql)` | Run custom SQL |
+
+### MCPIngestor
+
+Handles Model Context Protocol servers.
+
+**Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `connect(url)` | Connect to server |
+| `ingest_resources()` | Fetch resources |
+| `call_tool(name)` | Execute tool |
+
 ---
 
 ## Convenience Functions

@@ -373,6 +373,28 @@ processor.set_message_handler(handle_message)
 processor.start_consuming()
 ```
 
+### Stream Monitoring
+
+```python
+from semantica.ingest import StreamIngestor
+
+ingestor = StreamIngestor()
+
+# Start multiple streams
+ingestor.ingest_kafka("topic1", ["localhost:9092"])
+ingestor.ingest_rabbitmq("queue1", "amqp://guest:guest@localhost:5672/")
+ingestor.start_streaming()
+
+# Check health
+health = ingestor.monitor.check_health()
+print(f"Overall Status: {health['overall']}")
+
+for name, status in health['processors'].items():
+    print(f"Processor {name}: {'Healthy' if status['healthy'] else 'Unhealthy'}")
+    print(f"  Processed: {status['processed']}")
+    print(f"  Errors: {status['errors']}")
+```
+
 ## Repository Ingestion
 
 ### Git Repository Ingestion
