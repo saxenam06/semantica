@@ -140,17 +140,14 @@ pipeline = builder.build()
 ### Pipeline Serialization
 
 ```python
-from semantica.pipeline import PipelineBuilder
+from semantica.pipeline import PipelineBuilder, PipelineSerializer
 
 builder = PipelineBuilder()
 pipeline = builder.add_step("step1", "type1").build()
 
-# Serialize pipeline to JSON
-serialized = builder.serialize(pipeline, format="json")
-print(serialized)
-
-# Deserialize pipeline
-deserialized = builder.deserialize(serialized, format="json")
+serializer = PipelineSerializer()
+serialized = serializer.serialize_pipeline(pipeline, format="json")
+restored = serializer.deserialize_pipeline(serialized)
 ```
 
 ### Pipeline Metadata
@@ -210,17 +207,10 @@ print(f"Metrics: {result.metrics}")
 from semantica.pipeline import ExecutionEngine, PipelineStatus
 
 engine = ExecutionEngine()
-
-# Execute pipeline
 result = engine.execute_pipeline(pipeline)
 
-# Get pipeline status
-status = engine.get_status(pipeline.name)
-print(f"Status: {status}")
-
-# Check if running
-if status == PipelineStatus.RUNNING:
-    print("Pipeline is currently running")
+status = engine.get_pipeline_status(pipeline.name)
+print(status.value)
 ```
 
 ### Progress Monitoring
@@ -229,15 +219,13 @@ if status == PipelineStatus.RUNNING:
 from semantica.pipeline import ExecutionEngine
 
 engine = ExecutionEngine()
-
-# Execute pipeline
 result = engine.execute_pipeline(pipeline)
 
-# Get progress
 progress = engine.get_progress(pipeline.name)
-print(f"Progress: {progress.get('percentage', 0)}%")
-print(f"Completed steps: {progress.get('completed_steps', 0)}")
-print(f"Total steps: {progress.get('total_steps', 0)}")
+print(progress["progress_percentage"])  # float 0..100
+print(progress["completed_steps"])      # int
+print(progress["total_steps"])          # int
+print(progress["status"])               # status string
 ```
 
 ### Pause and Resume
@@ -246,17 +234,10 @@ print(f"Total steps: {progress.get('total_steps', 0)}")
 from semantica.pipeline import ExecutionEngine
 
 engine = ExecutionEngine()
+result = engine.execute_pipeline(pipeline)
 
-# Start execution
-result_future = engine.execute_pipeline_async(pipeline)
-
-# Pause execution
 engine.pause_pipeline(pipeline.name)
-
-# Resume execution
 engine.resume_pipeline(pipeline.name)
-
-# Stop execution
 engine.stop_pipeline(pipeline.name)
 ```
 
@@ -266,16 +247,12 @@ engine.stop_pipeline(pipeline.name)
 from semantica.pipeline import ExecutionEngine
 
 engine = ExecutionEngine()
-
-# Execute pipeline
 result = engine.execute_pipeline(pipeline)
 
-# Access execution metrics
 metrics = result.metrics
-print(f"Total execution time: {metrics.get('total_time', 0)}s")
-print(f"Steps executed: {metrics.get('steps_executed', 0)}")
-print(f"Steps failed: {metrics.get('steps_failed', 0)}")
-print(f"Memory used: {metrics.get('memory_used', 0)}MB")
+print(metrics.get("execution_time", 0))
+print(metrics.get("steps_executed", 0))
+print(metrics.get("steps_failed", 0))
 ```
 
 ## Error Handling
@@ -285,26 +262,15 @@ print(f"Memory used: {metrics.get('memory_used', 0)}MB")
 ```python
 from semantica.pipeline import FailureHandler, RetryPolicy, RetryStrategy
 
-# Create failure handler
 handler = FailureHandler()
+policy = RetryPolicy(max_retries=3, strategy=RetryStrategy.EXPONENTIAL, initial_delay=1.0)
 
-# Configure retry policy
-policy = RetryPolicy(
-    max_retries=3,
-    strategy=RetryStrategy.EXPONENTIAL,
-    initial_delay=1.0,
-    backoff_factor=2.0,
-    max_delay=60.0
-)
-
-# Handle step failure
 try:
-    # Execute step
-    result = execute_step(step)
+    result = step.handler({})
 except Exception as e:
-    recovery = handler.handle_step_failure(step, e, retry_policy=policy)
-    if recovery.should_retry:
-        print(f"Retrying after {recovery.retry_delay}s")
+    recovery = handler.handle_step_failure(step, e)
+    if recovery["retry"]:
+        print(recovery["retry_delay"])  # seconds
 ```
 
 ### Retry Strategies
@@ -345,80 +311,41 @@ fixed_policy = RetryPolicy(
 from semantica.pipeline import FailureHandler, ErrorSeverity
 
 handler = FailureHandler()
+classification = handler.classify_error(Exception("Connection timeout"))
 
-# Classify error
-error = Exception("Connection timeout")
-classification = handler.classify_error(error)
-
-print(f"Severity: {classification['severity']}")
-print(f"Category: {classification['category']}")
-print(f"Retryable: {classification['retryable']}")
-
-# Check severity
-if classification['severity'] == ErrorSeverity.CRITICAL:
-    print("Critical error - immediate attention required")
+print(classification["severity"])   # ErrorSeverity
+print(classification["error_type"]) # str
+print(classification["message"])    # str
 ```
 
 ### Fallback Handlers
 
 ```python
-from semantica.pipeline import FailureHandler, FallbackHandler
+from semantica.pipeline import FallbackHandler
 
-handler = FailureHandler()
-
-# Define fallback function
-def fallback_function(step, error):
-    print(f"Fallback for step {step.name}: {error}")
-    return {"status": "fallback_executed"}
-
-# Register fallback handler
-fallback = FallbackHandler(fallback_function)
-handler.register_fallback("step_type", fallback)
-
-# Handle failure with fallback
-recovery = handler.handle_step_failure(step, error)
-if recovery.recovery_action == "fallback":
-    print("Fallback handler executed")
+fallback = FallbackHandler()
+fallback.set_fallback_strategy("retry")
+strategy = fallback.handle_service_failure("vector_store")
 ```
 
 ### Error Recovery
 
 ```python
-from semantica.pipeline import FailureHandler, ErrorRecovery
+from semantica.pipeline import ErrorRecovery
 
-handler = FailureHandler()
-
-# Handle error with recovery
-error = Exception("Temporary failure")
-recovery = handler.handle_step_failure(step, error)
-
-if recovery.should_retry:
-    print(f"Retrying in {recovery.retry_delay} seconds")
-    time.sleep(recovery.retry_delay)
-    # Retry step...
-else:
-    print(f"Recovery action: {recovery.recovery_action}")
+recovery = ErrorRecovery()
+result = recovery.recover_from_error(Exception("Temporary failure"), {"step": "s1"})
+print(result["recovery_action"])  
 ```
 
 ### Custom Retry Policies
 
 ```python
-from semantica.pipeline import FailureHandler, RetryPolicy
+from semantica.pipeline import FailureHandler, RetryPolicy, RetryStrategy
 
 handler = FailureHandler()
-
-# Register custom retry policy for specific step type
-custom_policy = RetryPolicy(
-    max_retries=5,
-    strategy=RetryStrategy.EXPONENTIAL,
-    initial_delay=0.5,
-    backoff_factor=1.5,
-    retryable_errors=[ConnectionError, TimeoutError]
-)
-
-handler.register_retry_policy("network_step", custom_policy)
-
-# Policy will be used automatically for network_step failures
+custom_policy = RetryPolicy(max_retries=5, strategy=RetryStrategy.EXPONENTIAL, initial_delay=0.5)
+handler.set_retry_policy("network_step", custom_policy)
 ```
 
 ## Parallel Execution
@@ -530,25 +457,13 @@ results = manager.execute_parallel(tasks)
 ### Basic Resource Allocation
 
 ```python
-from semantica.pipeline import ResourceScheduler, ResourceType
+from semantica.pipeline import ResourceScheduler
 
-# Create resource scheduler
 scheduler = ResourceScheduler()
-
-# Register resources
-scheduler.register_resource("cpu1", ResourceType.CPU, capacity=100.0)
-scheduler.register_resource("gpu1", ResourceType.GPU, capacity=1.0)
-scheduler.register_resource("memory1", ResourceType.MEMORY, capacity=16.0)
-
-# Allocate resources
-allocation = scheduler.allocate_resource(
-    "cpu1",
-    ResourceType.CPU,
-    amount=50.0,
-    pipeline_id="pipeline1"
-)
-
-print(f"Allocated: {allocation.amount} CPU units")
+cpu = scheduler.allocate_cpu(cores=2, pipeline_id="p1")
+mem = scheduler.allocate_memory(memory_gb=1.0, pipeline_id="p1")
+usage = scheduler.get_resource_usage()
+scheduler.release_resources({cpu.allocation_id: cpu, mem.allocation_id: mem})
 ```
 
 ### Resource Types
@@ -557,21 +472,9 @@ print(f"Allocated: {allocation.amount} CPU units")
 from semantica.pipeline import ResourceScheduler, ResourceType
 
 scheduler = ResourceScheduler()
-
-# CPU resources
-cpu_allocation = scheduler.allocate_resource("cpu", ResourceType.CPU, 4.0, "pipeline1")
-
-# GPU resources
-gpu_allocation = scheduler.allocate_resource("gpu", ResourceType.GPU, 1.0, "pipeline1")
-
-# Memory resources
-memory_allocation = scheduler.allocate_resource("memory", ResourceType.MEMORY, 8.0, "pipeline1")
-
-# Disk resources
-disk_allocation = scheduler.allocate_resource("disk", ResourceType.DISK, 100.0, "pipeline1")
-
-# Network resources
-network_allocation = scheduler.allocate_resource("network", ResourceType.NETWORK, 1000.0, "pipeline1")
+cpu = scheduler.allocate_cpu(2, "p1")
+gpu = scheduler.allocate_gpu(0, "p1")
+mem = scheduler.allocate_memory(8.0, "p1")
 ```
 
 ### Resource Monitoring
@@ -580,19 +483,10 @@ network_allocation = scheduler.allocate_resource("network", ResourceType.NETWORK
 from semantica.pipeline import ResourceScheduler
 
 scheduler = ResourceScheduler()
-
-# Allocate resource
-allocation = scheduler.allocate_resource("cpu", ResourceType.CPU, 50.0, "pipeline1")
-
-# Check resource status
-status = scheduler.get_resource_status("cpu")
-print(f"Capacity: {status['capacity']}")
-print(f"Allocated: {status['allocated']}")
-print(f"Available: {status['available']}")
-
-# Get all allocations for pipeline
-allocations = scheduler.get_pipeline_allocations("pipeline1")
-print(f"Pipeline allocations: {len(allocations)}")
+usage = scheduler.get_resource_usage()
+print(usage["cpu"]["capacity"])
+print(usage["cpu"]["allocated"])
+print(usage["cpu"]["available"])
 ```
 
 ### Resource Deallocation
@@ -601,30 +495,17 @@ print(f"Pipeline allocations: {len(allocations)}")
 from semantica.pipeline import ResourceScheduler
 
 scheduler = ResourceScheduler()
-
-# Allocate resource
-allocation = scheduler.allocate_resource("cpu", ResourceType.CPU, 50.0, "pipeline1")
-
-# Deallocate resource
-scheduler.deallocate_resource(allocation.allocation_id)
-
-# Verify deallocation
-status = scheduler.get_resource_status("cpu")
-print(f"Available after deallocation: {status['available']}")
+cpu = scheduler.allocate_cpu(2, "p1")
+scheduler.release_resources({cpu.allocation_id: cpu})
 ```
 
 ### Automatic Resource Management
 
 ```python
-from semantica.pipeline import ExecutionEngine, ResourceScheduler
+from semantica.pipeline import ExecutionEngine
 
-# Execution engine automatically manages resources
 engine = ExecutionEngine()
-
-# Resources are allocated before execution and deallocated after
-result = engine.execute_pipeline(pipeline)
-
-# Resources are automatically cleaned up
+result = engine.execute_pipeline(pipeline, cpu_cores=2, memory_gb=1.0)
 ```
 
 ## Pipeline Validation
@@ -693,15 +574,8 @@ else:
 from semantica.pipeline import PipelineValidator
 
 validator = PipelineValidator()
-
-# Validate with performance checks
-result = validator.validate_pipeline(pipeline, check_performance=True)
-
-# Access performance metrics
-if "performance" in result.metadata:
-    perf = result.metadata["performance"]
-    print(f"Estimated execution time: {perf.get('estimated_time', 0)}s")
-    print(f"Resource requirements: {perf.get('resources', {})}")
+perf = validator.validate_performance(pipeline)
+print(perf["warnings"])  
 ```
 
 ## Pipeline Templates
@@ -977,58 +851,58 @@ Error classification uses pattern matching and exception type analysis.
 
 #### PipelineBuilder Methods
 
-- `add_step(name, step_type, **config)`: Add step to pipeline
+- `add_step(step_name, step_type, **config)`: Add step to pipeline
 - `connect_steps(from_step, to_step, **options)`: Connect two steps
-- `build(name, **metadata)`: Build pipeline from steps
-- `serialize(pipeline, format)`: Serialize pipeline to JSON/YAML
-- `deserialize(data, format)`: Deserialize pipeline from JSON/YAML
 - `set_parallelism(level)`: Set parallelism level
-- `validate()`: Validate pipeline structure
+- `build(name="default_pipeline")`: Build pipeline from steps
+- `build_pipeline(pipeline_config, **options)`: Build pipeline from dict
+- `register_step_handler(step_type, handler)`: Register handler
+- `get_step(step_name)`: Get step by name
+- `serialize(format="json")`: Serialize builder state
+- `validate_pipeline()`: Validate pipeline structure
 
 #### ExecutionEngine Methods
 
-- `execute_pipeline(pipeline, data, **options)`: Execute pipeline
-- `execute_pipeline_async(pipeline, data, **options)`: Execute asynchronously
-- `get_status(pipeline_id)`: Get pipeline execution status
+- `execute_pipeline(pipeline, data=None, **options)`: Execute pipeline
+- `get_pipeline_status(pipeline_id)`: Get pipeline execution status
 - `get_progress(pipeline_id)`: Get execution progress
 - `pause_pipeline(pipeline_id)`: Pause pipeline execution
 - `resume_pipeline(pipeline_id)`: Resume pipeline execution
 - `stop_pipeline(pipeline_id)`: Stop pipeline execution
-- `cancel_pipeline(pipeline_id)`: Cancel pipeline execution
 
 #### FailureHandler Methods
 
 - `handle_step_failure(step, error, **options)`: Handle step failure
 - `classify_error(error)`: Classify error severity and type
+- `set_retry_policy(step_type, policy)`: Set retry policy for step type
 - `get_retry_policy(step_type)`: Get retry policy for step type
-- `register_retry_policy(step_type, policy)`: Register custom retry policy
-- `register_fallback(step_type, fallback_handler)`: Register fallback handler
-- `should_retry(error, attempt, policy)`: Determine if should retry
+- `retry_failed_step(step, error, **options)`: Retry failed step
+- `get_error_history(step_name=None)`: Get error history
+- `clear_error_history()`: Clear error history
 
 #### ParallelismManager Methods
 
 - `execute_parallel(tasks, **options)`: Execute tasks in parallel
-- `execute_with_threads(tasks, **options)`: Execute using threads
-- `execute_with_processes(tasks, **options)`: Execute using processes
-- `get_worker_count()`: Get current worker count
-- `set_max_workers(count)`: Set maximum worker count
+- `execute_pipeline_steps_parallel(steps, data, **options)`: Execute pipeline steps in parallel
+- `identify_parallelizable_steps(pipeline)`: Identify parallelizable groups
+- `optimize_parallel_execution(pipeline, available_workers)`: Optimize plan
 
 #### ResourceScheduler Methods
 
-- `register_resource(resource_id, resource_type, capacity)`: Register resource
-- `allocate_resource(resource_id, resource_type, amount, pipeline_id)`: Allocate resource
-- `deallocate_resource(allocation_id)`: Deallocate resource
-- `get_resource_status(resource_id)`: Get resource status
-- `get_pipeline_allocations(pipeline_id)`: Get all allocations for pipeline
-- `get_available_capacity(resource_id)`: Get available capacity
+- `allocate_resources(pipeline, **options)`: Allocate CPU/memory/GPU
+- `allocate_cpu(cores, pipeline_id, step_name=None)`: Allocate CPU cores
+- `allocate_memory(memory_gb, pipeline_id, step_name=None)`: Allocate memory
+- `allocate_gpu(device_id, pipeline_id, step_name=None)`: Allocate GPU device
+- `release_resources(allocations)`: Release allocations
+- `get_resource_usage()`: Current resource usage
+- `optimize_resource_allocation(pipeline, **options)`: Recommendations
 
 #### PipelineValidator Methods
 
-- `validate_pipeline(pipeline, **options)`: Validate entire pipeline
-- `validate_dependencies(pipeline)`: Validate step dependencies
-- `detect_cycles(pipeline)`: Detect circular dependencies
-- `validate_structure(pipeline)`: Validate pipeline structure
-- `estimate_performance(pipeline)`: Estimate execution performance
+- `validate_pipeline(pipeline_or_builder, **options)`: Validate entire pipeline
+- `check_dependencies(pipeline_or_builder)`: Validate dependencies
+- `validate_step(step, **constraints)`: Validate a step
+- `validate_performance(pipeline, **options)`: Estimate performance
 
 #### PipelineTemplateManager Methods
 
@@ -1066,25 +940,9 @@ export PIPELINE_PARALLELISM_LEVEL=2
 ```python
 from semantica.pipeline import ExecutionEngine, FailureHandler, ParallelismManager
 
-# Configure execution engine
-engine = ExecutionEngine(
-    max_workers=4,
-    retry_on_failure=True,
-    default_max_retries=3
-)
-
-# Configure failure handler
-failure_handler = FailureHandler(
-    default_max_retries=3,
-    default_backoff_factor=2.0,
-    default_initial_delay=1.0
-)
-
-# Configure parallelism manager
-parallelism_manager = ParallelismManager(
-    max_workers=4,
-    use_processes=False
-)
+engine = ExecutionEngine(max_workers=4)
+failure_handler = FailureHandler(default_max_retries=3, default_backoff_factor=2.0)
+parallelism_manager = ParallelismManager(max_workers=4, use_processes=False)
 ```
 
 ### Configuration File (YAML)
@@ -1115,28 +973,18 @@ pipeline_templates:
     parallelism: 4
 ```
 
-```python
-from semantica.pipeline.config import PipelineConfig
 
-# Load from config file
-config = PipelineConfig(config_file="config.yaml")
-
-# Access configuration
-max_workers = config.get("max_workers", default=4)
-retry_on_failure = config.get("retry_on_failure", default=True)
-```
 
 ## Advanced Examples
 
 ### Complete Document Processing Pipeline
 
 ```python
-from semantica.pipeline import PipelineBuilder, ExecutionEngine, FailureHandler
+from semantica.pipeline import PipelineBuilder, ExecutionEngine
 
 # Create components
 builder = PipelineBuilder()
 engine = ExecutionEngine(max_workers=4)
-failure_handler = FailureHandler()
 
 # Build complete pipeline
 pipeline = builder.add_step(
@@ -1208,9 +1056,8 @@ retry_policy = RetryPolicy(
     retryable_errors=[ConnectionError, TimeoutError]
 )
 
-# Create failure handler with retry policy
 failure_handler = FailureHandler()
-failure_handler.register_retry_policy("network_step", retry_policy)
+failure_handler.set_retry_policy("network_step", retry_policy)
 
 # Build pipeline
 builder = PipelineBuilder()
@@ -1224,8 +1071,7 @@ pipeline = builder.add_step(
     dependencies=["fetch_data"]
 ).build()
 
-# Execute with error handling
-engine = ExecutionEngine(failure_handler=failure_handler)
+engine = ExecutionEngine()
 result = engine.execute_pipeline(pipeline)
 ```
 
@@ -1253,31 +1099,15 @@ result = engine.execute_pipeline(pipeline)
 ### Resource-Aware Pipeline Execution
 
 ```python
-from semantica.pipeline import (
-    PipelineBuilder,
-    ExecutionEngine,
-    ResourceScheduler,
-    ResourceType
-)
+from semantica.pipeline import PipelineBuilder, ExecutionEngine
 
-# Create resource scheduler
-scheduler = ResourceScheduler()
-
-# Register resources
-scheduler.register_resource("cpu", ResourceType.CPU, capacity=8.0)
-scheduler.register_resource("memory", ResourceType.MEMORY, capacity=16.0)
-
-# Build pipeline
 builder = PipelineBuilder()
-pipeline = builder.add_step("step1", "cpu_intensive", cpu_cores=4) \
-                  .add_step("step2", "memory_intensive", memory_gb=8) \
+pipeline = builder.add_step("step1", "cpu_intensive") \
+                  .add_step("step2", "memory_intensive", dependencies=["step1"]) \
                   .build()
 
-# Execute with resource management
-engine = ExecutionEngine(resource_scheduler=scheduler)
-result = engine.execute_pipeline(pipeline)
-
-# Resources are automatically allocated and deallocated
+engine = ExecutionEngine()
+result = engine.execute_pipeline(pipeline, cpu_cores=4, memory_gb=8)
 ```
 
 ### Template-Based Pipeline Creation
@@ -1316,39 +1146,23 @@ pipeline = builder.add_step("step1", "type1") \
                   .add_step("step3", "type3") \
                   .build()
 
-# Execute with progress monitoring
 engine = ExecutionEngine()
-
-def progress_callback(progress):
-    print(f"Progress: {progress['percentage']:.1f}%")
-    print(f"Completed: {progress['completed_steps']}/{progress['total_steps']}")
-
-result = engine.execute_pipeline(pipeline, progress_callback=progress_callback)
+result = engine.execute_pipeline(pipeline)
+status = engine.get_pipeline_status(pipeline.name)
+progress = engine.get_progress(pipeline.name)
 ```
 
 ### Pipeline Serialization and Persistence
 
 ```python
-from semantica.pipeline import PipelineBuilder
-import json
+from semantica.pipeline import PipelineBuilder, PipelineSerializer
 
-# Build pipeline
 builder = PipelineBuilder()
 pipeline = builder.add_step("step1", "type1").build()
 
-# Serialize pipeline
-serialized = builder.serialize(pipeline, format="json")
-
-# Save to file
-with open("pipeline.json", "w") as f:
-    json.dump(serialized, f, indent=2)
-
-# Load from file
-with open("pipeline.json", "r") as f:
-    serialized = json.load(f)
-
-# Deserialize pipeline
-pipeline = builder.deserialize(serialized, format="json")
+serializer = PipelineSerializer()
+serialized = serializer.serialize_pipeline(pipeline, format="json")
+restored = serializer.deserialize_pipeline(serialized)
 ```
 
 ### Custom Step Handlers

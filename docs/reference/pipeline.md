@@ -77,7 +77,25 @@
 
 ---
 
-## Main Classes
+## API Reference
+
+### Types
+
+- `Pipeline` — Pipeline definition dataclass
+- `PipelineStep` — Pipeline step definition dataclass
+- `StepStatus` — Enum: `pending`, `running`, `completed`, `failed`, `skipped`
+- `ExecutionResult` — Execution result dataclass
+- `PipelineStatus` — Enum: `pending`, `running`, `paused`, `completed`, `failed`, `stopped`
+- `ValidationResult` — Validation result dataclass
+- `RetryPolicy` — Retry policy dataclass
+- `RetryStrategy` — Enum: `linear`, `exponential`, `fixed`
+- `ErrorSeverity` — Enum: `low`, `medium`, `high`, `critical`
+- `FailureRecovery` — Failure recovery dataclass
+- `Task` — Parallel task dataclass
+- `ParallelExecutionResult` — Parallel execution result dataclass
+- `ResourceType` — Enum: `cpu`, `gpu`, `memory`, `disk`, `network`
+- `Resource` — Resource definition dataclass
+- `ResourceAllocation` — Resource allocation record dataclass
 
 ### PipelineBuilder
 
@@ -85,27 +103,57 @@ Fluent interface for constructing pipelines.
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `add_step(name, func)` | Add a processing step |
-| `add_dependency(step, dep)` | Define execution order |
-| `set_error_handler(handler)` | Configure error handling |
-| `build()` | Create immutable Pipeline object |
+- `add_step(step_name, step_type, **config)` — Add a step
+- `connect_steps(from_step, to_step, **options)` — Add dependency
+- `set_parallelism(level)` — Configure parallelism
+- `build(name="default_pipeline")` — Build pipeline
+- `build_pipeline(pipeline_config, **options)` — Build from dict
+- `register_step_handler(step_type, handler)` — Register handler
+- `get_step(step_name)` — Get step by name
+- `serialize(format="json")` — Serialize builder state
+- `validate_pipeline()` — Validate pipeline
 
 **Example:**
 
 ```python
 from semantica.pipeline import PipelineBuilder
 
-pipeline = (
+builder = (
     PipelineBuilder()
-    .add_step("ingest", ingest_func)
-    .add_step("parse", parse_func)
-    .add_step("embed", embed_func)
-    .add_dependency("parse", "ingest")  # parse depends on ingest
-    .add_dependency("embed", "parse")   # embed depends on parse
-    .build()
+    .add_step("ingest", "ingest", handler=ingest_handler)
+    .add_step("parse", "parse", dependencies=["ingest"], handler=parse_handler)
+    .add_step("embed", "embed", dependencies=["parse"], model="text-embedding-3-large")
+    .set_parallelism(2)
 )
+pipeline = builder.build(name="MyPipeline")
+
+step = builder.get_step("parse")
+serialized = builder.serialize(format="json")
+validation = builder.validate_pipeline()
+```
+
+### PipelineSerializer
+
+Serialization utilities for pipelines.
+
+**Methods:**
+
+- `serialize_pipeline(pipeline, format="json")`
+- `deserialize_pipeline(serialized_pipeline, **options)`
+- `version_pipeline(pipeline, version_info)`
+
+**Example:**
+
+```python
+from semantica.pipeline import PipelineBuilder, PipelineSerializer
+
+builder = PipelineBuilder()
+pipeline = builder.add_step("step1", "type1").build()
+
+serializer = PipelineSerializer()
+serialized = serializer.serialize_pipeline(pipeline, format="json")
+restored = serializer.deserialize_pipeline(serialized)
+versioned = serializer.version_pipeline(restored, {"version": "1.1"})
 ```
 
 ### ExecutionEngine
@@ -114,74 +162,158 @@ Executes pipelines and manages lifecycle.
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `execute(pipeline, input)` | Run pipeline synchronously |
-| `execute_async(pipeline)` | Run in background |
-| `resume(execution_id)` | Resume failed execution |
-| `get_status(execution_id)` | Check progress |
+- `execute_pipeline(pipeline, data=None, **options)` — Run pipeline
+- `pause_pipeline(pipeline_id)` — Pause execution
+- `resume_pipeline(pipeline_id)` — Resume execution
+- `stop_pipeline(pipeline_id)` — Stop execution
+- `get_pipeline_status(pipeline_id)` — Get status
+- `get_progress(pipeline_id)` — Get progress
 
 **Example:**
 
 ```python
 from semantica.pipeline import ExecutionEngine
 
-engine = ExecutionEngine()
-result = engine.execute(pipeline, input_data={"files": ["doc.pdf"]})
+engine = ExecutionEngine(max_workers=4)
+result = engine.execute_pipeline(pipeline, data={"path": "document.pdf"})
 
-if result.status == "COMPLETED":
-    print("Success:", result.output)
-else:
-    print("Failed:", result.error)
+status = engine.get_pipeline_status(pipeline.name)
+progress = engine.get_progress(pipeline.name)
+
+engine.pause_pipeline(pipeline.name)
+engine.resume_pipeline(pipeline.name)
+engine.stop_pipeline(pipeline.name)
 ```
 
-### FailureHandler
+### Failure Handling
 
-Manages retries and error recovery.
+**Classes:** `FailureHandler`, `RetryHandler`, `FallbackHandler`, `ErrorRecovery`
+
+**FailureHandler Methods:**
+
+- `handle_step_failure(step, error, **options)`
+- `classify_error(error)`
+- `set_retry_policy(step_type, policy)`
+- `get_retry_policy(step_type)`
+- `retry_failed_step(step, error, **options)`
+- `get_error_history(step_name=None)`
+- `clear_error_history()`
+
+**Example:**
+
+```python
+from semantica.pipeline import FailureHandler, RetryPolicy, RetryStrategy
+
+handler = FailureHandler(default_max_retries=3, default_backoff_factor=2.0)
+policy = RetryPolicy(max_retries=5, strategy=RetryStrategy.EXPONENTIAL, initial_delay=1.0)
+handler.set_retry_policy("network", policy)
+
+classification = handler.classify_error(RuntimeError("timeout"))
+history_before = handler.get_error_history()
+handler.clear_error_history()
+```
+
+### Parallelism
+
+**Classes:** `ParallelismManager`, `ParallelExecutor`
+
+**ParallelismManager Methods:**
+
+- `execute_parallel(tasks, **options)`
+- `execute_pipeline_steps_parallel(steps, data, **options)`
+- `identify_parallelizable_steps(pipeline)`
+- `optimize_parallel_execution(pipeline, available_workers)`
+
+**Example:**
+
+```python
+from semantica.pipeline import ParallelismManager, Task, ParallelExecutor
+
+def work(x):
+    return x * 2
+
+manager = ParallelismManager(max_workers=4)
+tasks = [Task(task_id=f"t{i}", handler=work, args=(i,)) for i in range(4)]
+results = manager.execute_parallel(tasks)
+
+executor = ParallelExecutor(max_workers=2)
+exec_results = executor.execute_parallel(tasks)
+```
+
+### Resources
+
+**Class:** `ResourceScheduler`
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `handle_error(error, context)` | Process error |
-| `should_retry(attempt)` | Check retry policy |
+- `allocate_resources(pipeline, **options)`
+- `allocate_cpu(cores, pipeline_id, step_name=None)`
+- `allocate_memory(memory_gb, pipeline_id, step_name=None)`
+- `allocate_gpu(device_id, pipeline_id, step_name=None)`
+- `release_resources(allocations)`
+- `get_resource_usage()`
+- `optimize_resource_allocation(pipeline, **options)`
 
-**Configuration:**
+**Example:**
 
 ```python
-from semantica.pipeline import RetryPolicy
+from semantica.pipeline import ResourceScheduler, ResourceType
 
-policy = RetryPolicy(
-    max_retries=3,
-    backoff_factor=2.0,
-    exceptions=[NetworkError, TimeoutError]
-)
+scheduler = ResourceScheduler()
+cpu = scheduler.allocate_cpu(cores=2, pipeline_id="p1")
+mem = scheduler.allocate_memory(memory_gb=1.0, pipeline_id="p1")
+usage = scheduler.get_resource_usage()
+scheduler.release_resources({cpu.allocation_id: cpu, mem.allocation_id: mem})
 ```
 
-### ParallelismManager
+### Validation
 
-Manages concurrent execution.
+**Class:** `PipelineValidator`
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `execute_parallel(tasks)` | Run tasks concurrently |
-| `map(func, items)` | Parallel map operation |
+- `validate_pipeline(pipeline_or_builder, **options)`
+- `validate_step(step, **constraints)`
+- `check_dependencies(pipeline_or_builder)`
+- `validate_performance(pipeline, **options)`
 
----
-
-## Convenience Functions
+**Example:**
 
 ```python
-from semantica.pipeline import build_linear_pipeline
+from semantica.pipeline import PipelineValidator, PipelineBuilder
 
-# Quick linear pipeline
-pipeline = build_linear_pipeline([
-    step1_func,
-    step2_func,
-    step3_func
-])
+builder = PipelineBuilder()
+builder.add_step("a", "type")
+builder.add_step("b", "type", dependencies=["a"])
+
+validator = PipelineValidator()
+result = validator.validate_pipeline(builder)
+deps = validator.check_dependencies(builder)
+perf = validator.validate_performance(builder.build())
+```
+
+### Templates
+
+**Classes:** `PipelineTemplateManager`, `PipelineTemplate`
+
+**PipelineTemplateManager Methods:**
+
+- `get_template(template_name)`
+- `create_pipeline_from_template(template_name, **overrides)`
+- `register_template(template)`
+- `list_templates(category=None)`
+- `get_template_info(template_name)`
+
+**Example:**
+
+```python
+from semantica.pipeline import PipelineTemplateManager
+
+tm = PipelineTemplateManager()
+names = tm.list_templates()
+info = tm.get_template_info(names[0])
+builder = tm.create_pipeline_from_template(names[0])
+pipeline = builder.build()
 ```
 
 ---
@@ -198,62 +330,28 @@ export PIPELINE_CHECKPOINT_DIR=./checkpoints
 
 ### YAML Configuration
 
-```yaml
-pipeline:
-  execution:
-    max_workers: 4
-    timeout_seconds: 300
-    
-  retry:
-    default_retries: 3
-    backoff_factor: 1.5
-    
-  resources:
-    max_memory_mb: 4096
-```
+This module does not include built-in YAML loaders. Use your own configuration system to populate arguments for `PipelineBuilder`, `ExecutionEngine`, and related classes.
 
 ---
 
 ## Integration Examples
 
-### Complete RAG Ingestion Pipeline
+### RAG-Style Pipeline
 
 ```python
 from semantica.pipeline import PipelineBuilder, ExecutionEngine
-from semantica.ingest import Ingestor
-from semantica.split import TextSplitter
-from semantica.embeddings import EmbeddingGenerator
-from semantica.vector_store import VectorStore
 
-# 1. Define Steps
-def ingest(data):
-    return Ingestor().ingest(data['path'])
-
-def split(data):
-    return TextSplitter().split(data['text'])
-
-def embed(data):
-    return EmbeddingGenerator().generate(data['chunks'])
-
-def store(data):
-    return VectorStore().store(data['embeddings'])
-
-# 2. Build Pipeline
-pipeline = (
+builder = (
     PipelineBuilder()
-    .add_step("ingest", ingest)
-    .add_step("split", split)
-    .add_step("embed", embed)
-    .add_step("store", store)
-    .add_dependency("split", "ingest")
-    .add_dependency("embed", "split")
-    .add_dependency("store", "embed")
-    .build()
+    .add_step("ingest", "ingest")
+    .add_step("chunk", "chunk", dependencies=["ingest"])
+    .add_step("embed", "embed", dependencies=["chunk"]) 
+    .add_step("store_vectors", "store_vectors", dependencies=["embed"]) 
 )
 
-# 3. Execute
-engine = ExecutionEngine()
-result = engine.execute(pipeline, {"path": "document.pdf"})
+pipeline = builder.build(name="RAGPipeline")
+engine = ExecutionEngine(max_workers=4)
+result = engine.execute_pipeline(pipeline, data={"path": "document.pdf"})
 ```
 
 ---
