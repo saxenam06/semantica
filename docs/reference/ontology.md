@@ -78,6 +78,66 @@
 
 ## Main Classes
 
+### OntologyEngine
+
+Unified orchestration for generation, inference, validation, OWL export, and evaluation.
+
+**Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `from_data(data, **options)` | Generate ontology from structured data |
+| `from_text(text, provider=None, model=None, **options)` | LLM-based generation from text |
+| `infer_classes(entities, **options)` | Infer classes from entities |
+| `infer_properties(entities, relationships, classes, **options)` | Infer properties |
+| `validate(ontology, **options)` | Validate ontology (returns `ValidationResult`) |
+| `evaluate(ontology, **options)` | Evaluate ontology quality |
+| `to_owl(ontology, format="turtle")` | Export OWL/RDF serialization |
+| `export_owl(ontology, path, format="turtle")` | Save OWL to file |
+
+**Quick Start:**
+
+```python
+from semantica.ontology import OntologyEngine
+
+engine = OntologyEngine(base_uri="https://example.org/ontology/")
+
+data = {"entities": entities, "relationships": relationships}
+ontology = engine.from_data(data, name="MyOntology")
+
+result = engine.validate(ontology, reasoner="auto")
+turtle = engine.to_owl(ontology, format="turtle")
+```
+
+### LLMOntologyGenerator
+
+LLM-based ontology generation with multi-provider support (`openai`, `groq`, `deepseek`, `huggingface_llm`).
+
+**Example:**
+
+```python
+from semantica.ontology import OntologyEngine
+
+text = "Acme Corp. hired Alice in 2024. Alice works for Acme."
+engine = OntologyEngine()
+
+ontology = engine.from_text(
+    text,
+    provider="deepseek",
+    model="deepseek-chat",
+    name="EmploymentOntology",
+    base_uri="https://example.org/employment/",
+)
+```
+
+Environment variables:
+
+```bash
+export OPENAI_API_KEY=...
+export GROQ_API_KEY=...
+export DEEPSEEK_API_KEY=...
+```
+
 ### OntologyGenerator
 
 Main entry point for the generation pipeline.
@@ -110,8 +170,7 @@ Validates ontology consistency.
 
 | Method | Description |
 |--------|-------------|
-| `validate(ontology)` | Run symbolic reasoner |
-| `check_constraints(ontology)` | Check structural rules |
+| `validate_ontology(ontology)` | Run symbolic reasoner and structure checks |
 
 ### OntologyEvaluator
 
@@ -121,8 +180,8 @@ Scores ontology quality.
 
 | Method | Description |
 |--------|-------------|
-| `evaluate(ontology)` | Calculate all metrics |
-| `check_competency(questions)` | Verify coverage |
+| `evaluate_ontology(ontology)` | Calculate evaluation metrics |
+| `calculate_coverage(ontology, questions)` | Verify coverage |
 
 ### ReuseManager
 
@@ -132,21 +191,30 @@ Manages external dependencies.
 
 | Method | Description |
 |--------|-------------|
-| `import_ontology(uri)` | Load external ontology |
-| `align_concepts(source, target)` | Map equivalent classes |
+| `import_external_ontology(uri, ontology)` | Load and merge external ontology |
+| `evaluate_alignment(uri, ontology)` | Assess alignment and compatibility |
 
 ---
 
-## Convenience Functions
+## Unified Engine Examples
 
 ```python
-from semantica.ontology import generate_ontology, validate_ontology
+from semantica.ontology import OntologyEngine
 
-# Quick generation
-onto = generate_ontology(data, method="default")
+engine = OntologyEngine(base_uri="https://example.org/ontology/")
 
-# Quick validation
-is_valid, report = validate_ontology(onto)
+# Generate
+ontology = engine.from_data({
+    "entities": entities,
+    "relationships": relationships,
+})
+
+# Validate
+result = engine.validate(ontology, reasoner="hermit")
+print("valid=", result.valid, "consistent=", result.consistent)
+
+# Export
+turtle = engine.to_owl(ontology, format="turtle")
 ```
 
 ---
@@ -182,12 +250,12 @@ ontology:
 ### Schema-First Knowledge Graph
 
 ```python
-from semantica.ontology import OntologyGenerator
+from semantica.ontology import OntologyEngine
 from semantica.kg import KnowledgeGraph
 
 # 1. Generate Ontology from Sample Data
-generator = OntologyGenerator()
-ontology = generator.generate_ontology(sample_data)
+engine = OntologyEngine()
+ontology = engine.from_data(sample_data)
 
 # 2. Initialize KG with Ontology
 kg = KnowledgeGraph(schema=ontology)

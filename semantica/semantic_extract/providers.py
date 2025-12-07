@@ -431,6 +431,57 @@ class OllamaProvider(BaseProvider):
             raise ProcessingError("Failed to parse JSON from Ollama response")
 
 
+class DeepSeekProvider(BaseProvider):
+    def __init__(self, api_key: Optional[str] = None, model: str = "deepseek-chat", **kwargs):
+        super().__init__(**kwargs)
+        self.api_key = api_key or config.get_api_key("deepseek")
+        self.model = model
+        self.client = None
+        self._init_client()
+
+    def _init_client(self):
+        try:
+            import deepseek
+
+            if self.api_key:
+                self.client = deepseek.Client(api_key=self.api_key)
+        except ImportError:
+            self.client = None
+            self.logger.warning(
+                "deepseek library not installed. Install with: pip install semantica[llm-deepseek]"
+            )
+
+    def is_available(self) -> bool:
+        return self.client is not None
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        if not self.client:
+            raise ProcessingError("DeepSeek client not initialized. Set DEEPSEEK_API_KEY or pass api_key.")
+        response = self.client.chat.completions.create(
+            model=kwargs.get("model", self.model),
+            messages=[{"role": "user", "content": prompt}],
+            temperature=kwargs.get("temperature", 0.3),
+        )
+        return response.choices[0].message.content
+
+    def generate_structured(self, prompt: str, **kwargs) -> dict:
+        if not self.client:
+            raise ProcessingError("DeepSeek client not initialized.")
+        response = self.client.chat.completions.create(
+            model=kwargs.get("model", self.model),
+            messages=[{"role": "user", "content": prompt}],
+            temperature=kwargs.get("temperature", 0.3),
+        )
+        text = response.choices[0].message.content
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start >= 0 and end > start:
+                return json.loads(text[start:end])
+            raise ProcessingError("Failed to parse JSON from DeepSeek response")
+
 class HuggingFaceLLMProvider(BaseProvider):
     """HuggingFace transformers for LLM tasks."""
 
@@ -620,6 +671,7 @@ def create_provider(name: str, **kwargs) -> BaseProvider:
         "anthropic": AnthropicProvider,
         "ollama": OllamaProvider,
         "huggingface_llm": HuggingFaceLLMProvider,
+        "deepseek": DeepSeekProvider,
     }
 
     provider_class = builtin.get(name.lower())

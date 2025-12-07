@@ -23,36 +23,6 @@ This comprehensive guide demonstrates how to use the ontology management module 
 
 ## Basic Usage
 
-### Using the Convenience Functions
-
-```python
-from semantica.ontology import generate_ontology, infer_classes, validate_ontology
-
-# Generate ontology
-data = {
-    "entities": [
-        {"type": "Person", "name": "John"},
-        {"type": "Organization", "name": "Acme Corp"}
-    ],
-    "relationships": [
-        {"type": "worksFor", "source": "John", "target": "Acme Corp"}
-    ]
-}
-
-ontology = generate_ontology(data, method="default")
-print(f"Generated ontology: {ontology['name']}")
-
-# Infer classes
-entities = [{"type": "Person", "name": "John"}]
-classes = infer_classes(entities, method="default")
-print(f"Inferred {len(classes)} classes")
-
-# Validate ontology
-result = validate_ontology(ontology, method="default")
-if result.valid:
-    print("Ontology is valid")
-```
-
 ### Using Main Classes
 
 ```python
@@ -78,9 +48,9 @@ properties = prop_gen.infer_properties(entities, relationships, classes)
 ### Basic Ontology Generation
 
 ```python
-from semantica.ontology import generate_ontology, OntologyGenerator
+from semantica.ontology import OntologyEngine, OntologyGenerator
 
-# Using convenience function
+# Using OntologyEngine
 data = {
     "entities": [
         {"type": "Person", "name": "John", "age": 30},
@@ -92,8 +62,8 @@ data = {
         {"type": "worksFor", "source": "Jane", "target": "Acme Corp"}
     ]
 }
-
-ontology = generate_ontology(data, method="default", name="PersonOrgOntology")
+engine = OntologyEngine(base_uri="https://example.org/ontology/")
+ontology = engine.from_data(data, name="PersonOrgOntology")
 print(f"URI: {ontology['uri']}")
 print(f"Classes: {len(ontology['classes'])}")
 print(f"Properties: {len(ontology['properties'])}")
@@ -135,16 +105,14 @@ print(f"Stage 4: Built hierarchy with {len([c for c in ontology['classes'] if 'p
 ### Generation Options
 
 ```python
-from semantica.ontology import generate_ontology
+from semantica.ontology import OntologyEngine
 
 # Generate with custom options
-ontology = generate_ontology(
+engine = OntologyEngine(base_uri="https://example.org/ontology/", min_occurrences=3)
+ontology = engine.from_data(
     data,
-    method="default",
     name="CustomOntology",
-    base_uri="https://example.org/ontology/",
     build_hierarchy=True,
-    min_occurrences=3
 )
 ```
 
@@ -153,7 +121,7 @@ ontology = generate_ontology(
 ### Basic Class Inference
 
 ```python
-from semantica.ontology import infer_classes, ClassInferrer
+from semantica.ontology import OntologyEngine, ClassInferrer
 
 entities = [
     {"type": "Person", "name": "John", "age": 30},
@@ -162,8 +130,8 @@ entities = [
     {"type": "Organization", "name": "Tech Inc"}
 ]
 
-# Using convenience function
-classes = infer_classes(entities, method="default", build_hierarchy=True)
+engine = OntologyEngine()
+classes = engine.infer_classes(entities, build_hierarchy=True)
 
 for cls in classes:
     print(f"Class: {cls['name']}, Instances: {cls.get('entity_count', 0)}")
@@ -195,15 +163,13 @@ if validation.get("valid"):
 ### Class Inference Options
 
 ```python
-from semantica.ontology import infer_classes
+from semantica.ontology import OntologyEngine
 
 # Custom inference options
-classes = infer_classes(
+engine = OntologyEngine()
+classes = engine.infer_classes(
     entities,
-    method="default",
     build_hierarchy=True,
-    min_occurrences=3,
-    similarity_threshold=0.85
 )
 ```
 
@@ -212,7 +178,7 @@ classes = infer_classes(
 ### Basic Property Inference
 
 ```python
-from semantica.ontology import infer_properties, PropertyGenerator
+from semantica.ontology import OntologyEngine, PropertyGenerator
 
 entities = [
     {"type": "Person", "name": "John", "age": 30, "email": "john@example.com"},
@@ -229,8 +195,8 @@ classes = [
     {"name": "Organization", "uri": "https://example.org/ontology/Organization"}
 ]
 
-# Using convenience function
-properties = infer_properties(entities, relationships, classes, method="default")
+engine = OntologyEngine()
+properties = engine.infer_properties(entities, relationships, classes)
 
 for prop in properties:
     print(f"Property: {prop['name']}, Type: {prop['type']}")
@@ -266,10 +232,11 @@ validation = prop_gen.validate_properties(properties)
 ### Basic Validation
 
 ```python
-from semantica.ontology import validate_ontology, OntologyValidator
+from semantica.ontology import OntologyEngine, OntologyValidator
 
-# Using convenience function
-result = validate_ontology(ontology, method="default")
+# Using OntologyEngine
+engine = OntologyEngine()
+result = engine.validate(ontology)
 
 if result.valid:
     print("Ontology is valid")
@@ -288,29 +255,31 @@ result = validator.validate_ontology(ontology)
 ### Validation with Reasoners
 
 ```python
-from semantica.ontology import validate_ontology
+from semantica.ontology import OntologyEngine
+
+engine = OntologyEngine()
 
 # HermiT reasoner
-result = validate_ontology(ontology, method="hermit", reasoner="hermit")
+result = engine.validate(ontology, reasoner="hermit")
 
 # Pellet reasoner
-result = validate_ontology(ontology, method="pellet", reasoner="pellet")
+result = engine.validate(ontology, reasoner="pellet")
 
 # Auto-select reasoner
-result = validate_ontology(ontology, method="default", reasoner="auto")
+result = engine.validate(ontology, reasoner="auto")
 ```
 
 ### Validation Options
 
 ```python
-from semantica.ontology import validate_ontology
+from semantica.ontology import OntologyEngine
 
 # Custom validation options
-result = validate_ontology(
+engine = OntologyEngine()
+result = engine.validate(
     ontology,
-    method="default",
     check_consistency=True,
-    check_satisfiability=True
+    check_satisfiability=True,
 )
 ```
 
@@ -319,10 +288,11 @@ result = validate_ontology(
 ### Basic OWL Generation
 
 ```python
-from semantica.ontology import generate_owl, OWLGenerator
+from semantica.ontology import OntologyEngine, OWLGenerator
 
-# Using convenience function
-turtle = generate_owl(ontology, format="turtle", method="default")
+# Using OntologyEngine
+engine = OntologyEngine()
+turtle = engine.to_owl(ontology, format="turtle")
 print(turtle)
 
 # Using class directly
@@ -333,19 +303,21 @@ turtle = generator.generate_owl(ontology, format="turtle")
 ### Different Formats
 
 ```python
-from semantica.ontology import generate_owl
+from semantica.ontology import OntologyEngine
+
+engine = OntologyEngine()
 
 # Turtle format
-turtle = generate_owl(ontology, format="turtle", method="default")
+turtle = engine.to_owl(ontology, format="turtle")
 
 # RDF/XML format
-rdfxml = generate_owl(ontology, format="rdfxml", method="default")
+rdfxml = engine.to_owl(ontology, format="rdfxml")
 
 # JSON-LD format
-jsonld = generate_owl(ontology, format="json-ld", method="default")
+jsonld = engine.to_owl(ontology, format="json-ld")
 
 # N3 format
-n3 = generate_owl(ontology, format="n3", method="default")
+n3 = engine.to_owl(ontology, format="n3")
 ```
 
 ### Export to File
@@ -366,7 +338,7 @@ generator.export_owl(ontology, "ontology.jsonld", format="json-ld")
 ### Basic Evaluation
 
 ```python
-from semantica.ontology import evaluate_ontology, OntologyEvaluator
+from semantica.ontology import OntologyEngine, OntologyEvaluator
 
 competency_questions = [
     "Who are the employees of an organization?",
@@ -374,11 +346,10 @@ competency_questions = [
     "What is the age of a person?"
 ]
 
-# Using convenience function
-result = evaluate_ontology(
+engine = OntologyEngine()
+result = engine.evaluate(
     ontology,
     competency_questions=competency_questions,
-    method="default"
 )
 
 print(f"Coverage score: {result.coverage_score:.2f}")
@@ -416,18 +387,7 @@ report = evaluator.generate_report(ontology)
 ### Creating Requirements Spec
 
 ```python
-from semantica.ontology import create_requirements_spec, RequirementsSpecManager
-
-# Using convenience function
-spec = create_requirements_spec(
-    "PersonOntology",
-    "Model person-related concepts and relationships",
-    "Person, Organization, Role entities and their relationships",
-    method="default",
-    domain="human resources",
-    stakeholders=["domain experts", "developers"],
-    use_cases=["employee management", "organizational structure"]
-)
+from semantica.ontology import RequirementsSpecManager
 
 # Using class directly
 manager = RequirementsSpecManager()
@@ -441,16 +401,7 @@ spec = manager.create_spec(
 ### Adding Competency Questions
 
 ```python
-from semantica.ontology import add_competency_question, CompetencyQuestionsManager
-
-# Using convenience function
-cq = add_competency_question(
-    "PersonOntology",
-    "Who are the employees of a given organization?",
-    category="organizational",
-    method="default",
-    priority=1
-)
+from semantica.ontology import CompetencyQuestionsManager
 
 # Using class directly
 manager = CompetencyQuestionsManager()
@@ -480,14 +431,7 @@ validation = manager.validate_against_spec("PersonOntology", ontology)
 ### Researching Ontologies
 
 ```python
-from semantica.ontology import research_ontology, ReuseManager
-
-# Using convenience function
-info = research_ontology("http://xmlns.com/foaf/0.1/", method="default")
-
-if info:
-    print(f"Name: {info.get('name')}")
-    print(f"Description: {info.get('description')}")
+from semantica.ontology import ReuseManager
 
 # Using class directly
 manager = ReuseManager()
@@ -497,14 +441,7 @@ info = manager.research_ontology("http://xmlns.com/foaf/0.1/")
 ### Importing External Ontologies
 
 ```python
-from semantica.ontology import import_external_ontology, ReuseManager
-
-# Using convenience function
-updated = import_external_ontology(
-    "http://xmlns.com/foaf/0.1/",
-    ontology,
-    method="default"
-)
+from semantica.ontology import ReuseManager
 
 # Using class directly
 manager = ReuseManager()
@@ -533,15 +470,7 @@ print(f"Decision: {alignment.get('decision')}")
 ### Creating Versions
 
 ```python
-from semantica.ontology import create_version, VersionManager
-
-# Using convenience function
-version = create_version(
-    "1.0",
-    ontology,
-    method="default",
-    changes=["Added Person class", "Added worksFor property"]
-)
+from semantica.ontology import VersionManager
 
 print(f"Version: {version.version}")
 print(f"IRI: {version.ontology_iri}")
@@ -573,22 +502,7 @@ migrated = manager.migrate_ontology("1.0", "2.0", ontology)
 ### Managing Namespaces
 
 ```python
-from semantica.ontology import manage_namespace, NamespaceManager
-
-# Using convenience function
-class_iri = manage_namespace(
-    "generate_class_iri",
-    class_name="Person",
-    base_uri="https://example.org/ontology/"
-)
-print(f"Class IRI: {class_iri}")
-
-property_iri = manage_namespace(
-    "generate_property_iri",
-    property_name="hasName",
-    base_uri="https://example.org/ontology/"
-)
-print(f"Property IRI: {property_iri}")
+from semantica.ontology import NamespaceManager
 
 # Using class directly
 manager = NamespaceManager(base_uri="https://example.org/ontology/")
@@ -618,19 +532,7 @@ namespaces = manager.get_all_namespaces()
 ### Creating Associative Classes
 
 ```python
-from semantica.ontology import create_associative_class, AssociativeClassBuilder
-
-# Using convenience function
-position = create_associative_class(
-    "Position",
-    ["Person", "Organization", "Role"],
-    method="default",
-    properties={"startDate": "xsd:date", "endDate": "xsd:date"},
-    temporal=True
-)
-
-print(f"Associative class: {position.name}")
-print(f"Connects: {position.connects}")
+from semantica.ontology import AssociativeClassBuilder
 
 # Using class directly
 builder = AssociativeClassBuilder()
@@ -683,61 +585,6 @@ if generate_method:
 
 ### Method Examples
 
-```python
-from semantica.ontology.methods import (
-    generate_ontology,
-    infer_classes,
-    infer_properties,
-    validate_ontology,
-    generate_owl,
-    evaluate_ontology,
-    create_requirements_spec,
-    add_competency_question,
-    research_ontology,
-    import_external_ontology,
-    create_version,
-    manage_namespace,
-    create_associative_class
-)
-
-# Generate ontology
-ontology = generate_ontology(data, method="default")
-
-# Infer classes
-classes = infer_classes(entities, method="default")
-
-# Infer properties
-properties = infer_properties(entities, relationships, classes, method="default")
-
-# Validate ontology
-result = validate_ontology(ontology, method="default")
-
-# Generate OWL
-turtle = generate_owl(ontology, format="turtle", method="default")
-
-# Evaluate ontology
-evaluation = evaluate_ontology(ontology, competency_questions=["Who are the employees?"], method="default")
-
-# Create requirements spec
-spec = create_requirements_spec("PersonOntology", "Purpose", "Scope", method="default")
-
-# Add competency question
-cq = add_competency_question("PersonOntology", "Who are the employees?", method="default")
-
-# Research ontology
-info = research_ontology("http://xmlns.com/foaf/0.1/", method="default")
-
-# Import external ontology
-updated = import_external_ontology("http://xmlns.com/foaf/0.1/", ontology, method="default")
-
-# Create version
-version = create_version("1.0", ontology, method="default")
-
-# Manage namespace
-class_iri = manage_namespace("generate_class_iri", class_name="Person", method="default")
-
-# Create associative class
-position = create_associative_class("Position", ["Person", "Organization"], method="default")
 ```
 
 ## Using Registry
@@ -870,14 +717,9 @@ base_uri = config.get("base_uri")
 ### Complete Ontology Generation Pipeline
 
 ```python
-from semantica.ontology import (
-    generate_ontology,
-    infer_classes,
-    infer_properties,
-    validate_ontology,
-    generate_owl,
-    evaluate_ontology
-)
+from semantica.ontology import OntologyEngine
+
+engine = OntologyEngine(base_uri="https://example.org/ontology/")
 
 # Step 1: Generate ontology
 data = {
@@ -891,19 +733,19 @@ data = {
     ]
 }
 
-ontology = generate_ontology(data, method="default", name="PersonOrgOntology")
+ontology = engine.from_data(data, name="PersonOrgOntology")
 
 # Step 2: Validate ontology
-result = validate_ontology(ontology, method="default")
+result = engine.validate(ontology)
 if not result.valid:
     print(f"Validation errors: {result.errors}")
 
 # Step 3: Generate OWL
-turtle = generate_owl(ontology, format="turtle", method="default")
+turtle = engine.to_owl(ontology, format="turtle")
 
 # Step 4: Evaluate ontology
 competency_questions = ["Who are the employees of an organization?"]
-evaluation = evaluate_ontology(ontology, competency_questions=competency_questions, method="default")
+evaluation = engine.evaluate(ontology, competency_questions=competency_questions)
 
 print(f"Coverage: {evaluation.coverage_score:.2f}")
 print(f"Completeness: {evaluation.completeness_score:.2f}")
@@ -950,31 +792,28 @@ turtle = owl_gen.generate_owl(ontology, format="turtle")
 ### Requirements-Driven Development
 
 ```python
-from semantica.ontology import (
-    create_requirements_spec,
-    add_competency_question,
-    generate_ontology,
-    evaluate_ontology
-)
+from semantica.ontology import OntologyEngine, RequirementsSpecManager, CompetencyQuestionsManager
 
 # Step 1: Create requirements specification
-spec = create_requirements_spec(
+manager = RequirementsSpecManager()
+spec = manager.create_spec(
     "PersonOntology",
     "Model person-related concepts",
     "Person, Organization, Role entities",
-    method="default"
 )
 
 # Step 2: Add competency questions
-add_competency_question("PersonOntology", "Who are the employees?", category="organizational", method="default")
-add_competency_question("PersonOntology", "What organizations does a person work for?", category="organizational", method="default")
+cq_manager = CompetencyQuestionsManager()
+cq_manager.add_question("Who are the employees?", category="organizational")
+cq_manager.add_question("What organizations does a person work for?", category="organizational")
 
 # Step 3: Generate ontology
-ontology = generate_ontology(data, method="default")
+engine = OntologyEngine()
+ontology = engine.from_data(data)
 
 # Step 4: Evaluate against requirements
 competency_questions = ["Who are the employees?", "What organizations does a person work for?"]
-evaluation = evaluate_ontology(ontology, competency_questions=competency_questions, method="default")
+evaluation = engine.evaluate(ontology, competency_questions=competency_questions)
 
 # Step 5: Refine based on gaps
 if evaluation.gaps:
@@ -985,24 +824,22 @@ if evaluation.gaps:
 ### Version Management Workflow
 
 ```python
-from semantica.ontology import (
-    generate_ontology,
-    create_version,
-    VersionManager
-)
+from semantica.ontology import OntologyEngine, VersionManager
 
 # Generate initial ontology
-ontology_v1 = generate_ontology(data, method="default", name="PersonOntology")
+engine = OntologyEngine()
+ontology_v1 = engine.from_data(data, name="PersonOntology")
 
 # Create version 1.0
-version1 = create_version("1.0", ontology_v1, changes=["Initial version"], method="default")
+manager = VersionManager()
+version1 = manager.create_version("1.0", ontology_v1, changes=["Initial version"])
 
 # Modify ontology (add new class)
 ontology_v2 = ontology_v1.copy()
 ontology_v2["classes"].append({"name": "Role", "uri": "https://example.org/ontology/Role"})
 
 # Create version 2.0
-version2 = create_version("2.0", ontology_v2, changes=["Added Role class"], method="default")
+version2 = manager.create_version("2.0", ontology_v2, changes=["Added Role class"])
 
 # Compare versions
 manager = VersionManager()
@@ -1013,20 +850,21 @@ print(f"Changes: {comparison.get('changes', [])}")
 ### Integration with Knowledge Graph
 
 ```python
-from semantica.ontology import generate_ontology, generate_owl
+from semantica.ontology import OntologyEngine
 from semantica.kg import build
 
 # Build knowledge graph
 kg = build(sources=[{"entities": entities, "relationships": relationships}])
 
 # Generate ontology from KG
-ontology = generate_ontology({
+engine = OntologyEngine()
+ontology = engine.from_data({
     "entities": kg.get("entities", []),
     "relationships": kg.get("relationships", [])
-}, method="default")
+})
 
 # Generate OWL
-turtle = generate_owl(ontology, format="turtle", method="default")
+turtle = engine.to_owl(ontology, format="turtle")
 
 # Export for use in KG
 with open("ontology.ttl", "w") as f:
@@ -1050,3 +888,181 @@ with open("ontology.ttl", "w") as f:
 13. **Error Handling**: Always handle ValidationError and ProcessingError exceptions
 14. **Method Registry**: Register custom methods for domain-specific ontology needs
 
+# Ontology Module Usage
+
+This guide shows the streamlined API for ontology generation, validation, evaluation, and OWL export. It reflects the refactor that removes global convenience wrappers and introduces a single `OntologyEngine` plus an LLM-driven generator.
+
+## Quick Start
+
+```python
+from semantica.ontology import OntologyEngine
+
+engine = OntologyEngine(base_uri="https://example.org/ontology/")
+
+# From structured data
+data = {"entities": entities, "relationships": relationships}
+ontology = engine.from_data(data)
+
+# Validate
+result = engine.validate(ontology)
+print(result.valid, result.consistent)
+
+# Export OWL
+turtle = engine.to_owl(ontology, format="turtle")
+with open("ontology.ttl", "w") as f:
+    f.write(turtle)
+```
+
+## API Overview
+
+- `OntologyEngine` (unified orchestration)
+  - `from_data(data, **options)` → ontology dict
+  - `from_text(text, provider=None, model=None, **options)` → ontology dict
+  - `infer_classes(entities, **options)` → classes list
+  - `infer_properties(entities, relationships, classes, **options)` → properties list
+  - `validate(ontology, **options)` → `ValidationResult`
+  - `evaluate(ontology, **options)` → evaluation dict
+  - `to_owl(ontology, format="turtle", **options)` → serialization
+  - `export_owl(ontology, path, format="turtle")` → file output
+
+- `LLMOntologyGenerator` (LLM-based generation)
+  - `set_provider(provider, model=None, **kwargs)`
+  - `generate_ontology_from_text(text, **options)`
+
+## LLM-Based Generation
+
+```python
+from semantica.ontology import OntologyEngine
+
+engine = OntologyEngine()
+
+# Choose provider: "openai", "groq", "deepseek", "huggingface_llm"
+ontology = engine.from_text(
+    text,
+    provider="openai",
+    model="gpt-4o",
+    name="CompanyOntology",
+    base_uri="https://example.org/company/",
+)
+
+print(len(ontology.get("classes", [])), len(ontology.get("properties", [])))
+```
+
+Environment variables used by providers:
+
+```bash
+export OPENAI_API_KEY=...
+export GROQ_API_KEY=...
+export DEEPSEEK_API_KEY=...
+```
+
+HuggingFace local models do not require API keys but require `transformers` installed.
+
+## Data-Based Generation
+
+```python
+from semantica.ontology import OntologyEngine
+
+engine = OntologyEngine(base_uri="https://example.org/ontology/")
+
+sources = {
+    "entities": [
+        {"type": "Person", "name": "Alice"},
+        {"type": "Organization", "name": "Acme"}
+    ],
+    "relationships": [
+        {"type": "worksFor", "source": "Alice", "target": "Acme"}
+    ]
+}
+
+ontology = engine.from_data(sources)
+```
+
+## Class and Property Inference
+
+```python
+classes = engine.infer_classes(entities, build_hierarchy=True)
+properties = engine.infer_properties(entities, relationships, classes)
+```
+
+## Validation
+
+```python
+result = engine.validate(
+    ontology,
+    reasoner="hermit",          # "hermit" | "pellet" | "auto"
+    check_consistency=True,
+    check_satisfiability=True,
+)
+
+if result.errors:
+    for e in result.errors:
+        print(e)
+```
+
+Reference: `OntologyValidator` implementation at `semantica/ontology/ontology_validator.py:59`.
+
+## OWL Export
+
+```python
+turtle = engine.to_owl(ontology, format="turtle")
+engine.export_owl(ontology, "ontology.ttl", format="turtle")
+
+rdfxml = engine.to_owl(ontology, format="rdfxml")
+jsonld  = engine.to_owl(ontology, format="json-ld")
+```
+
+OWL generation uses `OWLGenerator` at `semantica/ontology/owl_generator.py:277` for fallback formatting and rdflib-based generation at `semantica/ontology/owl_generator.py:156`.
+
+## Evaluation
+
+```python
+report = engine.evaluate(ontology)
+print(report.get("evaluation", {}))
+```
+
+Evaluation includes gap analysis and completeness; see `semantica/ontology/ontology_evaluator.py:203`.
+
+## Migration Notes
+
+- Removed global convenience wrappers (e.g., `generate_ontology`, `validate_ontology`).
+- Use `OntologyEngine` or direct classes:
+  - Generation: `OntologyGenerator().generate_ontology(...)` at `semantica/ontology/ontology_generator.py:231`
+  - Classes: `ClassInferrer().infer_classes(...)` at `semantica/ontology/class_inferrer.py:1`
+  - Properties: `PropertyGenerator().infer_properties(...)` at `semantica/ontology/property_generator.py:1`
+  - Validation: `OntologyValidator().validate_ontology(...)` at `semantica/ontology/ontology_validator.py:59`
+  - OWL: `OWLGenerator().generate_owl(...)` at `semantica/ontology/owl_generator.py:277`
+
+## End-to-End Example
+
+```python
+from semantica.ontology import OntologyEngine
+
+text = """
+Acme Corp. hired Alice as a Software Engineer in 2024. Alice works for Acme.
+"""
+
+engine = OntologyEngine()
+
+ontology = engine.from_text(
+    text,
+    provider="deepseek",
+    model="deepseek-chat",
+    name="EmploymentOntology",
+    base_uri="https://example.org/employment/",
+)
+
+result = engine.validate(ontology, reasoner="auto")
+print("valid=", result.valid, "consistent=", result.consistent)
+
+ttl = engine.to_owl(ontology, format="turtle")
+with open("employment.ttl", "w") as f:
+    f.write(ttl)
+```
+
+## Best Practices
+
+- Always validate LLM-generated ontologies using a reasoner.
+- Prefer domain prompts and few-shot examples for LLM generation.
+- Keep class names PascalCase and properties camelCase; use stable base URIs.
+- Export and version your ontology as part of CI.

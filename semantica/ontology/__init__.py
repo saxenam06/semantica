@@ -144,23 +144,8 @@ from .class_inferrer import ClassInferrer
 from .competency_questions import CompetencyQuestion, CompetencyQuestionsManager
 from .config import OntologyConfig, ontology_config
 from .domain_ontologies import DomainOntologies
-from .methods import (
-    add_competency_question,
-    create_associative_class,
-    create_requirements_spec,
-    create_version,
-    evaluate_ontology,
-    generate_ontology,
-    generate_owl,
-    get_ontology_method,
-    import_external_ontology,
-    infer_classes,
-    infer_properties,
-    list_available_methods,
-    manage_namespace,
-    research_ontology,
-    validate_ontology,
-)
+from .llm_generator import LLMOntologyGenerator
+from .engine import OntologyEngine
 from .module_manager import ModuleManager, OntologyModule
 from .namespace_manager import NamespaceManager
 from .naming_conventions import NamingConventions
@@ -218,21 +203,8 @@ __all__ = [
     # Registry and Methods
     "MethodRegistry",
     "method_registry",
-    "generate_ontology",
-    "infer_classes",
-    "infer_properties",
-    "validate_ontology",
-    "generate_owl",
-    "evaluate_ontology",
-    "create_requirements_spec",
-    "add_competency_question",
-    "research_ontology",
-    "import_external_ontology",
-    "create_version",
-    "manage_namespace",
-    "create_associative_class",
-    "get_ontology_method",
-    "list_available_methods",
+    "LLMOntologyGenerator",
+    "OntologyEngine",
     # Configuration
     "OntologyConfig",
     "ontology_config",
