@@ -285,7 +285,12 @@ from semantica.split import (
     SemanticChunker,
     StructuralChunker,
     SlidingWindowChunker,
-    EntityAwareChunker
+    TableChunker,
+    EntityAwareChunker,
+    RelationAwareChunker,
+    GraphBasedChunker,
+    OntologyAwareChunker,
+    HierarchicalChunker
 )
 
 # Semantic chunking
@@ -301,17 +306,60 @@ chunks = structural_chunker.chunk(text)
 
 # Sliding window chunking
 sliding_chunker = SlidingWindowChunker(
-    chunk_size=1000,
-    chunk_overlap=200
+    window_size=1000,
+    step_size=800,  # 200 overlap
+    min_chunk_size=100
 )
 chunks = sliding_chunker.chunk(text)
+
+# Table-specific chunking
+table_chunker = TableChunker(
+    preserve_headers=True,
+    max_rows_per_chunk=50,
+    include_context=True
+)
+chunks = table_chunker.chunk(text_with_tables)
 
 # Entity-aware chunking
 entity_chunker = EntityAwareChunker(
     chunk_size=1000,
-    ner_method="llm"
+    chunk_overlap=200,
+    ner_method="llm",
+    preserve_entities=True
 )
 chunks = entity_chunker.chunk(text)
+
+# Relation-aware chunking
+relation_chunker = RelationAwareChunker(
+    chunk_size=1000,
+    preserve_triples=True
+)
+chunks = relation_chunker.chunk(text)
+
+# Graph-based chunking
+graph_chunker = GraphBasedChunker(
+    chunk_size=1000,
+    centrality_method="betweenness",
+    community_algorithm="louvain"
+)
+chunks = graph_chunker.chunk(text, graph=knowledge_graph)
+
+# Ontology-aware chunking
+ontology_chunker = OntologyAwareChunker(
+    chunk_size=1000,
+    chunk_overlap=200,
+    ontology_path="domain_ontology.owl",
+    preserve_concepts=True
+)
+chunks = ontology_chunker.chunk(text)
+
+# Hierarchical chunking
+hierarchical_chunker = HierarchicalChunker(
+    chunk_sizes=[2000, 1000, 500],
+    chunk_overlaps=[400, 200, 100],
+    create_parent_chunks=True
+)
+chunks = hierarchical_chunker.chunk(text)
 ```
 
 ## Using Methods

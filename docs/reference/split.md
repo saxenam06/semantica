@@ -416,6 +416,157 @@ for chunk in chunks:
 
 ---
 
+### OntologyAwareChunker
+
+Chunk based on ontology concepts and relationships.
+
+**Methods:**
+
+| Method | Description | Algorithm |
+|--------|-------------|-----------|
+| `chunk(text, ontology)` | Chunk by ontology concepts | Concept boundary detection |
+| `extract_concepts(text)` | Extract ontology concepts | Concept extraction |
+| `find_concept_boundaries(text, concepts)` | Find concept boundaries | Concept span checking |
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `chunk_size` | int | 1000 | Target chunk size |
+| `chunk_overlap` | int | 200 | Overlap between chunks |
+| `ontology_path` | str | None | Path to ontology file (.owl, .rdf) |
+| `preserve_concepts` | bool | True | Don't split ontology concepts |
+| `concept_extraction_method` | str | "llm" | Method for concept extraction |
+
+**Example:**
+
+```python
+from semantica.split import OntologyAwareChunker
+
+chunker = OntologyAwareChunker(
+    chunk_size=1000,
+    chunk_overlap=200,
+    ontology_path="domain_ontology.owl",
+    preserve_concepts=True,
+    concept_extraction_method="llm"
+)
+
+chunks = chunker.chunk(text)
+
+for chunk in chunks:
+    concepts = chunk.metadata.get('concepts', [])
+    print(f"Concepts in chunk: {[c['label'] for c in concepts]}")
+    print(f"Concept types: {[c['type'] for c in concepts]}")
+```
+
+---
+
+### SlidingWindowChunker
+
+Fixed-size sliding window chunking with configurable step size.
+
+**Methods:**
+
+| Method | Description | Algorithm |
+|--------|-------------|-----------|
+| `chunk(text)` | Sliding window chunking | Fixed-size window with step |
+| `calculate_windows(text_length)` | Calculate window positions | Window position calculation |
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `window_size` | int | 1000 | Size of sliding window |
+| `step_size` | int | 800 | Step size (window_size - overlap) |
+| `min_chunk_size` | int | 100 | Minimum chunk size |
+| `preserve_sentences` | bool | False | Preserve sentence boundaries |
+
+**Example:**
+
+```python
+from semantica.split import SlidingWindowChunker
+
+# Basic sliding window
+chunker = SlidingWindowChunker(
+    window_size=1000,
+    step_size=800,  # 200 overlap
+    min_chunk_size=100
+)
+
+chunks = chunker.chunk(long_text)
+
+for i, chunk in enumerate(chunks):
+    print(f"Window {i}: chars {chunk.start}-{chunk.end}")
+    print(f"Overlap with previous: {chunk.metadata.get('overlap_chars')}")
+
+# Sentence-preserving sliding window
+chunker = SlidingWindowChunker(
+    window_size=1000,
+    step_size=750,
+    preserve_sentences=True
+)
+
+chunks = chunker.chunk(text)
+```
+
+---
+
+### TableChunker
+
+Table-specific chunking preserving table structure.
+
+**Methods:**
+
+| Method | Description | Algorithm |
+|--------|-------------|-----------|
+| `chunk(text)` | Chunk tables | Table detection and splitting |
+| `detect_tables(text)` | Detect tables in text | Table boundary detection |
+| `split_table(table, max_rows)` | Split large tables | Row-based table splitting |
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `preserve_headers` | bool | True | Keep headers in each chunk |
+| `max_rows_per_chunk` | int | 50 | Maximum rows per table chunk |
+| `include_context` | bool | True | Include surrounding text context |
+| `table_format` | str | "auto" | Table format (markdown, html, csv, auto) |
+
+**Example:**
+
+```python
+from semantica.split import TableChunker
+
+chunker = TableChunker(
+    preserve_headers=True,
+    max_rows_per_chunk=50,
+    include_context=True,
+    table_format="markdown"
+)
+
+text_with_tables = \"\"\"
+Document with tables...
+
+| Column 1 | Column 2 | Column 3 |
+|----------|----------|----------|
+| Value 1  | Value 2  | Value 3  |
+| ...      | ...      | ...      |
+\"\"\"
+
+chunks = chunker.chunk(text_with_tables)
+
+for chunk in chunks:
+    if chunk.metadata.get('is_table'):
+        print(f"Table chunk:")
+        print(f"  Rows: {chunk.metadata.get('row_count')}")
+        print(f"  Columns: {chunk.metadata.get('column_count')}")
+        print(f"  Headers: {chunk.metadata.get('headers')}")
+    else:
+        print(f"Text chunk: {len(chunk.text)} chars")
+```
+
+---
+
 ### ChunkValidator
 
 Validate chunk quality and completeness.
