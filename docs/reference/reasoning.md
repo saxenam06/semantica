@@ -115,9 +115,9 @@ High-performance pattern matching engine.
 
 | Method | Description |
 |--------|-------------|
-| `add_rule(rule)` | Compile rule into network |
+| `build_network(rules)` | Compile rule into network |
 | `add_fact(fact)` | Propagate fact through network |
-| `get_activations()` | Get triggered rules |
+| `match_patterns()` | Get triggered rules |
 
 ### SPARQLReasoner
 
@@ -128,7 +128,7 @@ SPARQL-based reasoner for RDF graphs.
 | Method | Description |
 |--------|-------------|
 | `expand_query(query)` | Rewrite query with inference |
-| `materialize(graph)` | Add inferred triples to graph |
+| `infer_results(result)` | Add inferred triples to result |
 
 ### AbductiveReasoner
 
@@ -138,7 +138,7 @@ Generates explanations for observations.
 
 | Method | Description |
 |--------|-------------|
-| `abduce(observation)` | Generate hypotheses |
+| `generate_hypotheses(observations)` | Generate hypotheses |
 | `rank_hypotheses(hyps)` | Score and sort |
 
 **Example:**
@@ -147,7 +147,7 @@ Generates explanations for observations.
 from semantica.reasoning import AbductiveReasoner
 
 reasoner = AbductiveReasoner(rules)
-hypotheses = reasoner.abduce("Pavement is wet")
+hypotheses = reasoner.generate_hypotheses(["Pavement is wet"])
 # Result: ["It rained", "Sprinkler was on"]
 ```
 
@@ -159,8 +159,8 @@ Explains *why* a fact was inferred.
 
 | Method | Description |
 |--------|-------------|
-| `explain(fact)` | Generate reasoning trace |
-| `visualize_trace(trace)` | Graph visualization |
+| `generate_explanation(fact)` | Generate reasoning trace |
+| `show_reasoning_path(trace)` | Graph visualization |
 
 ---
 
