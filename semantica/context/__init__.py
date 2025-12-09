@@ -99,7 +99,7 @@ License: MIT
 
 from .agent_context import AgentContext
 from .agent_memory import AgentMemory, MemoryItem
-from .context_graph import ContextEdge, ContextGraphBuilder, ContextNode
+from .context_graph import ContextEdge, ContextGraph, ContextNode
 from .context_retriever import ContextRetriever, RetrievedContext
 from .entity_linker import EntityLink, EntityLinker, LinkedEntity
 from . import methods
@@ -110,7 +110,7 @@ __all__ = [
     # High-level interface
     "AgentContext",
     # Main classes
-    "ContextGraphBuilder",
+    "ContextGraph",
     "ContextNode",
     "ContextEdge",
     "EntityLinker",
@@ -125,3 +125,6 @@ __all__ = [
     "registry",
     "config",
 ]
+
+# Backward compatibility alias
+ContextGraphBuilder = ContextGraph

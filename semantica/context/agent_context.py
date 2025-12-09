@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Union
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
 from .agent_memory import AgentMemory
-from .context_graph import ContextGraphBuilder
+from .context_graph import ContextGraph
 from .context_retriever import ContextRetriever, RetrievedContext
 from .entity_linker import EntityLinker
 
@@ -42,7 +42,7 @@ class AgentContext:
         knowledge_graph: Knowledge graph instance (optional)
         memory: AgentMemory instance (via property)
         retriever: ContextRetriever instance (via property, if knowledge_graph available)
-        graph_builder: ContextGraphBuilder instance (via property, if knowledge_graph available)
+        graph_builder: ContextGraph instance (via property, if knowledge_graph supports building)
     
     Main Methods:
         - store(): Store memory or documents (auto-detects type)
@@ -64,8 +64,8 @@ class AgentContext:
 
     def __init__(
         self,
-        vector_store,
-        knowledge_graph=None,
+        vector_store: Any,
+        knowledge_graph: Optional[Any] = None,
         retention_days: Optional[int] = 30,
         max_memories: int = 10000,
         use_graph_expansion: bool = True,
@@ -127,11 +127,10 @@ class AgentContext:
         else:
             self._retriever = None
         
-        # Initialize ContextGraphBuilder if knowledge_graph available
-        if knowledge_graph:
-            self._graph_builder = ContextGraphBuilder()
-        else:
-            self._graph_builder = None
+        # Initialize ContextGraphBuilder if knowledge_graph available and supports building
+        self._graph_builder = None
+        if knowledge_graph and hasattr(knowledge_graph, "build_from_conversations"):
+             self._graph_builder = knowledge_graph
         
         # Store config
         self.config = {
@@ -153,8 +152,8 @@ class AgentContext:
         return self._retriever
 
     @property
-    def graph_builder(self) -> Optional[ContextGraphBuilder]:
-        """Access underlying ContextGraphBuilder instance."""
+    def graph_builder(self) -> Optional[Any]:
+        """Access underlying ContextGraph instance for building."""
         return self._graph_builder
 
     def store(
@@ -453,11 +452,20 @@ class AgentContext:
             elif isinstance(doc, dict):
                 if "content" not in doc:
                     raise ValueError(f"Document dict must have 'content' key: {doc}")
-                documents.append({
+                
+                doc_dict = {
                     "content": doc["content"],
                     "id": doc.get("id", f"doc_{i}"),
                     "metadata": doc.get("metadata", {})
-                })
+                }
+                
+                # Preserve entities and relationships if present
+                if "entities" in doc:
+                    doc_dict["entities"] = doc["entities"]
+                if "relationships" in doc:
+                    doc_dict["relationships"] = doc["relationships"]
+                    
+                documents.append(doc_dict)
             else:
                 raise ValueError(f"Unsupported document type: {type(doc)}")
         return documents

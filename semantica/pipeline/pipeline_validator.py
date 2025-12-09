@@ -28,12 +28,14 @@ License: MIT
 
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
-from .pipeline_builder import Pipeline, PipelineBuilder, PipelineStep
+
+if TYPE_CHECKING:
+    from .pipeline_builder import Pipeline, PipelineBuilder, PipelineStep
 
 
 @dataclass
@@ -74,7 +76,7 @@ class PipelineValidator:
         self.progress_tracker = get_progress_tracker()
 
     def validate_pipeline(
-        self, pipeline: Union[Pipeline, PipelineBuilder], **options
+        self, pipeline: Union["Pipeline", "PipelineBuilder"], **options
     ) -> ValidationResult:
         """
         Validate entire pipeline.
@@ -86,6 +88,8 @@ class PipelineValidator:
         Returns:
             Validation result
         """
+        from .pipeline_builder import Pipeline, PipelineBuilder
+
         tracking_id = self.progress_tracker.start_tracking(
             module="pipeline",
             submodule="PipelineValidator",
@@ -158,7 +162,7 @@ class PipelineValidator:
             )
             raise
 
-    def _validate_structure(self, pipeline: PipelineBuilder) -> Dict[str, Any]:
+    def _validate_structure(self, pipeline: "PipelineBuilder") -> Dict[str, Any]:
         """Validate pipeline structure."""
         errors = []
         warnings = []
@@ -186,7 +190,7 @@ class PipelineValidator:
 
         return {"errors": errors, "warnings": warnings}
 
-    def validate_step(self, step: PipelineStep, **constraints) -> ValidationResult:
+    def validate_step(self, step: "PipelineStep", **constraints) -> ValidationResult:
         """
         Validate individual pipeline step.
 
@@ -219,7 +223,7 @@ class PipelineValidator:
         )
 
     def check_dependencies(
-        self, pipeline: Union[Pipeline, PipelineBuilder]
+        self, pipeline: Union["Pipeline", "PipelineBuilder"]
     ) -> Dict[str, Any]:
         """
         Check pipeline dependencies.
@@ -292,7 +296,7 @@ class PipelineValidator:
             raise
 
     def _detect_circular_dependencies(
-        self, steps: List[PipelineStep]
+        self, steps: List["PipelineStep"]
     ) -> List[List[str]]:
         """Detect circular dependencies using DFS."""
         step_map = {step.name: step for step in steps}
@@ -327,7 +331,7 @@ class PipelineValidator:
 
         return cycles
 
-    def _find_reachable_steps(self, steps: List[PipelineStep]) -> set:
+    def _find_reachable_steps(self, steps: List["PipelineStep"]) -> set:
         """Find reachable steps from entry points."""
         step_map = {step.name: step for step in steps}
         reachable = set()
@@ -352,7 +356,7 @@ class PipelineValidator:
 
         return reachable
 
-    def validate_performance(self, pipeline: Pipeline, **options) -> Dict[str, Any]:
+    def validate_performance(self, pipeline: "Pipeline", **options) -> Dict[str, Any]:
         """
         Validate pipeline performance.
 

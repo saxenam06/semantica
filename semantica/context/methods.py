@@ -99,7 +99,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from ..utils.exceptions import ConfigurationError, ProcessingError
 from ..utils.logging import get_logger
 from .agent_memory import AgentMemory, MemoryItem
-from .context_graph import ContextEdge, ContextGraphBuilder, ContextNode
+from .context_graph import ContextEdge, ContextGraph, ContextNode
 from .context_retriever import ContextRetriever, RetrievedContext
 from .entity_linker import EntityLink, EntityLinker, LinkedEntity
 from .registry import method_registry
@@ -127,7 +127,7 @@ def build_context_graph(
             - "entities_relationships": Build from entities and relationships
             - "conversations": Build from conversations
             - "hybrid": Hybrid construction combining multiple sources
-        **kwargs: Additional options passed to ContextGraphBuilder
+        **kwargs: Additional options passed to ContextGraph
 
     Returns:
         Context graph dictionary containing:
@@ -153,7 +153,8 @@ def build_context_graph(
             )
 
     try:
-        builder = ContextGraphBuilder(**kwargs)
+        # Use ContextGraph as the builder
+        builder = ContextGraph(**kwargs)
 
         if method == "entities_relationships":
             if not entities or not relationships:

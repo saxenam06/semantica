@@ -58,7 +58,7 @@ License: MIT
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import quote
 
 from ..utils.exceptions import ProcessingError, ValidationError

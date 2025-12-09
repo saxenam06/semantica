@@ -1,482 +1,161 @@
-# Context
+# Context Module Reference
 
-> **Context engineering and memory management system for intelligent agents using RAG and Knowledge Graphs.**
-
----
-
-## 🎯 Overview
-
-<div class="grid cards" markdown>
-
--   :material-graph:{ .lg .middle } **Context Graph**
-
-    ---
-
-    Build dynamic context graphs from conversations and entities
-
--   :material-brain:{ .lg .middle } **Agent Memory**
-
-    ---
-
-    Persistent memory management with vector storage integration
-
--   :material-link-variant:{ .lg .middle } **Entity Linking**
-
-    ---
-
-    Link entities across documents and conversations
-
--   :material-magnify:{ .lg .middle } **Hybrid Retrieval**
-
-    ---
-
-    Retrieve context using Vector + Graph + Keyword search
-
--   :material-history:{ .lg .middle } **Conversation History**
-
-    ---
-
-    Manage and synthesize conversation history
-
--   :material-bullseye-arrow:{ .lg .middle } **Intent Analysis**
-
-    ---
-
-    Extract and track user intent and sentiment
-
-</div>
-
-!!! tip "When to Use"
-    - **Agent Development**: When building agents that need long-term memory
-    - **RAG Applications**: For advanced Retrieval-Augmented Generation
-    - **Personalization**: To maintain user-specific context and preferences
+> **The central nervous system for intelligent agents, managing memory, knowledge graphs, and context retrieval.**
 
 ---
 
-## ⚙️ Algorithms Used
+## 🎯 System Overview
 
-### Context Graph Construction
-- **Graph Building**: Node/Edge construction from extracted entities
-- **Graph Traversal**: BFS/DFS for multi-hop context discovery
-- **Intent Extraction**: NLP-based intent classification
-- **Sentiment Analysis**: Sentiment scoring and extraction
+The **Context Module** provides agents with a persistent, searchable, and structured memory system. It is built on a **Synchronous Architecture 2.0**, ensuring predictable state management and compatibility with modern vector stores and graph databases.
 
-### Agent Memory
-- **Vector Embedding**: Dense vector generation for memory items
-- **Vector Search**: Cosine similarity search (k-NN)
-- **Retention Policy**: Time-based decay and cleanup
-- **Memory Indexing**: Deque-based sliding window for short-term memory
+### Key Capabilities
 
-### Entity Linking
-- **URI Generation**: Hash-based deterministic IDs
-- **Text Similarity**: Jaccard/Levenshtein for name matching
-- **Graph Lookup**: Entity resolution against Knowledge Graph
-- **Bidirectional Linking**: Symmetric link creation
-
-### Context Retrieval
-- **Hybrid Scoring**: `α * VectorScore + β * GraphScore + γ * KeywordScore`
-- **Graph Expansion**: Retrieving neighbors of retrieved entities
-- **Deduplication**: Content-based result merging
-- **Result Ranking**: Weighted aggregation of scores
+*   **Hierarchical Memory**: A two-tier memory system that mimics human memory (Short-term "Working" Memory + Long-term "Episodic" Memory).
+*   **GraphRAG**: Combines unstructured vector search with structured knowledge graph traversal for richer context.
+*   **Hybrid Retrieval**: Intelligently blends results from keyword matching, vector similarity, and graph connections.
+*   **Token Management**: Automatically prunes short-term memory to fit within LLM context windows using token-based constraints.
+*   **Entity Linking**: Resolves ambiguities by linking text mentions to unique entities in the knowledge graph.
 
 ---
 
-## Main Classes
+## 🏗️ Architecture Components
 
-### AgentContext
+### 1. AgentContext (The Orchestrator)
+The high-level facade that unifies all context operations. It routes data to the appropriate subsystems (Memory, Graph, Vector Store) and manages the lifecycle of context.
 
-High-level interface for agent context management, RAG, and GraphRAG. Provides generic methods (`store`, `retrieve`, `forget`, `conversation`) that auto-detect content types and retrieval strategies.
+#### **Constructor Parameters**
+*   `vector_store` (Required): The backing vector database instance (e.g., FAISS, Pinecone).
+*   `knowledge_graph` (Optional): The graph store instance for structured knowledge.
+*   `token_limit` (Default: `2000`): The maximum number of tokens allowed in short-term memory before pruning occurs.
+*   `short_term_limit` (Default: `10`): The maximum number of distinct memory items in short-term memory.
+*   `hybrid_alpha` (Default: `0.5`): The weighting factor for retrieval (0.0 = Pure Vector, 1.0 = Pure Graph).
+*   `use_graph_expansion` (Default: `True`): Whether to fetch neighbors of retrieved nodes from the graph.
 
-**Methods:**
+#### **Core Methods**
 
-| Method | Description | Parameters |
-|--------|-------------|------------|
-| `store(content, ...)` | Store content (memory or documents) | `extract_entities: bool = True`, `extract_relationships: bool = True`, `link_entities: bool = True`, `auto_extract: bool = False` |
-| `retrieve(query, ...)` | Retrieve relevant context | `use_graph: Optional[bool] = None`, `include_entities: bool = True`, `include_relationships: bool = False`, `expand_graph: bool = True`, `deduplicate: bool = True` |
-| `forget(...)` | Delete memories | `memory_id`, `conversation_id`, `user_id`, `days_old` |
-| `conversation(conversation_id, ...)` | Get conversation history | `reverse: bool = False`, `include_metadata: bool = True` |
-| `get_memory(memory_id)` | Get specific memory by ID | `memory_id: str` |
-| `stats()` | Get memory statistics | None |
-| `link(text, entities, ...)` | Link entities in text | `similarity_threshold: float = 0.8` |
-| `build_graph(...)` | Build context graph manually | `entities`, `relationships`, `conversations`, `link_entities: bool = True` |
-
-**Initialization:**
-
-```python
-AgentContext(
-    vector_store,                    # Required
-    knowledge_graph=None,            # Optional (enables GraphRAG)
-    retention_days=30,               # Optional
-    max_memories=10000,             # Optional
-    use_graph_expansion=True,        # Boolean flag
-    max_expansion_hops=2,           # Optional
-    hybrid_alpha=0.5                # Optional
-)
-```
-
-**Example:**
-
-```python
-from semantica.context import AgentContext
-
-# Simple RAG
-context = AgentContext(vector_store=vs)
-memory_id = context.store("User likes Python", conversation_id="conv1")
-results = context.retrieve("Python programming")
-
-# GraphRAG
-context = AgentContext(vector_store=vs, knowledge_graph=kg)
-stats = context.store(["Doc 1", "Doc 2"], extract_entities=True)
-results = context.retrieve("Python", use_graph=None)  # Auto-detects GraphRAG
-
-# Conversation management
-history = context.conversation("conv1", reverse=True)
-deleted = context.forget(conversation_id="conv1")
-```
-
-**Boolean Flags:**
-
-- **Store**: `extract_entities`, `extract_relationships`, `link_entities`
-- **Retrieve**: `use_graph` (None=auto-detect), `include_entities`, `include_relationships`, `expand_graph`
-- **Conversation**: `reverse`, `include_metadata`
-
-### ContextGraphBuilder
-
-Builds and manages the context graph.
-
-**Methods:**
-
-| Method | Description | Algorithm |
-|--------|-------------|-----------|
-| `build_from_entities_and_relationships(entities, relationships)` | Build graph from entities and relationships | Node/Edge creation |
-| `build_from_conversations(conversations, link_entities, extract_intents, extract_sentiments)` | Build graph from conversations | Intent/Entity extraction |
-| `add_node(node_id, node_type, content, **metadata)` | Add node to graph | Node creation |
-| `add_edge(source_id, target_id, edge_type, weight, **metadata)` | Add edge to graph | Edge creation |
-| `get_neighbors(node_id, max_hops)` | Get neighbor nodes | BFS Traversal |
-| `query(node_type, edge_type, **filters)` | Query graph nodes and edges | Type-based filtering |
-
-**Example:**
-
-```python
-from semantica.context import ContextGraphBuilder
-
-builder = ContextGraphBuilder()
-graph = builder.build_from_entities_and_relationships(
-    entities=extracted_entities,
-    relationships=extracted_rels
-)
-
-# Add nodes and edges manually
-builder.add_node("node1", "entity", "Python programming")
-builder.add_edge("node1", "node2", "related_to", weight=0.9)
-
-# Query and traverse
-neighbors = builder.get_neighbors("node1", max_hops=2)
-results = builder.query(node_type="entity", confidence=0.8)
-```
-
-### AgentMemory
-
-Manages persistent agent memory.
-
-**Methods:**
-
-| Method | Description | Algorithm |
-|--------|-------------|-----------|
-| `store(content, metadata, entities, relationships, **options)` | Store memory item | Embedding + Vector Store |
-| `retrieve(query, max_results, min_score, **filters)` | Retrieve relevant memories | Vector Similarity |
-| `get_memory(memory_id)` | Get specific memory item | Dictionary lookup |
-| `delete_memory(memory_id)` | Delete memory item | Cascading deletion |
-| `clear_memory(**filters)` | Clear memories by filters | Filter-based deletion |
-| `get_conversation_history(conversation_id, max_items)` | Get conversation history | Temporal filtering |
-| `get_statistics()` | Get memory statistics | Counter aggregation |
-
-**Example:**
-
-```python
-from semantica.context import AgentMemory
-
-memory = AgentMemory(vector_store=vs, knowledge_graph=kg)
-memory_id = memory.store("User prefers Python over Java", metadata={"type": "preference"})
-relevant = memory.retrieve("What language does the user like?", max_results=5)
-
-# Get specific memory
-memory_item = memory.get_memory(memory_id)
-
-# Get statistics
-stats = memory.get_statistics()
-```
-
-### EntityLinker
-
-Links entities across different contexts.
-
-**Methods:**
-
-| Method | Description | Algorithm |
-|--------|-------------|-----------|
-| `assign_uri(entity_id, entity_text, entity_type)` | Assign unique URI to entity | Hash-based/Text-based URI |
-| `link(text, entities, context)` | Link entities in text to knowledge graph | Similarity matching |
-| `link_entities(entity1_id, entity2_id, link_type, confidence, source, **metadata)` | Create explicit link between entities | Bidirectional linking |
-| `get_entity_links(entity_id)` | Get all links for an entity | Dictionary lookup |
-| `get_entity_uri(entity_id)` | Get URI for an entity | Registry lookup |
-| `find_similar_entities(entity_text, entity_type, threshold)` | Find similar entities in knowledge graph | Text similarity |
-| `build_entity_web()` | Build entity connection web | Graph construction |
-
-**Example:**
-
-```python
-from semantica.context import EntityLinker
-
-linker = EntityLinker(knowledge_graph=kg, similarity_threshold=0.8)
-uri = linker.assign_uri("entity_1", "Python", "PROGRAMMING_LANGUAGE")
-linked_entities = linker.link("Python is used for ML", entities=entities)
-linker.link_entities("e1", "e2", "related_to", confidence=0.9)
-similar = linker.find_similar_entities("Python", entity_type="PROGRAMMING_LANGUAGE")
-web = linker.build_entity_web()
-```
-
-### ContextRetriever
-
-Orchestrates hybrid retrieval.
-
-**Methods:**
-
-| Method | Description | Algorithm |
-|--------|-------------|-----------|
-| `retrieve(query, max_results, use_graph_expansion, min_relevance_score, **options)` | Retrieve relevant context for query | Hybrid (Vector+Graph+Memory) |
-
-**Example:**
-
-```python
-from semantica.context import ContextRetriever
-
-retriever = ContextRetriever(
-    memory_store=memory,
-    knowledge_graph=kg,
-    vector_store=vs,
-    use_graph_expansion=True,
-    max_expansion_hops=2
-)
-
-results = retriever.retrieve("Python programming", max_results=5, min_relevance_score=0.5)
-for result in results:
-    print(f"{result.content}: {result.score:.2f}")
-    print(f"Related entities: {len(result.related_entities)}")
-```
+*   **`store(content, ...)`**: Writes information to memory.
+    *   *Auto-Detection*: Automatically determines if input is a simple string (memory) or a list of documents.
+    *   *Write-Through*: Saves to both Short-term (RAM) and Long-term (Vector Store) memory simultaneously.
+    *   *Entity Extraction*: If enabled, extracts entities and relationships to update the Knowledge Graph.
+*   **`retrieve(query, ...)`**: Fetches relevant context.
+    *   *Hybrid Search*: Queries Vector Store, Short-term Memory, and Knowledge Graph in parallel.
+    *   *Reranking*: Merges and ranks results based on relevance scores.
+    *   *Context Window Optimization*: Returns results that fit within the agent's context window.
 
 ---
 
-## Methods Module
+### 2. AgentMemory (The Storage Engine)
+Manages the storage and lifecycle of memory items. It implements the **Hierarchical Memory** pattern.
 
-The methods module provides simple, reusable functions for context operations.
+#### **Features & Functions**
+*   **Short-Term Memory (Working Memory)**
+    *   *Structure*: An in-memory list of recent `MemoryItem` objects.
+    *   *Purpose*: Provides immediate context for the ongoing conversation.
+    *   *Pruning Logic*:
+        *   **FIFO**: Removes the oldest items first when limits are reached.
+        *   **Token-Aware**: Calculates token counts to ensure the total buffer size stays under `token_limit`.
+*   **Long-Term Memory (Episodic Memory)**
+    *   *Structure*: Vector embeddings stored in the `vector_store`.
+    *   *Purpose*: Persists history indefinitely for semantic retrieval.
+    *   *Synchronization*: Automatically syncs with Short-term memory during `store()` operations.
+*   **Retention Policy**
+    *   *Time-Based*: Can automatically delete memories older than `retention_days`.
+    *   *Count-Based*: Can limit the total number of memories to `max_memories`.
 
-**Functions:**
-
-| Function | Description |
-|----------|-------------|
-| `build_context_graph(entities, relationships, conversations, method, **kwargs)` | Build context graph using specified method |
-| `store_memory(content, vector_store, knowledge_graph, method, **kwargs)` | Store memory using specified method |
-| `retrieve_context(query, memory_store, knowledge_graph, vector_store, method, max_results, **kwargs)` | Retrieve context using specified method |
-| `link_entities(entities, knowledge_graph, method, **kwargs)` | Link entities using specified method |
-| `get_context_method(task, name)` | Get registered context method |
-| `list_available_methods(task)` | List all available context methods |
-
-**Example:**
-
-```python
-from semantica.context.methods import (
-    build_context_graph,
-    store_memory,
-    retrieve_context,
-    link_entities,
-    get_context_method,
-    list_available_methods
-)
-
-# Build graph
-graph = build_context_graph(entities, relationships, method="entities_relationships")
-
-# Store memory
-memory_id = store_memory("User asked about Python", vector_store=vs, method="store")
-
-# Retrieve context
-results = retrieve_context("Python programming", vector_store=vs, method="hybrid")
-
-# Link entities
-linked = link_entities(entities, knowledge_graph=kg, method="similarity")
-
-# List available methods
-all_methods = list_available_methods()
-graph_methods = list_available_methods("graph")
-```
-
-## Registry Module
-
-The registry module allows registering custom context methods.
-
-**MethodRegistry Methods:**
-
-| Method | Description |
-|--------|-------------|
-| `register(task, name, method_func)` | Register a method for a specific task |
-| `get(task, name)` | Get a registered method |
-| `list_all(task)` | List all registered methods |
-| `unregister(task, name)` | Unregister a method |
-
-**Example:**
-
-```python
-from semantica.context import registry
-
-def custom_graph_builder(entities, relationships, **kwargs):
-    """Custom graph building method."""
-    return {"nodes": [], "edges": [], "statistics": {}}
-
-# Register custom method
-registry.method_registry.register("graph", "custom_builder", custom_graph_builder)
-
-# List registered methods
-methods = registry.method_registry.list_all("graph")
-
-# Unregister method
-registry.method_registry.unregister("graph", "custom_builder")
-```
-
-## Configuration Module
-
-The configuration module provides centralized configuration management.
-
-**ContextConfig Methods:**
-
-| Method | Description |
-|--------|-------------|
-| `set(key, value)` | Set a configuration value |
-| `get(key, default)` | Get a configuration value |
-| `set_method_config(method_name, config)` | Set method-specific configuration |
-| `get_method_config(method_name)` | Get method-specific configuration |
-| `get_all()` | Get all configurations |
-
-**Example:**
-
-```python
-from semantica.context import config
-
-# Get configuration
-retention = config.context_config.get("retention_policy", default="unlimited")
-max_size = config.context_config.get("max_memory_size", default=10000)
-
-# Set configuration
-config.context_config.set("retention_policy", "30_days")
-config.context_config.set("max_memory_size", 5000)
-
-# Method-specific configuration
-config.context_config.set_method_config("graph", {
-    "extract_entities": True,
-    "extract_relationships": True
-})
-
-method_config = config.context_config.get_method_config("graph")
-
-# Load from config file
-context_config = config.ContextConfig(config_file="context_config.yaml")
-all_configs = context_config.get_all()
-```
+#### **Key Methods**
+*   `store_vectors()`: Handles the low-level interaction with concrete Vector Store implementations.
+*   `_prune_short_term_memory()`: Internal algorithm that enforces token and count limits.
+*   `get_conversation_history()`: Retrieves a chronological list of interactions for a specific session.
 
 ---
 
-## Configuration
+### 3. ContextGraph (The Knowledge Structure)
+Manages the structured relationships between entities. It provides the "World Model" for the agent.
 
-### Environment Variables
+#### **Features & Functions**
+*   **Dictionary-Based Interface**
+    *   *Design*: Uses standard Python dictionaries for nodes and edges, removing dependencies on complex interface classes.
+    *   *Benefit*: simpler serialization and easier integration with external APIs.
+*   **Graph Traversal**
+    *   *Adjacency List*: optimized internal structure for fast neighbor lookups.
+    *   *Multi-Hop Search*: Can traverse `k` hops from a starting node to find indirect connections.
+*   **Node & Edge Types**
+    *   *Typed Schema*: Supports distinct types for nodes (e.g., "Person", "Concept") and edges (e.g., "KNOWS", "RELATED_TO").
 
-```bash
-export CONTEXT_RETENTION_POLICY=30_days
-export CONTEXT_MAX_MEMORY_SIZE=5000
-export CONTEXT_SIMILARITY_THRESHOLD=0.8
-```
-
-### YAML Configuration
-
-```yaml
-context:
-  retention_policy:
-    max_days: 30
-    max_items: 1000
-    
-  retrieval:
-    hybrid_weights:
-      vector: 0.6
-      graph: 0.3
-      keyword: 0.1
-      
-  graph:
-    max_depth: 2
-    include_attributes: true
-```
+#### **Key Methods**
+*   `add_nodes(nodes)`: Bulk adds nodes using a list of dictionaries.
+*   `add_edges(edges)`: Bulk adds edges using a list of dictionaries.
+*   `get_neighbors(node_id, hops)`: Returns connected nodes within a specified distance.
+*   `query(query_str)`: Performs keyword-based search specifically on graph nodes.
 
 ---
 
-## Integration Examples
+### 4. ContextRetriever (The Search Engine)
+The retrieval logic that powers the `retrieve()` command. It implements the **Hybrid Retrieval** algorithm.
 
-### Chatbot with Memory
+#### **Retrieval Strategy**
+1.  **Short-Term Check**: Scans the in-memory buffer for immediate, exact-match relevance.
+2.  **Vector Search**: Queries the `vector_store` for semantically similar long-term memories.
+3.  **Graph Expansion**:
+    *   Identifies entities in the query.
+    *   Finds those entities in the `ContextGraph`.
+    *   Traverses edges to find related concepts that might not match keywords (e.g., finding "Python" when searching for "Coding").
+4.  **Hybrid Scoring**:
+    *   Formula: `Final_Score = (Vector_Score * (1 - α)) + (Graph_Score * α)`
+    *   Allows tuning the balance between semantic similarity and structural relevance.
 
+---
+
+## ⚙️ Configuration & Tuning
+
+### Token Management
+*   **`CONTEXT_TOKEN_LIMIT`**: Environment variable to set the global default for short-term memory size.
+*   **`short_term_limit`**: Configurable per-agent to limit the *count* of recent items.
+
+### Tuning Retrieval
+*   **`hybrid_alpha`**:
+    *   `0.0`: Relies entirely on Vector Search (Standard RAG).
+    *   `0.5`: Balanced approach (Recommended).
+    *   `1.0`: Relies entirely on Graph traversal (Graph RAG).
+*   **`max_expansion_hops`**:
+    *   `1`: Only direct neighbors.
+    *   `2`: Friends of friends (Recommended for discovery).
+    *   `3+`: Can introduce noise but finds deep connections.
+
+---
+
+## 📝 Data Structures
+
+### MemoryItem
+The fundamental unit of storage.
 ```python
-from semantica.context import AgentMemory, ContextRetriever
-from semantica.llm import LLMClient
-
-# 1. Initialize
-memory = AgentMemory(vector_store=vs)
-retriever = ContextRetriever(memory=memory, graph=kg)
-llm = LLMClient()
-
-def chat(user_input):
-    # 2. Retrieve Context
-    context = retriever.retrieve(user_input)
-    
-    # 3. Generate Response
-    response = llm.generate(user_input, context=context)
-    
-    # 4. Update Memory
-    memory.store(f"User: {user_input}")
-    memory.store(f"Agent: {response}")
-    
-    return response
+@dataclass
+class MemoryItem:
+    content: str              # The actual text content
+    timestamp: datetime       # When it was created
+    metadata: Dict            # Arbitrary tags (user_id, source, etc.)
+    embedding: List[float]    # The vector representation
+    entities: List[Dict]      # Entities found in this content
 ```
 
----
-
-## Best Practices
-
-1.  **Prune Regularly**: Use retention policies to keep memory relevant and performant.
-2.  **Use Hybrid Retrieval**: Relying solely on vector search misses structural relationships; use graph context too.
-3.  **Enrich Metadata**: Store rich metadata (timestamp, source, type) with memories for better filtering.
-4.  **Link Entities**: Ensure `EntityLinker` is used to connect mentions of the same entity across conversations.
-
----
-
-## Troubleshooting
-
-**Issue**: Retrieval returns irrelevant old memories.
-**Solution**: Adjust retention policy or increase vector similarity threshold.
-
+### Graph Node (Dict Format)
 ```python
-memory = AgentMemory(
-    retention_policy="7_days",
-    max_memory_size=1000
-)
+{
+    "id": "node_unique_id",
+    "type": "concept",
+    "properties": {
+        "content": "Description of the node",
+        "weight": 1.0
+    }
+}
 ```
 
-**Issue**: Context graph growing too large.
-**Solution**: Use `prune_graph` or limit hop depth during retrieval.
-
----
-
-## See Also
-
-- [Vector Store Module](vector_store.md) - Underlying storage for memory
-- [Knowledge Graph Module](kg.md) - Underlying graph structure
-- [Embeddings Module](embeddings.md) - Vector generation
-
-## Cookbook
-
-- [Context Module](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/19_Context_Module.ipynb)
+### Graph Edge (Dict Format)
+```python
+{
+    "source_id": "origin_node",
+    "target_id": "destination_node",
+    "type": "related_to",
+    "weight": 0.8
+}
+```

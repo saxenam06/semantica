@@ -227,16 +227,28 @@ class ContextRetriever:
             # If vector_store has a search method
             if hasattr(self.vector_store, "search"):
                 search_results = self.vector_store.search(
-                    query=query, top_k=max_results
+                    query=query, limit=max_results
                 )
 
                 for result in search_results:
+                    # Handle VectorSearchResult object or dict
+                    if hasattr(result, "content"):
+                        content = result.content
+                        score = result.score
+                        source = f"vector:{result.id}"
+                        metadata = result.metadata or {}
+                    else:
+                        content = result.get("content", "")
+                        score = result.get("score", 0.0)
+                        source = result.get("source")
+                        metadata = result.get("metadata", {})
+
                     results.append(
                         RetrievedContext(
-                            content=result.get("content", ""),
-                            score=result.get("score", 0.0),
-                            source=result.get("source"),
-                            metadata=result.get("metadata", {}),
+                            content=content,
+                            score=score,
+                            source=source,
+                            metadata=metadata,
                         )
                     )
 
@@ -256,6 +268,50 @@ class ContextRetriever:
         results = []
 
         try:
+            # Check if knowledge_graph implements GraphStore protocol (has query method)
+            if hasattr(self.knowledge_graph, "query"):
+                graph_results = self.knowledge_graph.query(query)
+                
+                for res in graph_results:
+                    # Handle both interface dicts and raw dicts
+                    node = res.get("node")
+                    if hasattr(node, "id"): # GraphNodeInterface
+                        node_id = node.id
+                        node_type = node.type
+                        content = node.properties.get("content", "")
+                        metadata = node.properties
+                    else: # Raw dict
+                        node_id = res.get("id") or res.get("node", {}).get("id")
+                        node_type = res.get("type") or res.get("node", {}).get("type")
+                        content = res.get("content") or res.get("node", {}).get("content")
+                        metadata = res.get("metadata") or res.get("node", {}).get("metadata")
+
+                    score = res.get("score", 0.0)
+                    
+                    # Get related entities
+                    related_entities = self._get_related_entities(
+                        node_id, max_hops=max_hops
+                    )
+
+                    results.append(
+                        RetrievedContext(
+                            content=content,
+                            score=score,
+                            source=f"graph:{node_id}",
+                            metadata={
+                                "node_type": node_type,
+                                "node_id": node_id,
+                                **(metadata or {}),
+                            },
+                            related_entities=related_entities,
+                        )
+                    )
+                
+                # Sort by score
+                results.sort(key=lambda x: x.score, reverse=True)
+                return results[:max_results]
+
+            # Fallback to dictionary-based graph retrieval
             # Extract entities from query (simplified)
             query_lower = query.lower()
 
@@ -383,6 +439,10 @@ class ContextRetriever:
         """Get related entities from graph."""
         if not self.knowledge_graph:
             return []
+
+        # Check if knowledge_graph implements GraphStore protocol
+        if hasattr(self.knowledge_graph, "get_neighbors"):
+            return self.knowledge_graph.get_neighbors(node_id, hops=max_hops)
 
         related = []
         visited = set()

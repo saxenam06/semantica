@@ -60,8 +60,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Union
 
+import numpy as np
+
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 from ..utils.types import EntityDict, RelationshipDict
 
 
@@ -80,14 +83,11 @@ class MemoryItem:
 
 class AgentMemory:
     """
-    Agent memory manager with RAG integration.
+    Agent memory manager with RAG integration and Hierarchical Memory.
 
-    • Persistent memory storage for agents
-    • Context retrieval from vector stores
-    • Knowledge graph context integration
-    • Conversation history management
-    • Context accumulation over time
-    • Memory retrieval for agent decision-making
+    • Short-term Memory: In-memory buffer for recent context
+    • Long-term Memory: Vector store for persistent semantic history
+    • Knowledge Graph: Structured context integration
     """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs):
@@ -99,9 +99,9 @@ class AgentMemory:
             **kwargs: Additional configuration options:
                 - vector_store: Vector store instance
                 - knowledge_graph: Knowledge graph instance
-                - retention_policy: Memory retention policy (e.g., "30_days", "unlimited")
-                - max_memory_size: Maximum number of memory items
-                - embedding_model: Embedding model for memory items
+                - retention_policy: Memory retention policy
+                - max_memory_size: Max items in memory index
+                - short_term_limit: Size of short-term memory buffer (default: 10)
         """
         self.logger = get_logger("agent_memory")
         self.config = config or {}
@@ -112,10 +112,16 @@ class AgentMemory:
 
         self.retention_policy = self.config.get("retention_policy", "unlimited")
         self.max_memory_size = self.config.get("max_memory_size", 10000)
+        self.short_term_limit = self.config.get("short_term_limit", 10)
+        self.token_limit = self.config.get("token_limit", 2000)  # Default 2000 tokens for short-term
 
         # In-memory storage
         self.memory_items: Dict[str, MemoryItem] = {}
         self.memory_index: deque = deque(maxlen=self.max_memory_size)
+        
+        # Hierarchical Memory: Short-term buffer
+        # Note: We use a list instead of deque for short-term to support flexible pruning (tokens & count)
+        self.short_term_memory: List[MemoryItem] = []
 
         # Initialize progress tracker
         self.progress_tracker = get_progress_tracker()
@@ -132,7 +138,7 @@ class AgentMemory:
         **options,
     ) -> str:
         """
-        Store memory item.
+        Store memory item (Write-Through to Short-term and Long-term).
 
         Args:
             content: Memory content
@@ -142,6 +148,7 @@ class AgentMemory:
             **options: Additional options:
                 - memory_id: Custom memory ID
                 - timestamp: Custom timestamp
+                - skip_vector: If True, skip vector store (Short-term only)
 
         Returns:
             Memory ID
@@ -168,8 +175,13 @@ class AgentMemory:
                 memory_id=memory_id,
             )
 
-            # Generate embedding if vector store available
-            if self.vector_store:
+            # 1. Update Short-Term Memory
+            self.short_term_memory.append(memory_item)
+            self._prune_short_term_memory()
+
+            # 2. Update Long-Term Memory (Vector Store)
+            skip_vector = options.get("skip_vector", False)
+            if self.vector_store and not skip_vector:
                 try:
                     self.progress_tracker.update_tracking(
                         tracking_id, message="Generating embedding..."
@@ -178,24 +190,22 @@ class AgentMemory:
                     memory_item.embedding = embedding
 
                     # Store in vector store
-                    if hasattr(self.vector_store, "add"):
-                        self.vector_store.add(
-                            id=memory_id,
-                            vector=embedding,
-                            metadata={
-                                "content": content,
-                                "timestamp": timestamp.isoformat(),
-                                **(metadata or {}),
-                            },
-                        )
+                    if hasattr(self.vector_store, "store_vectors"):
+                        # Use concrete VectorStore implementation
+                        vectors = [np.array(memory_item.embedding)] if isinstance(memory_item.embedding, list) else [memory_item.embedding]
+                        meta = [memory_item.metadata]
+                        self.vector_store.store_vectors(vectors=vectors, metadata=meta)
+                    elif hasattr(self.vector_store, "add"):
+                        # Use VectorStore protocol
+                        self.vector_store.add([memory_item])
                 except Exception as e:
-                    self.logger.warning(f"Failed to generate embedding: {e}")
+                    self.logger.warning(f"Failed to store in vector store: {e}")
 
-            # Store in memory
+            # Store in main memory dict (Persistent Layer Abstraction)
             self.memory_items[memory_id] = memory_item
             self.memory_index.append(memory_id)
 
-            # Update knowledge graph if available
+            # 3. Update Knowledge Graph
             if self.knowledge_graph and entities:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Updating knowledge graph..."
@@ -225,6 +235,10 @@ class AgentMemory:
             )
             raise
 
+    def forget(self, memory_id: str) -> bool:
+        """Forget a memory (Implementation of MemoryManager)."""
+        return self.delete_memory(memory_id)
+
     def retrieve(
         self, query: str, max_results: int = 5, min_score: float = 0.0, **filters
     ) -> List[Dict[str, Any]]:
@@ -253,20 +267,50 @@ class AgentMemory:
 
         try:
             results = []
+            seen_ids = set()
 
-            # Vector-based retrieval
+            # 1. Check Short-Term Memory (Recent Context)
+            short_term_results = self._search_short_term(query, filters)
+            for res in short_term_results:
+                if res["memory_id"] not in seen_ids:
+                    results.append(res)
+                    seen_ids.add(res["memory_id"])
+
+            # 2. Vector-based retrieval (Long-Term Memory)
             if self.vector_store:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Searching vector store..."
                 )
                 try:
-                    if hasattr(self.vector_store, "search"):
+                    vector_results = []
+                    if hasattr(self.vector_store, "search_vectors"):
+                        # Use concrete VectorStore implementation
+                        query_vector = self._generate_embedding(query)
+                        query_vector = np.array(query_vector) if isinstance(query_vector, list) else query_vector
+                        
+                        raw_results = self.vector_store.search_vectors(
+                            query_vector=query_vector, k=max_results * 2
+                        )
+                        # Convert dict results to objects with .id attribute
+                        class ResultObj:
+                            def __init__(self, d):
+                                self.id = d.get("id")
+                                self.score = d.get("score")
+                                self.metadata = d.get("metadata")
+                        vector_results = [ResultObj(r) for r in raw_results]
+                        
+                    elif hasattr(self.vector_store, "search"):
                         vector_results = self.vector_store.search(
-                            query=query, top_k=max_results * 2
+                            query=query, limit=max_results * 2
                         )
 
                         for result in vector_results:
-                            memory_id = result.get("id")
+                            memory_id = result.id
+                            
+                            # Skip if already found in short-term
+                            if memory_id in seen_ids:
+                                continue
+
                             if memory_id in self.memory_items:
                                 memory_item = self.memory_items[memory_id]
 
@@ -278,17 +322,18 @@ class AgentMemory:
                                     {
                                         "memory_id": memory_id,
                                         "content": memory_item.content,
-                                        "score": result.get("score", 0.0),
+                                        "score": result.score,
                                         "timestamp": memory_item.timestamp.isoformat(),
                                         "metadata": memory_item.metadata,
                                         "entities": memory_item.entities,
                                         "relationships": memory_item.relationships,
                                     }
                                 )
+                                seen_ids.add(memory_id)
                 except Exception as e:
                     self.logger.warning(f"Vector retrieval failed: {e}")
 
-            # Fallback to keyword search if no vector store
+            # 3. Fallback to keyword search if no results yet
             if not results:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Performing keyword search..."
@@ -435,6 +480,40 @@ class AgentMemory:
 
         return history
 
+    def _search_short_term(
+        self, query: str, filters: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Search short-term memory (simple keyword match)."""
+        results = []
+        query_terms = query.lower().split()
+        
+        # Iterate through short-term memory (most recent first)
+        for item in reversed(self.short_term_memory):
+            if not self._matches_filters(item, filters):
+                continue
+                
+            content_lower = item.content.lower()
+            
+            # Simple scoring based on term overlap
+            matches = sum(1 for term in query_terms if term in content_lower)
+            if matches > 0:
+                score = matches / len(query_terms)
+                # Boost score for recent items (short-term)
+                score = min(1.0, score + 0.1) 
+                
+                results.append({
+                    "memory_id": item.memory_id,
+                    "content": item.content,
+                    "score": score,
+                    "timestamp": item.timestamp.isoformat(),
+                    "metadata": item.metadata,
+                    "entities": item.entities,
+                    "relationships": item.relationships,
+                    "source": "short_term"
+                })
+                
+        return results
+
     def _generate_memory_id(self) -> str:
         """Generate unique memory ID."""
         import hashlib
@@ -445,6 +524,36 @@ class AgentMemory:
         memory_hash = hashlib.md5(f"{timestamp}_{random_str}".encode()).hexdigest()[:12]
 
         return f"mem_{memory_hash}"
+
+    def _prune_short_term_memory(self) -> None:
+        """
+        Prune short-term memory based on count and token limits.
+        
+        Removes oldest items until constraints are met.
+        """
+        # 1. Prune by count
+        while len(self.short_term_memory) > self.short_term_limit:
+            self.short_term_memory.pop(0)  # Remove oldest
+            
+        # 2. Prune by tokens
+        current_tokens = sum(self._count_tokens(item.content) for item in self.short_term_memory)
+        
+        while current_tokens > self.token_limit and self.short_term_memory:
+            removed_item = self.short_term_memory.pop(0)  # Remove oldest
+            current_tokens -= self._count_tokens(removed_item.content)
+
+    def _count_tokens(self, text: str) -> int:
+        """
+        Estimate token count (approximation).
+        
+        Args:
+            text: Input text
+            
+        Returns:
+            Estimated token count
+        """
+        # Simple approximation: 1 token ≈ 4 characters
+        return len(text) // 4
 
     def _generate_embedding(self, content: str) -> Any:
         """Generate embedding for content."""
@@ -463,6 +572,43 @@ class AgentMemory:
         if not self.knowledge_graph:
             return
 
+        # Check for GraphStore protocol (add_nodes method)
+        if hasattr(self.knowledge_graph, "add_nodes"):
+            # Convert to dicts for ContextGraph
+            graph_nodes = []
+            for entity in entities:
+                entity_id = entity.get("id") or entity.get("entity_id")
+                if entity_id:
+                    graph_nodes.append({
+                        "id": entity_id,
+                        "type": entity.get("type", "entity"),
+                        "properties": {
+                            "content": entity.get("text") or entity.get("label") or entity_id,
+                            **entity
+                        }
+                    })
+            if graph_nodes:
+                self.knowledge_graph.add_nodes(graph_nodes)
+
+            if relationships:
+                graph_edges = []
+                for rel in relationships:
+                    source = rel.get("source_id")
+                    target = rel.get("target_id")
+                    if source and target:
+                        graph_edges.append({
+                            "source_id": source,
+                            "target_id": target,
+                            "type": rel.get("type", "related_to"),
+                            "weight": rel.get("confidence", 1.0),
+                            "properties": rel
+                        })
+                if graph_edges:
+                    self.knowledge_graph.add_edges(graph_edges)
+            
+            return
+
+        # Legacy dict update
         # Add entities to graph
         graph_entities = self.knowledge_graph.get("entities", [])
         existing_ids = {e.get("id") for e in graph_entities}
