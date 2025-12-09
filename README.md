@@ -271,7 +271,7 @@ sources.extend(db_ingestor.ingest(query="SELECT * FROM articles"))
 print(f" Ingested {len(sources)} sources")
 ```
 
-[**Cookbook: Data Ingestion**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Data_Ingestion.ipynb)
+[**Cookbook: Data Ingestion**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/02_Data_Ingestion.ipynb)
 
 ### Semantic Intelligence Engine
 
@@ -288,7 +288,7 @@ results = core.extract_semantics(text)
 print(f"Entities: {len(results.entities)}, Relationships: {len(results.relationships)}")
 ```
 
-[**Cookbook: Entity Extraction**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Entity_Extraction.ipynb) • [**Relation Extraction**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Relation_Extraction.ipynb)
+[**Cookbook: Entity Extraction**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/05_Entity_Extraction.ipynb) • [**Relation Extraction**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/06_Relation_Extraction.ipynb)
 
 ### Knowledge Graph Construction
 
@@ -310,7 +310,7 @@ result = kg.query("Who founded the company?", return_format="structured")
 print(f"Nodes: {kg.node_count}, Answer: {result.answer}")
 ```
 
-[**Cookbook: Building Knowledge Graphs**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Building_Knowledge_Graphs.ipynb) • [**Graph Analytics**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Graph_Analytics.ipynb)
+[**Cookbook: Building Knowledge Graphs**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/07_Building_Knowledge_Graphs.ipynb) • [**Graph Analytics**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/10_Graph_Analytics.ipynb)
 
 ### Ontology Generation & Management
 
@@ -328,7 +328,7 @@ validation = validator.validate(ontology)
 print(f"Classes: {len(ontology.classes)}, Valid: {validation.is_consistent}")
 ```
 
-[**Cookbook: Ontology**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Ontology.ipynb)
+[**Cookbook: Ontology**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/14_Ontology.ipynb)
 
 ### Context Engineering for AI Agents
 
@@ -345,7 +345,7 @@ retriever = ContextRetriever(memory_store=memory)
 context = retriever.retrieve("What are user preferences?", max_results=5)
 ```
 
-[**Cookbook: Vector Store**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Vector_Store.ipynb)
+[**Cookbook: Vector Store**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/13_Vector_Store.ipynb)
 
 ### Knowledge Graph-Powered RAG (GraphRAG)
 
@@ -363,7 +363,7 @@ result = graphrag.query("Who founded the company?", top_k=5, expand_graph=True)
 print(f"Answer: {result.answer} (Confidence: {result.confidence:.2f})")
 ```
 
-[**Cookbook: GraphRAG**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/use_cases/advanced_rag/GraphRAG_Complete.ipynb)
+[**Cookbook: GraphRAG**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/use_cases/advanced_rag/01_GraphRAG_Complete.ipynb)
 
 ### Pipeline Orchestration & Parallel Processing
 
@@ -381,7 +381,7 @@ pipeline = PipelineBuilder() \
 result = ExecutionEngine().execute_pipeline(pipeline, parallel=True)
 ```
 
-[**Cookbook: Pipeline Orchestration**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/advanced/Pipeline_Orchestration.ipynb)
+[**Cookbook: Pipeline Orchestration**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/advanced/07_Pipeline_Orchestration.ipynb)
 
 ### Production-Ready Quality Assurance
 
@@ -397,7 +397,7 @@ duplicates = DuplicateDetector().find_duplicates(entities=kg.entities, similarit
 print(f"Conflicts: {len(conflicts)} | Duplicates: {len(duplicates)}")
 ```
 
-[**Cookbook: Conflict Detection**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Conflict_Detection.ipynb) • [**Deduplication**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Deduplication.ipynb)
+[**Cookbook: Conflict Detection**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/17_Conflict_Detection.ipynb) • [**Deduplication**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/18_Deduplication.ipynb)
 
 ## 🚀 Quick Start
 
@@ -416,7 +416,7 @@ result = kg.query("Who founded the company?", return_format="structured")
 print(f"Answer: {result.answer} | Nodes: {kg.node_count}, Edges: {kg.edge_count}")
 ```
 
-[**Cookbook: Your First Knowledge Graph**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/Your_First_Knowledge_Graph.ipynb)
+[**Cookbook: Your First Knowledge Graph**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)
 
 ## 🎯 Use Cases
 
