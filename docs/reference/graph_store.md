@@ -440,3 +440,7 @@ subgraph = graph_store.execute_query(query, parameters={"ids": node_ids})
 - [Knowledge Graph Module](kg.md) - Logical layer above Graph Store
 - [Triple Store Module](triple_store.md) - RDF-based alternative
 - [Visualization Module](visualization.md) - Visualizing query results
+
+## Cookbook
+
+- [Graph Store](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/09_Graph_Store.ipynb)

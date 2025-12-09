@@ -782,7 +782,10 @@ print(f"Context: {context}")
 ---
 
 ## See Also
-
 - [Embeddings Module](embeddings.md) - Generates the vectors
 - [Context Module](context.md) - Uses vector store for memory
 - [Ingest Module](ingest.md) - Source of data
+
+## Cookbook
+- [Vector Store](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/13_Vector_Store.ipynb)
+- [Advanced Vector Store and Search](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/Advanced_Vector_Store_and_Search.ipynb)

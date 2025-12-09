@@ -476,3 +476,7 @@ memory = AgentMemory(
 - [Vector Store Module](vector_store.md) - Underlying storage for memory
 - [Knowledge Graph Module](kg.md) - Underlying graph structure
 - [Embeddings Module](embeddings.md) - Vector generation
+
+## Cookbook
+
+- [Context Module](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/19_Context_Module.ipynb)

@@ -334,3 +334,9 @@ kg = builder.build(sources)
 - [Parse Module](parse.md) - Prepares text for extraction
 - [Ontology Module](ontology.md) - Defines the schema for extraction
 - [Knowledge Graph Module](kg.md) - Stores the extracted data
+
+## Cookbook
+
+- [Entity Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/05_Entity_Extraction.ipynb)
+- [Relation Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/06_Relation_Extraction.ipynb)
+- [Advanced Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/01_Advanced_Extraction.ipynb)

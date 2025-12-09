@@ -246,3 +246,7 @@ print(f"Prepared {len(formatted['ids'])} vectors for {formatted['backend']}")
 - [Vector Store Module](vector_store.md) - Storing the generated vectors
 - [Ingest Module](ingest.md) - Loading data to embed
 - [Pipeline Module](pipeline.md) - Orchestrating the embedding process
+
+## Cookbook
+
+- [Embedding Generation](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/12_Embedding_Generation.ipynb)

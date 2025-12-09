@@ -308,3 +308,7 @@ Use parser classes directly in pipelines and services. Avoid convenience functio
 - [Ingest Module](ingest.md) - Handles file downloading/loading
 - [Split Module](split.md) - Chunks the parsed text
 - [Semantic Extract Module](semantic_extract.md) - Extracts entities from text
+
+## Cookbook
+
+- [Document Parsing](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/03_Document_Parsing.ipynb)

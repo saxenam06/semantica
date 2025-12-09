@@ -244,3 +244,8 @@ ingestor.monitor(
 - [Parse Module](parse.md) - Processes the raw data ingested here
 - [Split Module](split.md) - Chunks the ingested content
 - [Utils Module](utils.md) - Validation helpers
+
+## Cookbook
+
+- [Data Ingestion](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/02_Data_Ingestion.ipynb)
+- [Multi-Source Data Integration](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/06_Multi_Source_Data_Integration.ipynb)

@@ -735,3 +735,7 @@ detector = DuplicateDetector(
 - [Conflicts Module](conflicts.md) - Handling conflicting values during merge
 - [Normalize Module](normalize.md) - Pre-processing for better matching
 - [Knowledge Graph Module](kg.md) - Target for deduplicated data
+
+## Cookbook
+
+- [Deduplication](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/18_Deduplication.ipynb)

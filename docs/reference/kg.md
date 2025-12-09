@@ -198,4 +198,13 @@ print(f"New nodes since 2020: {len(diff.nodes)}")
 - [Semantic Extract Module](semantic_extract.md) - Data source
 - [Visualization Module](visualization.md) - Visualizing the KG
 - [Conflicts Module](conflicts.md) - Conflict detection and resolution
+
+## Cookbook
+
+- [Building Knowledge Graphs](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/07_Building_Knowledge_Graphs.ipynb)
+- [Your First Knowledge Graph](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)
+- [Graph Analytics](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/10_Graph_Analytics.ipynb)
+- [Graph Quality](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/11_Graph_Quality.ipynb)
+- [Advanced Graph Analytics](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/02_Advanced_Graph_Analytics.ipynb)
+- [Temporal Knowledge Graphs](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/10_Temporal_Knowledge_Graphs.ipynb)
 - [Deduplication Module](deduplication.md) - Advanced deduplication

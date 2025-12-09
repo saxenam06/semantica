@@ -952,9 +952,11 @@ splitter = TextSplitter(
 ---
 
 ## See Also
-
 - [Parse Module](parse.md) - Document parsing
 - [Semantic Extract Module](semantic_extract.md) - Entity extraction
 - [Knowledge Graph Module](kg.md) - Graph construction
 - [Embeddings Module](embeddings.md) - Vector generation
 - [Vector Store Module](vector_store.md) - Vector storage
+
+## Cookbook
+- [Chunking and Splitting](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/11_Chunking_and_Splitting.ipynb)

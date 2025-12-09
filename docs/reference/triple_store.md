@@ -1030,8 +1030,10 @@ if not is_valid:
 ---
 
 ## See Also
-
 - [Knowledge Graph Module](kg.md) - Build and analyze knowledge graphs
 - [Ontology Module](ontology.md) - Ontology generation and management
 - [Graph Store Module](graph_store.md) - Property graph storage
 - [Export Module](export.md) - Export to various formats
+
+## Cookbook
+- [Triple Store](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/20_Triple_Store.ipynb)

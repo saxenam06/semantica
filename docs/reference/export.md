@@ -594,6 +594,11 @@ export:
 - [Visualization Module](visualization.md) - Visualize exported graphs
 - [Core Module](core.md) - Framework orchestration
 
+## Cookbook
+
+- [Export](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/15_Export.ipynb)
+- [Multi-Format Export](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/05_Multi_Format_Export.ipynb)
+
 
 ## Overview
 

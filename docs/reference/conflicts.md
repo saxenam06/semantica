@@ -319,3 +319,8 @@ tracker.set_source_credibility("bad_source", 0.1)
 - [Deduplication Module](deduplication.md) - For merging duplicate entities
 - [Normalize Module](normalize.md) - For pre-processing data
 - [Modules Guide](../modules.md#quality-assurance) - Quality assurance overview
+
+## Cookbook
+
+- [Conflict Detection](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/17_Conflict_Detection.ipynb)
+- [Conflict Resolution Strategies](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/04_Conflict_Resolution_Strategies.ipynb)

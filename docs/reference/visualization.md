@@ -294,7 +294,10 @@ analytics_viz.visualize_degree_distribution(kg, output="degree_dist.png")
 ---
 
 ## See Also
-
 - [Knowledge Graph Module](kg.md) - The data source
 - [Embeddings Module](embeddings.md) - Source for vector visualizations
 - [Ontology Module](ontology.md) - Source for hierarchy visualizations
+
+## Cookbook
+- [Visualization](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/16_Visualization.ipynb)
+- [Complete Visualization Suite](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/03_Complete_Visualization_Suite.ipynb)

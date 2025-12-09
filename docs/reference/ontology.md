@@ -280,3 +280,8 @@ kg.add_entities(full_dataset)  # Will raise error if violates schema
 - [Knowledge Graph Module](kg.md) - The instance data following the ontology
 - [Reasoning Module](reasoning.md) - Uses the ontology for inference
 - [Visualization Module](visualization.md) - Visualizing the class hierarchy
+
+## Cookbook
+
+- [Ontology](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/14_Ontology.ipynb)
+- [Unstructured to Ontology](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/12_Unstructured_to_Ontology.ipynb)

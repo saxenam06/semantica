@@ -247,3 +247,7 @@ kg.add_triples(inferred_triples)
 - [Ontology Module](ontology.md) - Source of schema-based rules
 - [Triple Store Module](triple_store.md) - Backend for SPARQL reasoning
 - [Modules Guide](../modules.md#quality-assurance) - Consistency checking overview
+
+## Cookbook
+
+- [Reasoning and Inference](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/08_Reasoning_and_Inference.ipynb)

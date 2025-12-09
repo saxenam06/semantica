@@ -565,3 +565,7 @@ normalized_docs = normalizer.process_batch(documents)
 - [Semantic Extract Module](semantic_extract.md) - Entity and relation extraction
 - [Split Module](split.md) - Text chunking and splitting
 - [Ingest Module](ingest.md) - Data ingestion
+
+## Cookbook
+
+- [Data Normalization](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/04_Data_Normalization.ipynb)
