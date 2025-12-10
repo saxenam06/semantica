@@ -203,6 +203,7 @@ class ConflictDetector:
                                     "document": source_ref.document,
                                     "page": source_ref.page,
                                     "confidence": source_ref.confidence,
+                                    "metadata": source_ref.metadata,
                                 }
                             )
 

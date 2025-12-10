@@ -51,6 +51,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..utils.exceptions import ProcessingError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 
 
 @dataclass
@@ -357,8 +358,15 @@ class SimilarityCalculator:
         Returns:
             Relationship similarity score (0-1)
         """
-        rels1 = set(entity1.get("relationships", []))
-        rels2 = set(entity2.get("relationships", []))
+        def _make_hashable(item):
+            if isinstance(item, dict):
+                return tuple(sorted((k, _make_hashable(v)) for k, v in item.items()))
+            if isinstance(item, list):
+                return tuple(_make_hashable(x) for x in item)
+            return item
+
+        rels1 = set(_make_hashable(r) for r in entity1.get("relationships", []))
+        rels2 = set(_make_hashable(r) for r in entity2.get("relationships", []))
 
         if not rels1 and not rels2:
             return 1.0
