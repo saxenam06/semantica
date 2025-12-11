@@ -802,10 +802,7 @@ def list_available_methods(task: Optional[str] = None) -> Dict[str, List[str]]:
 
 
 # Register default methods
-method_registry.register("text", "default", normalize_text)
-method_registry.register("clean", "default", clean_text)
-method_registry.register("entity", "default", normalize_entity)
-method_registry.register("date", "default", normalize_date)
-method_registry.register("number", "default", normalize_number)
-method_registry.register("language", "default", detect_language)
-method_registry.register("encoding", "default", handle_encoding)
+# Note: We do not register the convenience functions as defaults to avoid recursion.
+# The convenience functions have built-in fallback to the default implementations
+# (using the classes directly) when no custom method is found in the registry.
+

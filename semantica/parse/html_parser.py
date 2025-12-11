@@ -37,6 +37,7 @@ from bs4 import BeautifulSoup
 
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 
 
 @dataclass
@@ -65,6 +66,20 @@ class HTMLElement:
     children: List["HTMLElement"] = field(default_factory=list)
 
 
+@dataclass
+class HTMLData:
+    """HTML document representation."""
+
+    metadata: Dict[str, Any]
+    text: str
+    html: str
+    links: List[Dict[str, Any]] = field(default_factory=list)
+    images: List[Dict[str, Any]] = field(default_factory=list)
+    forms: List[Dict[str, Any]] = field(default_factory=list)
+    tables: List[Dict[str, Any]] = field(default_factory=list)
+    structure: List[Dict[str, Any]] = field(default_factory=list)
+
+
 class HTMLParser:
     """HTML document parser."""
 
@@ -81,7 +96,7 @@ class HTMLParser:
 
     def parse(
         self, html_content: Union[str, Path], base_url: Optional[str] = None, **options
-    ) -> Dict[str, Any]:
+    ) -> HTMLData:
         """
         Parse HTML content.
 
@@ -96,7 +111,7 @@ class HTMLParser:
                 - clean_text: Whether to clean extracted text (default: True)
 
         Returns:
-            dict: Parsed HTML data
+            HTMLData: Parsed HTML data
         """
         # Track HTML parsing
         file_path = None
@@ -160,16 +175,16 @@ class HTMLParser:
                     status="completed",
                     message=f"Parsed HTML: {len(links)} links, {len(images)} images",
                 )
-                return {
-                    "metadata": metadata.__dict__,
-                    "text": text,
-                    "html": html_string,
-                    "links": links,
-                    "images": images,
-                    "forms": forms,
-                    "tables": tables,
-                    "structure": structure,
-                }
+                return HTMLData(
+                    metadata=metadata.__dict__,
+                    text=text,
+                    html=html_string,
+                    links=links,
+                    images=images,
+                    forms=forms,
+                    tables=tables,
+                    structure=structure,
+                )
 
             except Exception as e:
                 self.progress_tracker.stop_tracking(
@@ -183,6 +198,26 @@ class HTMLParser:
                 tracking_id, status="failed", message=str(e)
             )
             raise
+
+    def extract_metadata(self, html_content: Union[str, Path]) -> Dict[str, Any]:
+        """
+        Extract metadata from HTML.
+
+        Args:
+            html_content: HTML content or file path
+
+        Returns:
+            dict: Extracted metadata
+        """
+        result = self.parse(
+            html_content,
+            extract_links=False,
+            extract_images=False,
+            extract_forms=False,
+            extract_tables=False,
+            clean_text=False,
+        )
+        return result.metadata
 
     def extract_text(self, html_content: Union[str, Path], clean: bool = True) -> str:
         """
@@ -203,7 +238,7 @@ class HTMLParser:
             extract_tables=False,
             clean_text=clean,
         )
-        return result["text"]
+        return result.text
 
     def extract_links(
         self, html_content: Union[str, Path], base_url: Optional[str] = None
@@ -225,7 +260,7 @@ class HTMLParser:
             extract_forms=False,
             extract_tables=False,
         )
-        return result["links"]
+        return result.links
 
     def _extract_metadata(self, soup: BeautifulSoup) -> HTMLMetadata:
         """Extract metadata from HTML."""

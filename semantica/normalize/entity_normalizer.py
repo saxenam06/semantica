@@ -520,7 +520,9 @@ class NameVariantHandler:
         # Remove titles
         name = entity_name
         for title in self.titles:
-            name = name.replace(title + " ", "").replace(title, "")
+            # Case-insensitive removal of titles from the beginning of the name
+            pattern = re.compile(r"^" + re.escape(title) + r"\s*", re.IGNORECASE)
+            name = pattern.sub("", name)
 
         name = name.strip()
 

@@ -161,7 +161,7 @@ class DataCleaner:
             if handle_missing:
                 strategy = options.get("missing_strategy", "remove")
                 cleaned = self.missing_value_handler.handle_missing_values(
-                    cleaned, strategy=strategy
+                    cleaned, strategy=strategy, **options
                 )
 
             # Validate data
@@ -687,6 +687,8 @@ class DataValidator:
             bool: True if data type matches one of the expected types, False otherwise
         """
         if isinstance(expected_types, type):
+            expected_types = [expected_types]
+        elif isinstance(expected_types, str):
             expected_types = [expected_types]
 
         actual_type = type(data)

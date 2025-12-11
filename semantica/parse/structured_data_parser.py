@@ -58,6 +58,9 @@ class StructuredDataParser:
         self.config = config or {}
         self.config.update(kwargs)
 
+        # Initialize progress tracker
+        self.progress_tracker = get_progress_tracker()
+
         # Initialize parsers
         self.json_parser = JSONParser(**self.config.get("json", {}))
         self.csv_parser = CSVParser(**self.config.get("csv", {}))
