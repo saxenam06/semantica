@@ -1,6 +1,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import time
+
+import pytest
+
 from semantica.pipeline import (
     PipelineBuilder,
     ExecutionEngine,
@@ -9,6 +12,8 @@ from semantica.pipeline import (
     RetryPolicy,
     RetryStrategy
 )
+
+pytestmark = pytest.mark.integration
 
 class TestNotebook07(unittest.TestCase):
 

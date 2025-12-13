@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, patch
 import time
 from typing import Dict, Any
 
+import pytest
+
 from semantica.pipeline.pipeline_builder import PipelineBuilder, StepStatus, Pipeline
 from semantica.pipeline.execution_engine import ExecutionEngine, PipelineStatus
 from semantica.pipeline.failure_handler import (
@@ -10,6 +12,8 @@ from semantica.pipeline.failure_handler import (
 )
 from semantica.pipeline.parallelism_manager import ParallelismManager, Task
 from semantica.pipeline.pipeline_validator import PipelineValidator
+
+pytestmark = pytest.mark.integration
 
 class TestPipelineComprehensive(unittest.TestCase):
 

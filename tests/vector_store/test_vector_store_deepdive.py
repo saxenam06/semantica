@@ -4,7 +4,8 @@ import numpy as np
 import sys
 from pathlib import Path
 
-# Add project root to path
+import pytest
+
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from semantica.vector_store.vector_store import VectorStore, VectorIndexer, VectorRetriever, VectorManager
@@ -14,6 +15,8 @@ from semantica.vector_store.milvus_adapter import MilvusAdapter, MilvusClient, M
 from semantica.vector_store.qdrant_adapter import QdrantAdapter
 from semantica.vector_store.weaviate_adapter import WeaviateAdapter
 from semantica.vector_store.hybrid_search import HybridSearch, MetadataFilter, SearchRanker
+
+pytestmark = pytest.mark.integration
 
 class TestVectorStoreDeepDive(unittest.TestCase):
 

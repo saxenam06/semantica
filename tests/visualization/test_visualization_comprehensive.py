@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from pathlib import Path
 
+import pytest
 # Mock heavy libraries before importing visualization modules
 sys.modules['matplotlib'] = MagicMock()
 sys.modules['matplotlib.pyplot'] = MagicMock()
@@ -31,6 +32,7 @@ from semantica.visualization.analytics_visualizer import AnalyticsVisualizer
 from semantica.visualization.temporal_visualizer import TemporalVisualizer
 from semantica.visualization.utils.color_schemes import ColorScheme
 
+pytestmark = pytest.mark.integration
 class TestVisualizationComprehensive(unittest.TestCase):
 
     def setUp(self):

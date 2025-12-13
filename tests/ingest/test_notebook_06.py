@@ -7,6 +7,8 @@ from semantica.ingest import FileIngestor, WebIngestor, DBIngestor, StreamIngest
 from semantica.kg import GraphBuilder, EntityResolver, ProvenanceTracker
 from semantica.conflicts import ConflictDetector
 
+pytestmark = pytest.mark.integration
+
 class TestNotebook06MultiSourceIntegration:
     
     def setup_method(self):

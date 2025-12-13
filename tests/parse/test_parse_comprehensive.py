@@ -6,6 +6,8 @@ import json
 import csv
 from pathlib import Path
 
+import pytest
+
 from semantica.parse.document_parser import DocumentParser, PDFParser, DOCXParser, HTMLParser
 from semantica.parse.pptx_parser import PPTXParser
 from semantica.parse.excel_parser import ExcelParser
@@ -16,6 +18,8 @@ from semantica.parse.media_parser import MediaParser, ImageParser
 from semantica.parse.web_parser import WebParser
 from semantica.parse.registry import MethodRegistry
 from semantica.parse.config import ParseConfig
+
+pytestmark = pytest.mark.integration
 
 class TestParseComprehensive(unittest.TestCase):
 

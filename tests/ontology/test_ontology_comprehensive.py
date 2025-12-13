@@ -1,7 +1,9 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
 from collections import defaultdict
+
+import pytest
+
 from semantica.ontology.class_inferrer import ClassInferrer
 from semantica.ontology.property_generator import PropertyGenerator
 from semantica.ontology.naming_conventions import NamingConventions
@@ -9,6 +11,8 @@ from semantica.ontology.ontology_generator import OntologyGenerator
 from semantica.ontology.ontology_validator import OntologyValidator, ValidationResult
 from semantica.ontology.namespace_manager import NamespaceManager
 from semantica.ontology.module_manager import ModuleManager
+
+pytestmark = pytest.mark.integration
 
 class TestOntologyComprehensive(unittest.TestCase):
     

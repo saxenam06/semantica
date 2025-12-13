@@ -18,6 +18,8 @@ from semantica.ingest import (
     MCPIngestor, IngestConfig, ingest_config
 )
 
+pytestmark = pytest.mark.integration
+
 class TestNotebook02DataIngestion:
     
     def setup_method(self):

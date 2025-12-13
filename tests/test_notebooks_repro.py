@@ -3,8 +3,11 @@ import sys
 import os
 import numpy as np
 
-# Add project root to path
+import pytest
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+pytestmark = pytest.mark.integration
 
 class TestNotebooks(unittest.TestCase):
     

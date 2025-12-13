@@ -1,8 +1,13 @@
 import unittest
 import os
 from datetime import datetime, timezone
+
+import pytest
+
 from semantica.normalize import methods
 from semantica.normalize.config import normalize_config
+
+pytestmark = pytest.mark.integration
 
 class TestNormalizeIntegration(unittest.TestCase):
     def test_normalize_text_integration(self):

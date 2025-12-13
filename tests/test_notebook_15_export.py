@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 from semantica.kg import GraphBuilder
 from semantica.export import (
     JSONExporter,
@@ -11,6 +13,8 @@ from semantica.export import (
     RDFExporter,
     GraphExporter,
 )
+
+pytestmark = pytest.mark.integration
 
 class TestNotebook15Export(unittest.TestCase):
     def setUp(self):

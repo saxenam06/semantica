@@ -1,5 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from semantica.ontology import (
     OntologyEngine, 
     ClassInferrer, 
@@ -10,6 +13,8 @@ from semantica.ontology import (
     LLMOntologyGenerator
 )
 from semantica.visualization import OntologyVisualizer
+
+pytestmark = pytest.mark.integration
 
 class TestNotebook14(unittest.TestCase):
     """

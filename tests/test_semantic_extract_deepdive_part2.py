@@ -1,11 +1,11 @@
-
 import unittest
 import sys
 import os
 from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
 
-# Add project root to path
+import pytest
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from semantica.semantic_extract.named_entity_recognizer import (
@@ -21,6 +21,8 @@ from semantica.semantic_extract.methods import (
     extract_relations_regex, extract_relations_dependency,
     extract_triples_rules
 )
+
+pytestmark = pytest.mark.integration
 
 class TestSemanticExtractDeepDivePart2(unittest.TestCase):
 

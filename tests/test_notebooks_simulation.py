@@ -6,6 +6,8 @@ import numpy as np
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from semantica.kg import GraphBuilder
 from semantica.export import (
     JSONExporter,
@@ -23,6 +25,8 @@ from semantica.export import (
     ExportConfig,
     export_config
 )
+
+pytestmark = pytest.mark.integration
 
 class TestNotebooks(unittest.TestCase):
     def setUp(self):

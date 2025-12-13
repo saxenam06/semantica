@@ -5,7 +5,8 @@ import traceback
 import logging
 from typing import Any, Dict, List, Optional
 
-# Configure logging
+import pytest
+
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger("verify_backends")
 
@@ -14,6 +15,8 @@ try:
 except ImportError:
     logger.error("Failed to import semantica. Make sure you are in the project root or semantica is installed.")
     exit(1)
+
+pytestmark = pytest.mark.integration
 
 def verify_backend(backend_name: str, config: Dict[str, Any]) -> bool:
     logger.info(f"\n{'='*20} Verifying {backend_name.upper()} {'='*20}")

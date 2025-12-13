@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 from semantica.ingest import MCPIngestor, ingest_mcp, DBIngestor, FileIngestor
 from semantica.ingest.mcp_ingestor import MCPData
 
+pytestmark = pytest.mark.integration
+
 class TestCookbookIntegration:
     
     @pytest.fixture

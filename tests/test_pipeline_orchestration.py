@@ -21,6 +21,8 @@ from semantica.pipeline import (
 from semantica.pipeline.pipeline_builder import Pipeline, PipelineSerializer
 from semantica.pipeline.execution_engine import ExecutionResult
 
+pytestmark = pytest.mark.integration
+
 # --- Fixtures ---
 
 @pytest.fixture

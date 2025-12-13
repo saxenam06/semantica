@@ -1,9 +1,13 @@
-
 import unittest
 import os
 import tempfile
 import json
+
+import pytest
+
 from semantica.parse import DocumentParser, CSVParser, JSONParser, XMLParser, HTMLParser, StructuredDataParser
+
+pytestmark = pytest.mark.integration
 
 class TestNotebook03(unittest.TestCase):
     def setUp(self):

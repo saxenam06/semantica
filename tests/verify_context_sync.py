@@ -3,10 +3,13 @@ import os
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
-# Add project root to path
+import pytest
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from semantica.context import AgentContext, ContextGraph
+
+pytestmark = pytest.mark.integration
 
 @dataclass
 class VectorSearchResult:

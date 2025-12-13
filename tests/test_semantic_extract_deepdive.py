@@ -3,7 +3,8 @@ import sys
 import os
 from unittest.mock import MagicMock, patch
 
-# Add project root to path
+import pytest
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from semantica.semantic_extract.ner_extractor import NERExtractor, Entity
@@ -22,6 +23,8 @@ from semantica.semantic_extract.triple_extractor import (
     Triple
 )
 from semantica.semantic_extract.methods import get_entity_method, get_relation_method
+
+pytestmark = pytest.mark.integration
 
 class TestSemanticExtractDeepDive(unittest.TestCase):
 

@@ -1,10 +1,10 @@
-
 import unittest
 import sys
 import os
 from pathlib import Path
 
-# Add project root to path
+import pytest
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from semantica.semantic_extract import (
@@ -16,6 +16,8 @@ from semantica.semantic_extract import (
     Relation
 )
 from semantica.semantic_extract.methods import get_entity_method, get_relation_method
+
+pytestmark = pytest.mark.integration
 
 class TestNotebooksVerification(unittest.TestCase):
     """
