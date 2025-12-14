@@ -397,10 +397,9 @@ def extract_relations_pattern(
         
     ent_pat = f"(?:{'|'.join(entity_texts)})"
     
-    # Subject pattern: matches alphanumeric, dots, and horizontal whitespace (no newlines)
-    # Also includes common punctuation in names: , - & '
-    # Using non-greedy matching to capture the shortest possible subject
-    subject_pat = r"[\w\.\,\-\&\'\ \t]+?"
+    # Use entity pattern for subject as well, since we require the subject to be a known entity
+    # This prevents matching long strings of text that happen to end with a relation keyword
+    subject_pat = ent_pat
 
     relation_patterns = {
         "founded_by": [
@@ -451,15 +450,25 @@ def extract_relations_pattern(
     }
 
     entity_map = {e.text.lower(): e for e in entities}
+    # DEBUG: Print entities in map
+    print(f"DEBUG: Entity map keys: {list(entity_map.keys())}")
 
     for relation_type, patterns in relation_patterns.items():
         for pattern in patterns:
+            # DEBUG: Print pattern being tried
+            # print(f"DEBUG: Trying pattern: {pattern}")
             for match in re.finditer(pattern, text, re.IGNORECASE):
                 subject_text = match.group("subject").strip()
                 object_text = match.group("object").strip()
+                
+                # DEBUG: Print match details
+                print(f"DEBUG: Match found! Subject='{subject_text}', Object='{object_text}'")
 
                 subject_entity = entity_map.get(subject_text.lower())
                 object_entity = entity_map.get(object_text.lower())
+                
+                # DEBUG: Print lookup results
+                print(f"DEBUG: Subject Entity found: {subject_entity is not None}, Object Entity found: {object_entity is not None}")
 
                 if subject_entity and object_entity:
                     start = max(0, match.start() - 50)
@@ -585,28 +594,55 @@ def extract_relations_dependency(
             if token.idx >= entity.start_char and (token.idx + len(token)) <= entity.end_char:
                 token_to_entity[token] = entity
                 break
+    
+    # DEBUG: Print token to entity mapping
+    # print(f"DEBUG: Token to entity mapping keys: {[t.text for t in token_to_entity.keys()]}")
+
+    # DEBUG: Dump full dependency tree
+    print("DEBUG: Dependency Tree:")
+    for token in doc:
+        print(f"  {token.i}: {token.text} ({token.dep_}) -> {token.head.text} ({token.head.i})")
 
     for token in doc:
         # Look for subject-verb-object patterns
         if token.dep_ in ["nsubj", "nsubjpass"]:
             # Check if subject token maps to an entity
             subject_entity = token_to_entity.get(token)
+            
+            # DEBUG: Print subject checking
+            # print(f"DEBUG: Checking subject token: {token.text} (dep={token.dep_}), Entity: {subject_entity}")
+            
             if not subject_entity:
                 continue
 
             verb = token.head
+            # DEBUG: Print all children of verb
+            # print(f"DEBUG: Verb '{verb.text}' children: {[f'{c.text}({c.dep_})' for c in verb.children]}")
+
             # Find object
             potential_objects = []
             for child in verb.children:
-                if child.dep_ in ["dobj", "attr"]:
+                if child.dep_ in ["dobj", "attr", "acomp"]:
                     potential_objects.append(child)
+                    # Check for "attr of object" pattern (e.g. "CEO of Apple")
+                    for grandchild in child.children:
+                        if grandchild.dep_ == "prep":
+                            for greatgrandchild in grandchild.children:
+                                if greatgrandchild.dep_ == "pobj":
+                                    potential_objects.append(greatgrandchild)
                 elif child.dep_ in ["prep", "agent"]:
                     for grandchild in child.children:
                         if grandchild.dep_ == "pobj":
                             potential_objects.append(grandchild)
+            
+            # DEBUG: Print potential objects
+            print(f"DEBUG: Potential objects for verb {verb.text}: {[t.text for t in potential_objects]}")
 
             for obj_token in potential_objects:
                 object_entity = token_to_entity.get(obj_token)
+                
+                # DEBUG: Print object checking
+                print(f"DEBUG: Checking object token: {obj_token.text}, Entity: {object_entity}")
 
                 if object_entity and subject_entity != object_entity:
                     relations.append(
