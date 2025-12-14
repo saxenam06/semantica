@@ -307,7 +307,7 @@ class CodeExtractor:
             structure["classes"] = re.findall(class_pattern, content, re.MULTILINE)
 
             # Extract functions
-            func_pattern = r"^def\s+(\w+)"
+            func_pattern = r"^\s*def\s+(\w+)"
             structure["functions"] = re.findall(func_pattern, content, re.MULTILINE)
 
         elif language in ["javascript", "typescript"]:
@@ -641,7 +641,7 @@ class RepoIngestor:
         try:
             for commit in repo.iter_commits(*log_args):
                 # Get files changed
-                files_changed = [item.a_path for item in commit.stats.files.keys()]
+                files_changed = list(commit.stats.files.keys())
 
                 # Calculate stats
                 stats = commit.stats.total
@@ -769,5 +769,28 @@ class RepoIngestor:
     def cleanup(self):
         """Cleanup temporary repository files."""
         if self.temp_dir and os.path.exists(self.temp_dir):
-            shutil.rmtree(self.temp_dir)
+            def onexc(func, path, exc_info):
+                """
+                Error handler for shutil.rmtree.
+
+                If the error is due to an access error (read only file)
+                it attempts to add write permission and then retries.
+
+                If the error is for another reason it re-raises the error.
+
+                Usage : shutil.rmtree(path, onerror=onexc)
+                """
+                import stat
+                if not os.access(path, os.W_OK):
+                    # Is the error an access error ?
+                    os.chmod(path, stat.S_IWUSR)
+                    func(path)
+                else:
+                    raise
+
+            try:
+                shutil.rmtree(self.temp_dir, onerror=onexc)
+            except Exception as e:
+                self.logger.warning(f"Failed to clean up temp dir {self.temp_dir}: {e}")
+
             self.temp_dir = None
