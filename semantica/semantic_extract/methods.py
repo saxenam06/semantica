@@ -548,7 +548,7 @@ def extract_relations_cooccurrence(
                         subject=entity1,
                         predicate="related_to",
                         object=entity2,
-                        confidence=0.5,
+                        confidence=0.6,  # Meets default threshold
                         context=context,
                         metadata={
                             "extraction_method": "co_occurrence",
@@ -576,39 +576,56 @@ def extract_relations_dependency(
 
     doc = nlp(text)
     relations = []
-    entity_map = {e.text.lower(): e for e in entities}
+    
+    # Map tokens to entities
+    token_to_entity = {}
+    for token in doc:
+        for entity in entities:
+            # Check if token is within entity span
+            if token.idx >= entity.start_char and (token.idx + len(token)) <= entity.end_char:
+                token_to_entity[token] = entity
+                break
 
     for token in doc:
         # Look for subject-verb-object patterns
-        if token.dep_ == "nsubj" or token.dep_ == "nsubjpass":
-            subject = token.text
+        if token.dep_ in ["nsubj", "nsubjpass"]:
+            # Check if subject token maps to an entity
+            subject_entity = token_to_entity.get(token)
+            if not subject_entity:
+                continue
+
             verb = token.head
             # Find object
+            potential_objects = []
             for child in verb.children:
-                if child.dep_ in ["dobj", "pobj", "attr"]:
-                    obj = child.text
+                if child.dep_ in ["dobj", "attr"]:
+                    potential_objects.append(child)
+                elif child.dep_ in ["prep", "agent"]:
+                    for grandchild in child.children:
+                        if grandchild.dep_ == "pobj":
+                            potential_objects.append(grandchild)
 
-                    subject_entity = entity_map.get(subject.lower())
-                    object_entity = entity_map.get(obj.lower())
+            for obj_token in potential_objects:
+                object_entity = token_to_entity.get(obj_token)
 
-                    if subject_entity and object_entity:
-                        relations.append(
-                            Relation(
-                                subject=subject_entity,
-                                predicate=verb.lemma_,
-                                object=object_entity,
-                                confidence=0.8,
-                                context=text[
-                                    max(0, token.idx - 30) : min(
-                                        len(text), child.idx + len(obj) + 30
-                                    )
-                                ],
-                                metadata={
-                                    "extraction_method": "dependency",
-                                    "dependency_path": f"{token.dep_} -> {child.dep_}",
-                                },
-                            )
+                if object_entity and subject_entity != object_entity:
+                    relations.append(
+                        Relation(
+                            subject=subject_entity,
+                            predicate=verb.lemma_,
+                            object=object_entity,
+                            confidence=0.8,
+                            context=text[
+                                max(0, token.idx - 30) : min(
+                                    len(text), obj_token.idx + len(obj_token.text) + 30
+                                )
+                            ],
+                            metadata={
+                                "extraction_method": "dependency",
+                                "dependency_path": f"{token.dep_} -> ... -> {obj_token.dep_}",
+                            },
                         )
+                    )
 
     return relations
 
