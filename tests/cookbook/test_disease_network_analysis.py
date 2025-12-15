@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 try:
     from semantica.ingest import FileIngestor, WebIngestor, DBIngestor, FeedIngestor
     from semantica.parse import DocumentParser, PDFParser, StructuredDataParser, JSONParser
-    from semantica.semantic_extract import NERExtractor, RelationExtractor, TripleExtractor, SemanticAnalyzer
+    from semantica.semantic_extract import NERExtractor, RelationExtractor, TripletExtractor, SemanticAnalyzer
     from semantica.kg import GraphBuilder, GraphAnalyzer, CentralityCalculator, CommunityDetector
     from semantica.kg import ConnectivityAnalyzer, TemporalGraphQuery, TemporalPatternDetector
     from semantica.ontology import OntologyGenerator, ClassInferrer, PropertyGenerator, OntologyValidator

@@ -510,12 +510,12 @@ for relation in relations:
     print()
 ```
 
-#### Triple Extraction
+#### Triplet Extraction
 ```python
-from semantica.semantic_extract import TripleExtractor
+from semantica.semantic_extract import TripletExtractor
 
-# Initialize triple extractor
-triple_extractor = TripleExtractor(
+# Initialize triplet extractor
+triplet_extractor = TripletExtractor(
     config={
         "validator": {"strict": True},
         "serializer": {"format": "turtle"}
@@ -525,13 +525,13 @@ triple_extractor = TripleExtractor(
 text = "Barack Obama was the President of the United States from 2009 to 2017."
 
 # Extract RDF triples
-triples = triple_extractor.extract_triples(text)
+triplets = triplet_extractor.extract_triples(text)
 
-for triple in triples:
-    print(f"Subject: {triple.subject}")
-    print(f"Predicate: {triple.predicate}")
-    print(f"Object: {triple.object}")
-    print(f"Confidence: {triple.confidence}")
+for triplet in triples:
+    print(f"Subject: {triplet.subject}")
+    print(f"Predicate: {triplet.predicate}")
+    print(f"Object: {triplet.object}")
+    print(f"Confidence: {triplet.confidence}")
     print()
 ```
 

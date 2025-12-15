@@ -58,9 +58,9 @@ Algorithms Used:
 RDF Export:
     - RDF Serialization: Multiple format serialization (Turtle, RDF/XML, JSON-LD, N-Triples, N3)
     - Namespace Management: Namespace registration, conflict resolution, declaration generation
-    - RDF Validation: RDF syntax validation, triple validation, namespace validation
+    - RDF Validation: RDF syntax validation, triplet validation, namespace validation
     - URI Generation: Hash-based and text-based URI assignment for RDF resources
-    - Triple Extraction: Entity and relationship to RDF triple conversion
+    - Triplet Extraction: Entity and relationship to RDF triplet conversion
     - Format Conversion: Cross-format RDF conversion algorithms
 
 LPG (Labeled Property Graph) Export:
@@ -183,7 +183,7 @@ def export_rdf(
     This is a user-friendly wrapper that exports data to RDF using the specified format.
 
     Args:
-        data: Data to export (knowledge graph, entities, relationships, or triples)
+        data: Data to export (knowledge graph, entities, relationships, or triplets)
         file_path: Output RDF file path
         format: RDF format (default: "turtle")
             - "turtle": Turtle format

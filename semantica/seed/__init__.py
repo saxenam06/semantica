@@ -22,12 +22,12 @@ Foundation Graph Creation:
 Data Integration:
     - Merge Strategies: Seed-first (seed data takes precedence, extracted fills gaps), extracted-first (extracted data takes precedence, seed fills gaps), merge (property merging, seed takes precedence for conflicts)
     - Entity Merging: ID-based entity matching, property merging, conflict resolution (seed-first, extracted-first, merge), duplicate handling
-    - Relationship Merging: Triple-based relationship matching (source_id, target_id, type), duplicate relationship detection, relationship property merging
+    - Relationship Merging: Triplet-based relationship matching (source_id, target_id, type), duplicate relationship detection, relationship property merging
     - Conflict Resolution: Priority-based conflict resolution, property-level merging, metadata preservation
 
 Quality Validation:
     - Required Field Checking: Entity ID validation, relationship source/target ID validation, type field checking, missing field detection
-    - Duplicate Detection: Entity ID duplicate detection (set-based), relationship duplicate detection (triple-based), duplicate counting and reporting
+    - Duplicate Detection: Entity ID duplicate detection (set-based), relationship duplicate detection (triplet-based), duplicate counting and reporting
     - Consistency Validation: Entity-reference consistency (relationships reference existing entities), type consistency checking, metadata consistency
     - Metrics Calculation: Entity count, relationship count, unique entity ID count, duplicate entity count, validation statistics
 

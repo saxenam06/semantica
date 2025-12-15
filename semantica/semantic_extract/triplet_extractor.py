@@ -1,63 +1,63 @@
 """
-RDF Triple Extraction Module
+RDF Triplet Extraction Module
 
-This module provides comprehensive RDF triple extraction capabilities, enabling
-conversion of entities and relations into RDF triples using multiple extraction
+This module provides comprehensive RDF triplet extraction capabilities, enabling
+conversion of entities and relations into RDF triplets using multiple extraction
 methods, with validation and serialization support.
 
 Supported Methods:
-    - "pattern": Pattern-based triple extraction from relations (default)
-    - "rules": Rule-based triple extraction using linguistic rules
+    - "pattern": Pattern-based triplet extraction from relations (default)
+    - "rules": Rule-based triplet extraction using linguistic rules
     - "huggingface": Custom HuggingFace triplet extraction models
-    - "llm": LLM-based triple extraction using various providers
+    - "llm": LLM-based triplet extraction using various providers
 
 Algorithms Used:
     - Pattern Matching: Regex-based subject-predicate-object extraction
-    - Rule-based Extraction: Linguistic rule application for triple formation
+    - Rule-based Extraction: Linguistic rule application for triplet formation
     - Sequence-to-Sequence Models: Transformer-based seq2seq for triplet generation
-    - Large Language Models: GPT, Claude, Gemini for structured triple extraction
+    - Large Language Models: GPT, Claude, Gemini for structured triplet extraction
     - RDF Serialization: Graph serialization algorithms (Turtle, N-Triples, JSON-LD)
     - URI Normalization: String normalization and URI formatting algorithms
 
 Key Features:
     - Multiple extraction methods:
-        * Pattern-based: Pattern matching for triple extraction (default)
-        * Rules-based: Rule-based triple extraction
+        * Pattern-based: Pattern matching for triplet extraction (default)
+        * Rules-based: Rule-based triplet extraction
         * HuggingFace: Custom HuggingFace triplet models
-        * LLM-based: LLM-powered triple extraction
+        * LLM-based: LLM-powered triplet extraction
     - Fallback chain support: Try methods in order until one succeeds
-    - RDF triple generation from entities and relations
+    - RDF triplet generation from entities and relations
     - Subject-predicate-object extraction
-    - Triple validation and quality checking
+    - Triplet validation and quality checking
     - RDF serialization (Turtle, N-Triples, JSON-LD, RDF/XML)
-    - Batch triple processing
+    - Batch triplet processing
     - URI formatting and normalization
     - Quality assessment and scoring
 
 Main Classes:
-    - TripleExtractor: Main triple extraction coordinator with method selection
-    - TripleValidator: Triple validation engine
+    - TripletExtractor: Main triplet extraction coordinator with method selection
+    - TripletValidator: Triplet validation engine
     - RDFSerializer: RDF serialization handler
-    - TripleQualityChecker: Triple quality assessment
-    - Triple: RDF triple representation dataclass
+    - TripletQualityChecker: Triplet quality assessment
+    - Triplet: RDF triplet representation dataclass
 
 Example Usage:
-    >>> from semantica.semantic_extract import TripleExtractor
+    >>> from semantica.semantic_extract import TripletExtractor
     >>> # Using pattern method (default)
-    >>> extractor = TripleExtractor(method="pattern")
-    >>> triples = extractor.extract_triples(text, entities, relations)
+    >>> extractor = TripletExtractor(method="pattern")
+    >>> triplets = extractor.extract_triplets(text, entities, relations)
     >>> 
     >>> # Using LLM method
-    >>> extractor = TripleExtractor(method="llm", provider="openai", llm_model="gpt-4")
-    >>> triples = extractor.extract_triples(text, entities, relations)
+    >>> extractor = TripletExtractor(method="llm", provider="openai", llm_model="gpt-4")
+    >>> triplets = extractor.extract_triplets(text, entities, relations)
     >>> 
     >>> # Using HuggingFace model
-    >>> extractor = TripleExtractor(method="huggingface", huggingface_model="custom/triplet-model")
-    >>> triples = extractor.extract_triples(text)
+    >>> extractor = TripletExtractor(method="huggingface", huggingface_model="custom/triplet-model")
+    >>> triplets = extractor.extract_triplets(text)
     >>> 
     >>> # Serialize to RDF
-    >>> rdf_turtle = extractor.serialize_triples(triples, format="turtle")
-    >>> validated = extractor.validate_triples(triples)
+    >>> rdf_turtle = extractor.serialize_triplets(triplets, format="turtle")
+    >>> validated = extractor.validate_triplets(triplets)
 
 Author: Semantica Contributors
 License: MIT
@@ -75,8 +75,8 @@ from .relation_extractor import Relation
 
 
 @dataclass
-class Triple:
-    """RDF triple representation."""
+class Triplet:
+    """RDF triplet representation."""
 
     subject: str
     predicate: str
@@ -85,8 +85,8 @@ class Triple:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-class TripleExtractor:
-    """RDF triple extraction handler."""
+class TripletExtractor:
+    """RDF triplet extraction handler."""
 
     def __init__(
         self,
@@ -97,7 +97,7 @@ class TripleExtractor:
         **kwargs
     ):
         """
-        Initialize triple extractor.
+        Initialize triplet extractor.
 
         Args:
             method: Extraction method(s). Can be:
@@ -106,7 +106,7 @@ class TripleExtractor:
                 - "huggingface": HuggingFace model
                 - "llm": LLM-based extraction
                 - List of methods for fallback chain
-            include_temporal: Whether to include temporal information in triples
+            include_temporal: Whether to include temporal information in triplets
             include_provenance: Whether to track source sentences for provenance
             config: Legacy config dict (deprecated, use kwargs)
             **kwargs: Configuration options:
@@ -118,7 +118,7 @@ class TripleExtractor:
                 - min_confidence: Minimum confidence threshold
                 - validate: Enable validation (default: True)
         """
-        self.logger = get_logger("triple_extractor")
+        self.logger = get_logger("triplet_extractor")
         self.config = config or {}
         self.config.update(kwargs)
         self.progress_tracker = get_progress_tracker()
@@ -130,39 +130,39 @@ class TripleExtractor:
         # Method configuration
         self.method = method if isinstance(method, list) else [method]
         self.min_confidence = self.config.get("min_confidence", 0.5)
-        self.validate_triples = self.config.get("validate", True)
+        self.validate_triplets = self.config.get("validate", True)
 
-        self.triple_validator = TripleValidator(**self.config.get("validator", {}))
+        self.triplet_validator = TripletValidator(**self.config.get("validator", {}))
         self.rdf_serializer = RDFSerializer(**self.config.get("serializer", {}))
-        self.quality_checker = TripleQualityChecker(**self.config.get("quality", {}))
+        self.quality_checker = TripletQualityChecker(**self.config.get("quality", {}))
 
         self.supported_formats = ["turtle", "ntriples", "jsonld", "xml"]
 
-    def extract_triples(
+    def extract_triplets(
         self,
         text: str,
         entities: Optional[List[Entity]] = None,
-        relationships: Optional[List[Relation]] = None,
+        relations: Optional[List[Relation]] = None,
         **options,
-    ) -> List[Triple]:
+    ) -> List[Triplet]:
         """
-        Extract RDF triples from text.
+        Extract RDF triplets from text.
 
         Args:
             text: Input text
             entities: Pre-extracted entities (optional)
-            relationships: Pre-extracted relations (optional)
+            relations: Pre-extracted relations (optional)
             **options: Extraction options
 
         Returns:
-            list: List of extracted triples
+            list: List of extracted triplets
         """
-        from .methods import get_triple_method
+        from .methods import get_triplet_method
 
         tracking_id = self.progress_tracker.start_tracking(
             module="semantic_extract",
-            submodule="TripleExtractor",
-            message="Extracting RDF triples from text",
+            submodule="TripletExtractor",
+            message="Extracting RDF triplets from text",
         )
 
         try:
@@ -178,12 +178,12 @@ class TripleExtractor:
                 entities = ner.extract_entities(text)
 
             # Extract relations if not provided
-            if relationships is None:
+            if relations is None:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Extracting relations..."
                 )
                 rel_extractor = RelationExtractor(**self.config.get("relation", {}))
-                relationships = rel_extractor.extract_relations(text, entities)
+                relations = rel_extractor.extract_relations(text, entities)
 
             # Use method-based extraction
             methods = options.get("method", self.method)
@@ -194,14 +194,14 @@ class TripleExtractor:
             all_options = {**self.config, **options}
 
             # Try each method in order (fallback chain)
-            all_triples = []
+            all_triplets = []
             for method_name in methods:
                 try:
                     self.progress_tracker.update_tracking(
                         tracking_id,
-                        message=f"Extracting triples using {method_name}...",
+                        message=f"Extracting triplets using {method_name}...",
                     )
-                    method_func = get_triple_method(method_name)
+                    method_func = get_triplet_method(method_name)
 
                     # Prepare method-specific options
                     method_options = all_options.copy()
@@ -218,29 +218,29 @@ class TripleExtractor:
                             "llm_model", all_options.get("model")
                         )
 
-                    triples = method_func(
+                    triplets = method_func(
                         text,
                         entities=entities,
-                        relations=relationships,
+                        relations=relations,
                         **method_options,
                     )
 
                     # Filter by confidence
                     min_conf = options.get("min_confidence", self.min_confidence)
-                    filtered = [t for t in triples if t.confidence >= min_conf]
+                    filtered = [t for t in triplets if t.confidence >= min_conf]
 
                     if filtered:
-                        all_triples.append((method_name, filtered))
+                        all_triplets.append((method_name, filtered))
 
                         # If not using ensemble, return first successful result
                         if len(methods) == 1:
                             result = filtered
-                            if options.get("validate", self.validate_triples):
-                                result = self.triple_validator.validate_triples(result)
+                            if options.get("validate", self.validate_triplets):
+                                result = self.triplet_validator.validate_triplets(result)
                             self.progress_tracker.stop_tracking(
                                 tracking_id,
                                 status="completed",
-                                message=f"Extracted {len(result)} triples using {method_name}",
+                                message=f"Extracted {len(result)} triplets using {method_name}",
                             )
                             return result
 
@@ -249,38 +249,38 @@ class TripleExtractor:
                     continue
 
             # Use first successful method or fallback to relation conversion
-            if all_triples:
-                triples = all_triples[0][1]
+            if all_triplets:
+                triplets = all_triplets[0][1]
             else:
-                # Fallback: Convert relations to triples
+                # Fallback: Convert relations to triplets
                 self.progress_tracker.update_tracking(
                     tracking_id,
-                    message=f"Converting {len(relationships)} relations to triples...",
+                    message=f"Converting {len(relations)} relations to triplets...",
                 )
-                triples = []
-                for relation in relationships:
-                    triple = Triple(
+                triplets = []
+                for relation in relations:
+                    triplet = Triplet(
                         subject=self._format_uri(relation.subject.text),
                         predicate=self._format_uri(relation.predicate),
                         object=self._format_uri(relation.object.text),
                         confidence=relation.confidence,
                         metadata={"context": relation.context, **relation.metadata},
                     )
-                    triples.append(triple)
+                    triplets.append(triplet)
 
-            # Validate triples
-            if options.get("validate", self.validate_triples):
+            # Validate triplets
+            if options.get("validate", self.validate_triplets):
                 self.progress_tracker.update_tracking(
-                    tracking_id, message="Validating triples..."
+                    tracking_id, message="Validating triplets..."
                 )
-                triples = self.triple_validator.validate_triples(triples)
+                triplets = self.triplet_validator.validate_triplets(triplets)
 
             self.progress_tracker.stop_tracking(
                 tracking_id,
                 status="completed",
-                message=f"Extracted {len(triples)} triples",
+                message=f"Extracted {len(triplets)} triplets",
             )
-            return triples
+            return triplets
 
         except Exception as e:
             self.progress_tracker.stop_tracking(
@@ -298,109 +298,109 @@ class TripleExtractor:
         formatted = quote(value.replace(" ", "_"), safe="")
         return f"http://example.org/{formatted}"
 
-    def validate_triples(self, triples: List[Triple], **criteria) -> List[Triple]:
+    def validate_triplets(self, triplets: List[Triplet], **criteria) -> List[Triplet]:
         """
-        Validate triple quality and consistency.
+        Validate triplet quality and consistency.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             **criteria: Validation criteria
 
         Returns:
-            list: Validated triples
+            list: Validated triplets
         """
-        return self.triple_validator.validate_triples(triples, **criteria)
+        return self.triplet_validator.validate_triplets(triplets, **criteria)
 
-    def serialize_triples(
-        self, triples: List[Triple], format: str = "turtle", **options
+    def serialize_triplets(
+        self, triplets: List[Triplet], format: str = "turtle", **options
     ) -> str:
         """
-        Serialize triples to RDF format.
+        Serialize triplets to RDF format.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             format: RDF format (turtle, ntriples, jsonld, xml)
             **options: Serialization options
 
         Returns:
             str: Serialized RDF
         """
-        return self.rdf_serializer.serialize_to_rdf(triples, format, **options)
+        return self.rdf_serializer.serialize_to_rdf(triplets, format, **options)
 
-    def process_batch(self, texts: List[str], **options) -> List[List[Triple]]:
+    def process_batch(self, texts: List[str], **options) -> List[List[Triplet]]:
         """
-        Process multiple texts for triple extraction.
+        Process multiple texts for triplet extraction.
 
         Args:
             texts: List of input texts
             **options: Processing options
 
         Returns:
-            list: List of triple lists for each text
+            list: List of triplet lists for each text
         """
-        return [self.extract_triples(text, **options) for text in texts]
+        return [self.extract_triplets(text, **options) for text in texts]
 
 
-class TripleValidator:
-    """Triple validation engine."""
+class TripletValidator:
+    """Triplet validation engine."""
 
     def __init__(self, **config):
-        """Initialize triple validator."""
-        self.logger = get_logger("triple_validator")
+        """Initialize triplet validator."""
+        self.logger = get_logger("triplet_validator")
         self.config = config
 
-    def validate_triple(self, triple: Triple, **criteria) -> bool:
+    def validate_triplet(self, triplet: Triplet, **criteria) -> bool:
         """
-        Validate individual triple.
+        Validate individual triplet.
 
         Args:
-            triple: Triple to validate
+            triplet: Triplet to validate
             **criteria: Validation criteria
 
         Returns:
             bool: True if valid
         """
         # Check structure
-        if not triple.subject or not triple.predicate or not triple.object:
+        if not triplet.subject or not triplet.predicate or not triplet.object:
             return False
 
         # Check confidence
         min_confidence = criteria.get("min_confidence", 0.5)
-        if triple.confidence < min_confidence:
+        if triplet.confidence < min_confidence:
             return False
 
         return True
 
-    def validate_triples(self, triples: List[Triple], **criteria) -> List[Triple]:
+    def validate_triplets(self, triplets: List[Triplet], **criteria) -> List[Triplet]:
         """
-        Validate list of triples.
+        Validate list of triplets.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             **criteria: Validation criteria
 
         Returns:
-            list: Valid triples
+            list: Valid triplets
         """
-        return [t for t in triples if self.validate_triple(t, **criteria)]
+        return [t for t in triplets if self.validate_triplet(t, **criteria)]
 
-    def check_triple_consistency(self, triples: List[Triple]) -> Dict[str, Any]:
+    def check_triplet_consistency(self, triplets: List[Triplet]) -> Dict[str, Any]:
         """
-        Check consistency among triples.
+        Check consistency among triplets.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
 
         Returns:
             dict: Consistency report
         """
         issues = []
 
-        # Check for contradictory triples
+        # Check for contradictory triplets
         # (simplified - would need domain knowledge for full implementation)
 
         return {
-            "total_triples": len(triples),
+            "total_triplets": len(triplets),
             "issues": issues,
             "consistent": len(issues) == 0,
         }
@@ -415,13 +415,13 @@ class RDFSerializer:
         self.config = config
 
     def serialize_to_rdf(
-        self, triples: List[Triple], format: str = "turtle", **options
+        self, triplets: List[Triplet], format: str = "turtle", **options
     ) -> str:
         """
-        Serialize triples to RDF format.
+        Serialize triplets to RDF format.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             format: RDF format
             **options: Serialization options
 
@@ -429,55 +429,55 @@ class RDFSerializer:
             str: Serialized RDF
         """
         if format == "turtle":
-            return self._serialize_turtle(triples, **options)
+            return self._serialize_turtle(triplets, **options)
         elif format == "ntriples":
-            return self._serialize_ntriples(triples, **options)
+            return self._serialize_ntriples(triplets, **options)
         elif format == "jsonld":
-            return self._serialize_jsonld(triples, **options)
+            return self._serialize_jsonld(triplets, **options)
         elif format == "xml":
-            return self._serialize_xml(triples, **options)
+            return self._serialize_xml(triplets, **options)
         else:
             raise ValidationError(f"Unsupported RDF format: {format}")
 
-    def _serialize_turtle(self, triples: List[Triple], **options) -> str:
+    def _serialize_turtle(self, triplets: List[Triplet], **options) -> str:
         """Serialize to Turtle format."""
         lines = ["@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> ."]
 
-        for triple in triples:
-            line = f"{triple.subject} <{triple.predicate}> {triple.object} ."
+        for triplet in triplets:
+            line = f"{triplet.subject} <{triplet.predicate}> {triplet.object} ."
             lines.append(line)
 
         return "\n".join(lines)
 
-    def _serialize_ntriples(self, triples: List[Triple], **options) -> str:
+    def _serialize_ntriples(self, triplets: List[Triplet], **options) -> str:
         """Serialize to N-Triples format."""
         lines = []
-        for triple in triples:
-            line = f"<{triple.subject}> <{triple.predicate}> <{triple.object}> ."
+        for triplet in triplets:
+            line = f"<{triplet.subject}> <{triplet.predicate}> <{triplet.object}> ."
             lines.append(line)
         return "\n".join(lines)
 
-    def _serialize_jsonld(self, triples: List[Triple], **options) -> str:
+    def _serialize_jsonld(self, triplets: List[Triplet], **options) -> str:
         """Serialize to JSON-LD format."""
         import json
 
         graph = []
-        for triple in triples:
-            graph.append({"@id": triple.subject, triple.predicate: triple.object})
+        for triplet in triplets:
+            graph.append({"@id": triplet.subject, triplet.predicate: triplet.object})
 
         return json.dumps({"@graph": graph}, indent=2)
 
-    def _serialize_xml(self, triples: List[Triple], **options) -> str:
+    def _serialize_xml(self, triplets: List[Triplet], **options) -> str:
         """Serialize to RDF/XML format."""
         lines = [
             '<?xml version="1.0"?>',
             '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">',
         ]
 
-        for triple in triples:
-            lines.append(f'  <rdf:Description rdf:about="{triple.subject}">')
+        for triplet in triplets:
+            lines.append(f'  <rdf:Description rdf:about="{triplet.subject}">')
             lines.append(
-                f"    <{triple.predicate}>{triple.object}</{triple.predicate}>"
+                f"    <{triplet.predicate}>{triplet.object}</{triplet.predicate}>"
             )
             lines.append("  </rdf:Description>")
 
@@ -485,50 +485,50 @@ class RDFSerializer:
         return "\n".join(lines)
 
 
-class TripleQualityChecker:
-    """Triple quality assessment engine."""
+class TripletQualityChecker:
+    """Triplet quality assessment engine."""
 
     def __init__(self, **config):
-        """Initialize triple quality checker."""
-        self.logger = get_logger("triple_quality_checker")
+        """Initialize triplet quality checker."""
+        self.logger = get_logger("triplet_quality_checker")
         self.config = config
 
-    def assess_triple_quality(self, triple: Triple, **metrics) -> Dict[str, Any]:
+    def assess_triplet_quality(self, triplet: Triplet, **metrics) -> Dict[str, Any]:
         """
-        Assess quality of individual triple.
+        Assess quality of individual triplet.
 
         Args:
-            triple: Triple to assess
+            triplet: Triplet to assess
             **metrics: Quality metrics
 
         Returns:
             dict: Quality assessment
         """
         return {
-            "confidence": triple.confidence,
+            "confidence": triplet.confidence,
             "completeness": 1.0
-            if triple.subject and triple.predicate and triple.object
+            if triplet.subject and triplet.predicate and triplet.object
             else 0.0,
-            "quality_score": triple.confidence,
+            "quality_score": triplet.confidence,
         }
 
     def calculate_quality_scores(
-        self, triples: List[Triple], **options
+        self, triplets: List[Triplet], **options
     ) -> Dict[str, Any]:
         """
-        Calculate quality scores for triples.
+        Calculate quality scores for triplets.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             **options: Quality options
 
         Returns:
             dict: Quality scores
         """
-        if not triples:
+        if not triplets:
             return {}
 
-        scores = [self.assess_triple_quality(t)["quality_score"] for t in triples]
+        scores = [self.assess_triplet_quality(t)["quality_score"] for t in triplets]
 
         return {
             "average_score": sum(scores) / len(scores),

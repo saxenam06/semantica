@@ -8,7 +8,7 @@ Key Features:
     - Semantic network export to YAML
     - Ontology schema export for human editing
     - Pipeline-ready YAML format
-    - Entity, relationship, and triple export
+    - Entity, relationship, and triplet export
     - Class and property definition export
 
 Example Usage:
@@ -85,14 +85,14 @@ class SemanticNetworkYAMLExporter:
         """
         Export semantic network to YAML string.
 
-        This method converts a semantic network (entities, relationships, triples)
+        This method converts a semantic network (entities, relationships, triplets)
         to YAML format with metadata and provenance information.
 
         Args:
             semantic_network: Semantic network dictionary containing:
                 - entities: List of entity dictionaries
                 - relationships: List of relationship dictionaries
-                - triples: List of triple dictionaries (optional)
+                - triplets: List of triplet dictionaries (optional)
                 - metadata: Metadata dictionary (optional)
             **options: Additional export options (unused)
 
@@ -103,7 +103,7 @@ class SemanticNetworkYAMLExporter:
             >>> network = {
             ...     "entities": [...],
             ...     "relationships": [...],
-            ...     "triples": [...]
+            ...     "triplets": [...]
             ... }
             >>> yaml_str = exporter.export_semantic_network(network)
         """
@@ -127,7 +127,7 @@ class SemanticNetworkYAMLExporter:
                 },
                 "entities": semantic_network.get("entities", []),
                 "relationships": semantic_network.get("relationships", []),
-                "triples": semantic_network.get("triples", []),
+                "triplets": semantic_network.get("triplets", []),
             }
 
             self.progress_tracker.update_tracking(
@@ -201,7 +201,7 @@ class SemanticNetworkYAMLExporter:
         """
         Export relationships to YAML format.
 
-        • Format relationship triples
+        • Format relationship triplets
         • Include relationship types
         • Add directional information
         • Return YAML representation
@@ -216,19 +216,19 @@ class SemanticNetworkYAMLExporter:
 
         return self.yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
 
-    def export_triples(
-        self, triples: List[Dict[str, Any]], include_confidence: bool = True, **options
+    def export_triplets(
+        self, triplets: List[Dict[str, Any]], include_confidence: bool = True, **options
     ) -> str:
         """
-        Export RDF triples to YAML format.
+        Export RDF triplets to YAML format.
 
-        • Format subject-predicate-object triples
+        • Format subject-predicate-object triplets
         • Include namespace information
         • Add confidence and provenance
         • Return YAML representation
         """
         yaml_data = {
-            "triples": [
+            "triplets": [
                 {
                     "subject": t.get("subject") or t.get("s"),
                     "predicate": t.get("predicate") or t.get("p"),
@@ -242,13 +242,13 @@ class SemanticNetworkYAMLExporter:
                         {"provenance": t.get("provenance")} if "provenance" in t else {}
                     ),
                 }
-                for t in triples
+                for t in triplets
             ]
         }
 
         yaml_data["metadata"] = {
             "exported_at": datetime.now().isoformat(),
-            "triple_count": len(triples),
+            "triplet_count": len(triplets),
         }
 
         return self.yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
@@ -273,7 +273,7 @@ class SemanticNetworkYAMLExporter:
             "semantic_network": {
                 "entities": extracted_data.get("entities", []),
                 "relationships": extracted_data.get("relationships", []),
-                "triples": extracted_data.get("triples", []),
+                "triplets": extracted_data.get("triplets", []),
             },
         }
 

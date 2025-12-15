@@ -18,7 +18,7 @@ Main Classes:
 Example Usage:
     >>> from semantica.triplet_store import JenaAdapter
     >>> adapter = JenaAdapter(endpoint="http://localhost:3030/ds", dataset="default")
-    >>> result = adapter.add_triples(triples)
+    >>> result = adapter.add_triplets(triplets)
     >>> query_result = adapter.execute_sparql(sparql_query)
     >>> rdf_turtle = adapter.serialize(format="turtle")
 
@@ -28,7 +28,7 @@ License: MIT
 
 from typing import Any, Dict, List, Optional
 
-from ..semantic_extract.triple_extractor import Triple
+from ..semantic_extract.triplet_extractor import Triplet
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
@@ -114,15 +114,15 @@ class JenaAdapter:
         return {
             "model_id": self.dataset,
             "endpoint": self.endpoint,
-            "triple_count": len(self.graph) if self.graph else 0,
+            "triplet_count": len(self.graph) if self.graph else 0,
         }
 
-    def add_triples(self, triples: List[Triple], **options) -> Dict[str, Any]:
+    def add_triplets(self, triplets: List[Triplet], **options) -> Dict[str, Any]:
         """
-        Add triples to model.
+        Add triplets to model.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             **options: Additional options
 
         Returns:
@@ -131,7 +131,7 @@ class JenaAdapter:
         tracking_id = self.progress_tracker.start_tracking(
             module="triplet_store",
             submodule="JenaAdapter",
-            message=f"Adding {len(triples)} triples to Jena model",
+            message=f"Adding {len(triplets)} triplets to Jena model",
         )
 
         try:
@@ -143,48 +143,48 @@ class JenaAdapter:
 
             added_count = 0
             self.progress_tracker.update_tracking(
-                tracking_id, message="Adding triples to graph..."
+                tracking_id, message="Adding triplets to graph..."
             )
-            for triple in triples:
+            for triplet in triplets:
                 try:
-                    subject = URIRef(triple.subject)
-                    predicate = URIRef(triple.predicate)
+                    subject = URIRef(triplet.subject)
+                    predicate = URIRef(triplet.predicate)
                     obj = (
-                        URIRef(triple.object)
-                        if triple.object.startswith("http")
-                        else Literal(triple.object)
+                        URIRef(triplet.object)
+                        if triplet.object.startswith("http")
+                        else Literal(triplet.object)
                     )
 
                     self.graph.add((subject, predicate, obj))
                     added_count += 1
                 except Exception as e:
-                    self.logger.warning(f"Failed to add triple: {e}")
+                    self.logger.warning(f"Failed to add triplet: {e}")
 
             self.progress_tracker.stop_tracking(
                 tracking_id,
                 status="completed",
-                message=f"Added {added_count}/{len(triples)} triples",
+                message=f"Added {added_count}/{len(triplets)} triplets",
             )
-            return {"success": True, "added": added_count, "total": len(triples)}
+            return {"success": True, "added": added_count, "total": len(triplets)}
         except Exception as e:
-            self.logger.error(f"Failed to add triples: {e}")
+            self.logger.error(f"Failed to add triplets: {e}")
             self.progress_tracker.stop_tracking(
                 tracking_id, status="failed", message=str(e)
             )
-            raise ProcessingError(f"Failed to add triples: {e}")
+            raise ProcessingError(f"Failed to add triplets: {e}")
 
-    def add_triple(self, triple: Triple, **options) -> Dict[str, Any]:
-        """Add single triple."""
-        return self.add_triples([triple], **options)
+    def add_triplet(self, triplet: Triplet, **options) -> Dict[str, Any]:
+        """Add single triplet."""
+        return self.add_triplets([triplet], **options)
 
-    def get_triples(
+    def get_triplets(
         self,
         subject: Optional[str] = None,
         predicate: Optional[str] = None,
         object: Optional[str] = None,
         **options,
-    ) -> List[Triple]:
-        """Get triples matching criteria."""
+    ) -> List[Triplet]:
+        """Get triplets matching criteria."""
         if not self.graph:
             return []
 
@@ -203,10 +203,10 @@ class JenaAdapter:
 
             results = self.graph.query(query)
 
-            triples = []
+            triplets = []
             for row in results:
-                triples.append(
-                    Triple(
+                triplets.append(
+                    Triplet(
                         subject=str(row.s),
                         predicate=str(row.p),
                         object=str(row.o),
@@ -214,31 +214,31 @@ class JenaAdapter:
                     )
                 )
 
-            return triples
+            return triplets
         except Exception as e:
-            self.logger.error(f"Failed to get triples: {e}")
+            self.logger.error(f"Failed to get triplets: {e}")
             return []
 
-    def delete_triple(self, triple: Triple, **options) -> Dict[str, Any]:
-        """Delete triple."""
+    def delete_triplet(self, triplet: Triplet, **options) -> Dict[str, Any]:
+        """Delete triplet."""
         if not self.graph:
             raise ProcessingError("Graph not initialized")
 
         try:
-            subject = URIRef(triple.subject)
-            predicate = URIRef(triple.predicate)
+            subject = URIRef(triplet.subject)
+            predicate = URIRef(triplet.predicate)
             obj = (
-                URIRef(triple.object)
-                if triple.object.startswith("http")
-                else Literal(triple.object)
+                URIRef(triplet.object)
+                if triplet.object.startswith("http")
+                else Literal(triplet.object)
             )
 
             self.graph.remove((subject, predicate, obj))
 
             return {"success": True}
         except Exception as e:
-            self.logger.error(f"Failed to delete triple: {e}")
-            raise ProcessingError(f"Failed to delete triple: {e}")
+            self.logger.error(f"Failed to delete triplet: {e}")
+            raise ProcessingError(f"Failed to delete triplet: {e}")
 
     def run_inference(self, model: Optional[Any] = None, **options) -> Dict[str, Any]:
         """
@@ -261,7 +261,7 @@ class JenaAdapter:
 
         return {
             "success": True,
-            "inferred_triples": 0,
+            "inferred_triplets": 0,
             "message": "Inference placeholder",
         }
 

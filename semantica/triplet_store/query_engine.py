@@ -102,7 +102,7 @@ class QueryEngine:
 
         Args:
             query: SPARQL query string
-            store_adapter: Triple store adapter instance
+            store_adapter: Triplet store adapter instance
             **options: Additional options
 
         Returns:

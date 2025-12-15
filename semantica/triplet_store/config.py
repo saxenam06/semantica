@@ -33,7 +33,7 @@ Example Usage:
     >>> from semantica.triplet_store.config import triplet_store_config
     >>> default_store = triplet_store_config.get("default_store", default="main")
     >>> triplet_store_config.set("default_store", "main")
-    >>> method_config = triplet_store_config.get_method_config("add_triple")
+    >>> method_config = triplet_store_config.get_method_config("add_triplet")
 """
 
 import os

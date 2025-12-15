@@ -21,7 +21,7 @@ Standard Text Splitting:
 
 KG/Ontology/Graph Analytics Methods:
     - "entity_aware": Entity boundary-preserving splitting
-    - "relation_aware": Triple-preserving splitting
+    - "relation_aware": Triplet-preserving splitting
     - "graph_based": Graph structure-based splitting
     - "ontology_aware": Ontology concept/hierarchy-based splitting
     - "embedding_semantic": Embedding similarity-based boundaries
@@ -42,7 +42,7 @@ Standard Splitting:
 
 KG/Ontology/Graph Analytics:
     - Entity Boundary Detection: NER-based entity extraction and boundary preservation
-    - Triple Preservation: Graph-based triple integrity checking
+    - Triplet Preservation: Graph-based triplet integrity checking
     - Graph Centrality Analysis: Degree, betweenness, closeness, eigenvector centrality
     - Community Detection: Louvain algorithm, Leiden algorithm, modularity optimization
     - Graph Connectivity: Connected components, shortest paths, bridge detection
@@ -70,7 +70,7 @@ Main Functions:
     - split_semantic_transformer: Sentence transformer-based splitting
     - split_llm: LLM-based optimal split point detection
     - split_entity_aware: Entity boundary-preserving splitting
-    - split_relation_aware: Triple-preserving splitting
+    - split_relation_aware: Triplet-preserving splitting
     - split_graph_based: Graph structure-based splitting
     - split_ontology_aware: Ontology concept-based splitting
     - split_hierarchical: Multi-level hierarchical chunking
@@ -998,17 +998,17 @@ def split_relation_aware(
     text: str,
     chunk_size: int = 1000,
     relation_method: str = "ml",
-    preserve_triples: bool = True,
+    preserve_triplets: bool = True,
     **kwargs,
 ) -> List[Chunk]:
     """
-    Triple-preserving splitting.
+    Triplet-preserving splitting.
 
     Args:
         text: Input text
         chunk_size: Target chunk size
         relation_method: Relation extraction method
-        preserve_triples: Whether to preserve triple integrity
+        preserve_triplets: Whether to preserve triplet integrity
         **kwargs: Additional options
 
     Returns:
@@ -1026,18 +1026,18 @@ def split_relation_aware(
         ner_extractor = NERExtractor(method=ner_method, **kwargs)
         entities = ner_extractor.extract(text)
 
-        # Extract relations/triples
+        # Extract relations/triplets
         relation_extractor = RelationExtractor(method=relation_method, **kwargs)
         relations = relation_extractor.extract(text, entities)
 
-        # Create triple boundaries (subject, relation, object must be in same chunk)
-        triple_boundaries = []
+        # Create triplet boundaries (subject, relation, object must be in same chunk)
+        triplet_boundaries = []
         for relation in relations:
             start = min(relation.subject.start_char, relation.object.start_char)
             end = max(relation.subject.end_char, relation.object.end_char)
-            triple_boundaries.append((start, end))
+            triplet_boundaries.append((start, end))
 
-        # Split text ensuring triples are not split
+        # Split text ensuring triplets are not split
         chunks = []
         current_chunk = ""
         current_size = 0
@@ -1051,16 +1051,16 @@ def split_relation_aware(
             sentence_start = char_pos
             sentence_end = char_pos + sentence_size
 
-            # Check if sentence is part of a triple
-            is_in_triple = any(
+            # Check if sentence is part of a triplet
+            is_in_triplet = any(
                 start <= sentence_start <= end or start <= sentence_end <= end
-                for start, end in triple_boundaries
+                for start, end in triplet_boundaries
             )
 
             # Check size limit
             if current_size + sentence_size > chunk_size and current_chunk:
-                # Don't split if it would break a triple
-                if preserve_triples and is_in_triple:
+                # Don't split if it would break a triplet
+                if preserve_triplets and is_in_triplet:
                     # Add to current chunk even if it exceeds size
                     pass
                 else:

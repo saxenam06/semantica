@@ -13,13 +13,13 @@ from semantica.semantic_extract.named_entity_recognizer import (
 )
 from semantica.semantic_extract.ner_extractor import NERExtractor, Entity
 from semantica.semantic_extract.relation_extractor import RelationExtractor, Relation
-from semantica.semantic_extract.triple_extractor import TripleExtractor, Triple
+from semantica.semantic_extract.triplet_extractor import TripletExtractor, Triplet
 from semantica.semantic_extract.event_detector import EventDetector, Event
 from semantica.semantic_extract.semantic_analyzer import SemanticAnalyzer, SemanticRole
 from semantica.semantic_extract.methods import (
     extract_entities_regex, extract_entities_rules,
     extract_relations_regex, extract_relations_dependency,
-    extract_triples_rules
+    extract_triplets_rules
 )
 
 pytestmark = pytest.mark.integration
@@ -151,19 +151,19 @@ class TestSemanticExtractDeepDivePart2(unittest.TestCase):
         extract_relations_dependency("text", [])
         mock_pattern.assert_called_once()
 
-    def test_extract_triples_rules(self):
-        """Test rule-based triple extraction"""
+    def test_extract_triplets_rules(self):
+        """Test rule-based triplet extraction"""
         text = "Steve founded Apple"
         entities = [
             Entity(text="Steve", label="PERSON", start_char=0, end_char=5),
             Entity(text="Apple", label="ORG", start_char=14, end_char=19)
         ]
         
-        triples = extract_triples_rules(text, entities)
-        self.assertTrue(len(triples) > 0)
-        self.assertEqual(triples[0].predicate, "founded")
-        self.assertEqual(triples[0].subject, "Steve")
-        self.assertEqual(triples[0].object, "Apple")
+        triplets = extract_triplets_rules(text, entities)
+        self.assertTrue(len(triplets) > 0)
+        self.assertEqual(triplets[0].predicate, "founded")
+        self.assertEqual(triplets[0].subject, "Steve")
+        self.assertEqual(triplets[0].object, "Apple")
 
     # --- Event Detector Tests ---
 

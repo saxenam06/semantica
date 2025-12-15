@@ -80,8 +80,8 @@
   - NER-based entity extraction (spaCy, LLM)
   - Entity span tracking
   - Boundary preservation (no entity splitting)
-- **Triple Preservation**:
-  - Graph-based triple integrity checking
+- **Triplet Preservation**:
+  - Graph-based triplet integrity checking
   - Subject-predicate-object span tracking
   - Relationship boundary preservation
 - **Graph Centrality Analysis**:
@@ -278,15 +278,15 @@ for chunk in chunks:
 
 ### RelationAwareChunker
 
-Preserve relationship triples during chunking.
+Preserve relationship triplets during chunking.
 
 **Methods:**
 
 | Method | Description | Algorithm |
 |--------|-------------|-----------|
-| `chunk(text, relationships)` | Chunk preserving triples | Triple span tracking |
+| `chunk(text, relationships)` | Chunk preserving triplets | Triplet span tracking |
 | `extract_relationships(text)` | Extract relationships | Relation extraction |
-| `validate_triple_integrity(chunk, relationships)` | Validate triples | Integrity checking |
+| `validate_triplet_integrity(chunk, relationships)` | Validate triplets | Integrity checking |
 
 **Example:**
 
@@ -301,7 +301,7 @@ relationships = rel_extractor.extract(text)
 # Chunk preserving relationships
 chunker = RelationAwareChunker(
     chunk_size=1000,
-    preserve_triples=True
+    preserve_triplets=True
 )
 
 chunks = chunker.chunk(text, relationships=relationships)
@@ -697,7 +697,7 @@ split:
     min_entity_gap: 50
     
   relation_aware:
-    preserve_triples: true
+    preserve_triplets: true
     relation_extraction_method: llm
     
   graph_based:
@@ -728,7 +728,7 @@ split:
 | **sentence** | Coherent chunks | Respects sentences | Variable size |
 | **semantic_transformer** | Topic coherence | Semantic boundaries | Slower, needs embeddings |
 | **entity_aware** | GraphRAG | Preserves entities | Requires NER |
-| **relation_aware** | KG extraction | Preserves triples | Requires relation extraction |
+| **relation_aware** | KG extraction | Preserves triplets | Requires relation extraction |
 | **graph_based** | Graph analysis | Graph-aware | Requires graph construction |
 | **hierarchical** | Large documents | Multi-level | More complex |
 | **structural** | Formatted docs | Respects structure | Needs structure |

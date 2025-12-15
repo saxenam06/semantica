@@ -1,6 +1,6 @@
 # Semantic Extract
 
-> **Advanced information extraction system for Entities, Relations, Events, and Triples.**
+> **Advanced information extraction system for Entities, Relations, Events, and Triplets.**
 
 ---
 
@@ -32,11 +32,11 @@
 
     Resolve pronouns ("he", "it") to their entity references
 
--   :material-share-variant:{ .lg .middle } **Triple Extraction**
+-   :material-share-variant:{ .lg .middle } **Triplet Extraction**
 
     ---
 
-    Extract Subject-Predicate-Object triples for Knowledge Graphs
+    Extract Subject-Predicate-Object triplets for Knowledge Graphs
 
 -   :material-robot:{ .lg .middle } **LLM Enhancement**
 
@@ -77,7 +77,7 @@
 - **Clustering**: Grouping mentions that refer to the same real-world entity.
 - **Pronoun Resolution**: Mapping pronouns to the most likely antecedent.
 
-### Triple Extraction
+### Triplet Extraction
 - **OpenIE**: Open Information Extraction for arbitrary relation strings.
 - **Schema-Based**: Mapping extracted relations to a predefined ontology.
 - **Reification**: Handling complex relations (time, location) by creating event nodes.
@@ -276,9 +276,9 @@ detector = EventDetector(
 events = detector.detect_events("SpaceX launched Starship on March 14, 2024.")
 ```
 
-### TripleExtractor
+### TripletExtractor
 
-Extracts RDF triples (Subject-Predicate-Object).
+Extracts RDF triplets (Subject-Predicate-Object).
 
 **Parameters:**
 
@@ -292,19 +292,19 @@ Extracts RDF triples (Subject-Predicate-Object).
 
 | Method | Description |
 |--------|-------------|
-| `extract_triples(text)` | Get (S, P, O) tuples |
+| `extract_triplets(text)` | Get (S, P, O) tuples |
 
 **Example:**
 
 ```python
-from semantica.semantic_extract import TripleExtractor
+from semantica.semantic_extract import TripletExtractor
 
-extractor = TripleExtractor(
+extractor = TripletExtractor(
     include_temporal=True,
     include_provenance=True
 )
-triples = extractor.extract_triples("Steve Jobs founded Apple in 1976.")
-# [Triple(subject="Steve Jobs", predicate="founded", object="Apple", temporal="1976")]
+triplets = extractor.extract_triplets("Steve Jobs founded Apple in 1976.")
+# [Triplet(subject="Steve Jobs", predicate="founded", object="Apple", temporal="1976")]
 ```
 
 ### SemanticNetworkExtractor
@@ -375,7 +375,7 @@ enhanced_entities = enhancer.enhance_entities(text, entities)
 from semantica.semantic_extract import (
     NamedEntityRecognizer, 
     RelationExtractor,
-    TripleExtractor,
+    TripletExtractor,
     EventDetector,
     CoreferenceResolver,
     SemanticNetworkExtractor
@@ -395,9 +395,9 @@ resolved = coref.resolve(text)
 rel_extractor = RelationExtractor(confidence_threshold=0.6)
 relations = rel_extractor.extract_relations(text, entities=entities)
 
-# Extract triples for KG
-triple_extractor = TripleExtractor(include_temporal=True)
-triples = triple_extractor.extract_triples(text)
+# Extract triplets for KG
+triplet_extractor = TripletExtractor(include_temporal=True)
+triplets = triplet_extractor.extract_triplets(text)
 
 # Detect events
 event_detector = EventDetector(extract_time=True)
@@ -409,7 +409,7 @@ network = network_extractor.extract(text)
 
 print(f"Entities: {len(entities)}")
 print(f"Relations: {len(relations)}")
-print(f"Triples: {len(triples)}")
+print(f"Triplets: {len(triplets)}")
 print(f"Events: {len(events)}")
 print(f"Network Nodes: {len(network.nodes)}")
 ```
@@ -448,21 +448,21 @@ semantic_extract:
 ### KG Population Pipeline
 
 ```python
-from semantica.semantic_extract import NamedEntityRecognizer, RelationExtractor, TripleExtractor
+from semantica.semantic_extract import NamedEntityRecognizer, RelationExtractor, TripletExtractor
 from semantica.kg import GraphBuilder
 
 # 1. Extract
 text = "Google was founded by Larry Page and Sergey Brin."
 ner = NamedEntityRecognizer()
 entities = ner.extract_entities(text)
-triple_extractor = TripleExtractor()
-triples = triple_extractor.extract_triples(text)
+triplet_extractor = TripletExtractor()
+triplets = triplet_extractor.extract_triplets(text)
 
 # 2. Populate KG using GraphBuilder
 builder = GraphBuilder()
 sources = [{
     "entities": entities,
-    "relationships": [{"source": t.subject, "target": t.object, "type": t.predicate} for t in triples]
+    "relationships": [{"source": t.subject, "target": t.object, "type": t.predicate} for t in triplets]
 }]
 kg = builder.build(sources)
 ```

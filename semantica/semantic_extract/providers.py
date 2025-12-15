@@ -16,7 +16,7 @@ Supported Providers:
 Supported Model Types:
     - NER Models: Token classification models for named entity recognition
     - Relation Models: Sequence classification models for relation extraction
-    - Triplet Models: Seq2Seq models for triple extraction
+    - Triplet Models: Seq2Seq models for triplet extraction
 
 Algorithms Used:
     - Transformer Architecture: Attention mechanism-based neural networks
@@ -37,7 +37,7 @@ Key Features:
         * Anthropic Claude (claude-3-sonnet, etc.)
         * Ollama (local open-source models)
         * HuggingFace Transformers (custom LLM models)
-    - HuggingFace model loader for NER, relation extraction, and triple extraction
+    - HuggingFace model loader for NER, relation extraction, and triplet extraction
     - Automatic API key management from environment variables
     - Structured JSON output generation
     - Model caching and device management (CPU/GPU)

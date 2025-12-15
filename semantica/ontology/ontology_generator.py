@@ -51,7 +51,7 @@ class OntologyGenerator:
     2. YAML-to-Definition → Transform into class definitions
     3. Definition-to-Types → Map to OWL types
     4. Hierarchy Generation → Build taxonomic structures
-    5. TTL Generation → Generate OWL/Turtle syntax
+    5. TTL Generation → Generate OWL/Turtle syntax using rdflib, triplet generation (subject-predicate-object)
     6. Symbolic Validation → HermiT/Pellet reasoning
 
     • Generates ontologies from data and text
@@ -304,7 +304,7 @@ class OntologyGenerator:
                     "metadata": getattr(rel_item, "metadata", {}),
                 }
             elif isinstance(rel_item, (list, tuple)) and len(rel_item) >= 3:
-                # Assume [source, type, target] (RDF triple style)
+                # Assume [source, type, target] (RDF triplet style)
                 # or [source, target, type]
                 # Heuristic: if 2nd element is short and looks like a relation, assume [source, type, target]
                 rel = {

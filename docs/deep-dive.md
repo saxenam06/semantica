@@ -19,7 +19,7 @@ graph TB
     
     D --> D1[Entity Extractor]
     D --> D2[Relationship Extractor]
-    D --> D3[Triple Extractor]
+    D --> D3[Triplet Extractor]
     
     G --> G1[Graph Validator]
     G --> G2[Graph Analyzer]
@@ -60,7 +60,7 @@ text → Tokenization → NER → Entity Linking → Entity Validation
 **Components:**
 - Named Entity Recognition (NER)
 - Relationship Extraction
-- Triple Extraction
+- Triplet Extraction
 - Coreference Resolution
 
 ### 4. Normalization Layer

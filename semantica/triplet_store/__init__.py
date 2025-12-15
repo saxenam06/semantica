@@ -20,7 +20,7 @@ CRUD Operations:
 
 Bulk Loading:
     - Batch Processing: Chunking algorithm (fixed-size batch creation), batch size optimization, memory management for large datasets
-    - Progress Tracking: Load progress calculation (loaded/total percentage), elapsed time tracking, estimated remaining time calculation (linear projection), throughput calculation (triples/second)
+    - Progress Tracking: Load progress calculation (loaded/total percentage), elapsed time tracking, estimated remaining time calculation (linear projection), throughput calculation (triplets/second)
     - Retry Mechanism: Exponential backoff retry (delay = retry_delay * (attempt + 1)), max retry limit, error recovery, stop-on-error option
     - Stream Processing: Iterator-based stream processing, incremental batch collection, memory-efficient loading
     - Validation: Pre-load validation (empty component checking, URI validation, confidence checking), error/warning collection
@@ -44,7 +44,7 @@ Store Adapters:
     - Virtuoso Adapter: Virtuoso SPARQL endpoint communication, SQL/SPARQL hybrid queries, bulk loading, transaction support
 
 Data Validation:
-    - Triple Validation: Required field checking (subject, predicate, object), confidence range validation (0-1), URI format validation
+    - Triplet Validation: Required field checking (subject, predicate, object), confidence range validation (0-1), URI format validation
     - Pre-load Validation: Empty component detection, URI format checking, confidence threshold checking, error/warning categorization
     
 Performance Optimization:
@@ -79,10 +79,10 @@ Main Classes:
 
 Convenience Functions:
     - register_store: Register triplet store wrapper
-    - add_triple: Add single triplet wrapper
-    - add_triples: Add multiple triplets wrapper
-    - get_triples: Get triplets matching pattern wrapper
-    - delete_triple: Delete triplet wrapper
+    - add_triplet: Add single triplet wrapper
+    - add_triplets: Add multiple triplets wrapper
+    - get_triplets: Get triplets matching pattern wrapper
+    - delete_triplet: Delete triplet wrapper
     - execute_query: Execute SPARQL query wrapper
     - optimize_query: Optimize SPARQL query wrapper
     - bulk_load: Bulk load triplets wrapper
@@ -90,15 +90,15 @@ Convenience Functions:
     - list_available_methods: List registered triplet store methods
 
 Example Usage:
-    >>> from semantica.triplet_store import TripletManager, register_store, add_triple, execute_query
+    >>> from semantica.triplet_store import TripletManager, register_store, add_triplet, execute_query
     >>> # Using convenience functions
     >>> store = register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
-    >>> result = add_triple(triple, store_id="main")
+    >>> result = add_triplet(triplet, store_id="main")
     >>> query_result = execute_query(sparql_query, store_adapter)
     >>> # Using classes directly
     >>> manager = TripletManager()
     >>> store = manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
-    >>> result = manager.add_triple(triple, store_id="main")
+    >>> result = manager.add_triplet(triplet, store_id="main")
     >>> from semantica.triplet_store import QueryEngine
     >>> engine = QueryEngine()
     >>> query_result = engine.execute_query(sparql_query, store_adapter)
@@ -112,19 +112,19 @@ from .bulk_loader import BulkLoader, LoadProgress
 from .config import TripletStoreConfig, triplet_store_config
 from .jena_adapter import JenaAdapter
 from .methods import (
-    add_triple,
-    add_triples,
+    add_triplet,
+    add_triplets,
     bulk_load,
-    delete_triple,
+    delete_triplet,
     execute_query,
     get_triplet_store_method,
-    get_triples,
+    get_triplets,
     list_available_methods,
     optimize_query,
     plan_query,
     register_store,
-    update_triple,
-    validate_triples,
+    update_triplet,
+    validate_triplets,
 )
 from .query_engine import QueryEngine, QueryPlan, QueryResult
 from .rdf4j_adapter import RDF4JAdapter
@@ -133,7 +133,7 @@ from .triplet_manager import TripletManager, TripletStore
 from .virtuoso_adapter import VirtuosoAdapter
 
 __all__ = [
-    # Triple management
+    # Triplet management
     "TripletManager",
     "TripletStore",
     # Store adapters
@@ -150,16 +150,16 @@ __all__ = [
     "LoadProgress",
     # Convenience functions
     "register_store",
-    "add_triple",
-    "add_triples",
-    "get_triples",
-    "delete_triple",
-    "update_triple",
+    "add_triplet",
+    "add_triplets",
+    "get_triplets",
+    "delete_triplet",
+    "update_triplet",
     "execute_query",
     "optimize_query",
     "plan_query",
     "bulk_load",
-    "validate_triples",
+    "validate_triplets",
     "get_triplet_store_method",
     "list_available_methods",
     # Configuration and registry

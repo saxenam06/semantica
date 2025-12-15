@@ -2,7 +2,7 @@
 Semantic Extraction Module
 
 This module provides comprehensive semantic extraction capabilities for knowledge
-engineering, enabling extraction of entities, relations, events, triples, and
+engineering, enabling extraction of entities, relations, events, triplets, and
 semantic networks from text.
 
 Key Features:
@@ -10,7 +10,7 @@ Key Features:
     - Relationship extraction between entities
     - Event detection and temporal processing
     - Coreference resolution for pronouns and entity references
-    - RDF triple extraction and serialization
+    - RDF triplet extraction and serialization
     - Semantic analysis and role labeling
     - Semantic network construction
     - LLM-based extraction enhancement
@@ -22,7 +22,7 @@ Main Classes:
     - RelationExtractor: Relationship extraction (confidence_threshold, bidirectional)
     - EventDetector: Event detection and classification (extract_participants, extract_time)
     - CoreferenceResolver: Coreference resolution
-    - TripleExtractor: RDF triple extraction (include_temporal, include_provenance)
+    - TripletExtractor: RDF triplet extraction (include_temporal, include_provenance)
     - SemanticAnalyzer: Semantic analysis engine
     - SemanticNetworkExtractor: Semantic network construction
     - LLMEnhancer: LLM-based enhancement
@@ -37,9 +37,9 @@ Example Usage:
     >>> rel_extractor = RelationExtractor(confidence_threshold=0.6)
     >>> relations = rel_extractor.extract_relations(text, entities=entities)
     
-    >>> from semantica.semantic_extract import TripleExtractor
-    >>> triple_extractor = TripleExtractor(include_temporal=True)
-    >>> triples = triple_extractor.extract_triples(text)
+    >>> from semantica.semantic_extract import TripletExtractor
+    >>> triplet_extractor = TripletExtractor(include_temporal=True)
+    >>> triplets = triplet_extractor.extract_triplets(text)
 
 Author: Semantica Contributors
 License: MIT
@@ -65,7 +65,7 @@ from .event_detector import (
 )
 from .extraction_validator import ExtractionValidator, ValidationResult
 from .llm_enhancer import LLMEnhancer, LLMResponse
-from .methods import get_entity_method, get_relation_method, get_triple_method
+from .methods import get_entity_method, get_relation_method, get_triplet_method
 from .named_entity_recognizer import (
     CustomEntityDetector,
     EntityClassifier,
@@ -105,12 +105,12 @@ from .semantic_network_extractor import (
     SemanticNetworkExtractor,
     SemanticNode,
 )
-from .triple_extractor import (
+from .triplet_extractor import (
     RDFSerializer,
-    Triple,
-    TripleExtractor,
-    TripleQualityChecker,
-    TripleValidator,
+    Triplet,
+    TripletExtractor,
+    TripletQualityChecker,
+    TripletValidator,
 )
 
 __all__ = [
@@ -137,12 +137,12 @@ __all__ = [
     "PronounResolver",
     "EntityCoreferenceDetector",
     "CoreferenceChainBuilder",
-    # Triple Extraction
-    "TripleExtractor",
-    "Triple",
-    "TripleValidator",
+    # Triplet Extraction
+    "TripletExtractor",
+    "Triplet",
+    "TripletValidator",
     "RDFSerializer",
-    "TripleQualityChecker",
+    "TripletQualityChecker",
     # Semantic Analysis
     "SemanticAnalyzer",
     "SemanticRole",
@@ -182,6 +182,5 @@ __all__ = [
     # Methods
     "get_entity_method",
     "get_relation_method",
-    "get_triple_method",
+    "get_triplet_method",
 ]
-

@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from semantica.semantic_extract.ner_extractor import NERExtractor
 from semantica.semantic_extract.relation_extractor import RelationExtractor
-from semantica.semantic_extract.triple_extractor import TripleExtractor
+from semantica.semantic_extract.triplet_extractor import TripletExtractor
 from semantica.semantic_extract.named_entity_recognizer import Entity
 from semantica.semantic_extract.relation_extractor import Relation
 
@@ -30,13 +30,13 @@ class TestExtractors(unittest.TestCase):
         except ImportError as e:
             self.fail(f"RelationExtractor initialization failed with ImportError: {e}")
 
-    def test_triple_extractor_initialization(self):
-        """Test TripleExtractor initialization and circular import resolution"""
+    def test_triplet_extractor_initialization(self):
+        """Test TripletExtractor initialization and circular import resolution"""
         try:
-            extractor = TripleExtractor(method="pattern")
+            extractor = TripletExtractor(method="pattern")
             self.assertIsNotNone(extractor)
         except ImportError as e:
-            self.fail(f"TripleExtractor initialization failed with ImportError: {e}")
+            self.fail(f"TripletExtractor initialization failed with ImportError: {e}")
 
     @patch("semantica.semantic_extract.methods.get_entity_method")
     def test_ner_extraction(self, mock_get_method):
@@ -65,20 +65,20 @@ class TestExtractors(unittest.TestCase):
         self.assertIsInstance(relations, list)
         mock_get_method.assert_called()
 
-    @patch("semantica.semantic_extract.methods.get_triple_method")
-    def test_triple_extraction(self, mock_get_method):
-        """Test triple extraction call"""
+    @patch("semantica.semantic_extract.methods.get_triplet_method")
+    def test_triplet_extraction(self, mock_get_method):
+        """Test triplet extraction call"""
         mock_method = MagicMock()
-        mock_method.extract_triples.return_value = []
+        mock_method.extract_triplets.return_value = []
         mock_get_method.return_value = mock_method
         
-        extractor = TripleExtractor(method="pattern")
+        extractor = TripletExtractor(method="pattern")
         entities = [Entity(text="A", label="PERSON", start_char=0, end_char=1)]
         relations = [Relation(subject=entities[0], object=entities[0], predicate="knows")]
         
-        triples = extractor.extract_triples("A knows A", entities, relations)
+        triplets = extractor.extract_triplets("A knows A", entities, relations)
         
-        self.assertIsInstance(triples, list)
+        self.assertIsInstance(triplets, list)
         mock_get_method.assert_called()
 
 if __name__ == "__main__":

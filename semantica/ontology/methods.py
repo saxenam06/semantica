@@ -62,7 +62,7 @@ Ontology Validation:
     - Hallucination Detection: LLM-generated ontology validation, fact verification, relationship validation
 
 OWL/RDF Generation:
-    - RDF Graph Construction: rdflib.Graph creation, namespace binding, triple generation (subject-predicate-object)
+    - RDF Graph Construction: rdflib.Graph creation, namespace binding, triplet generation (subject-predicate-object)
     - Serialization: Turtle format (rdflib.serialize format="turtle"), RDF/XML format, JSON-LD format, N3 format
     - Namespace Management: Prefix declaration, IRI resolution, namespace prefix mapping
 

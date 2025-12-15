@@ -246,7 +246,7 @@ class RDFSerializer:
 
         Turtle is a compact, human-readable RDF serialization format. This method
         converts RDF data (entities and relationships) to Turtle syntax with
-        namespace declarations and RDF triples.
+        namespace declarations and RDF triplets.
 
         Args:
             rdf_data: RDF data dictionary containing:
@@ -276,7 +276,7 @@ class RDFSerializer:
             lines.append(ns_declarations)
             lines.append("")
 
-        # Convert entities to RDF triples
+        # Convert entities to RDF triplets
         entities = rdf_data.get("entities", [])
         for entity in entities:
             # Generate entity ID if not provided
@@ -289,20 +289,20 @@ class RDFSerializer:
             text = entity.get("text") or entity.get("label", "")
             confidence = entity.get("confidence", 1.0)
 
-            # Turtle triple syntax: subject predicate object .
+            # Turtle triplet syntax: subject predicate object .
             lines.append(f"<{entity_id}> a <{entity_type}> ;")
             lines.append(f'    semantica:text "{text}" ;')
             lines.append(f"    semantica:confidence {confidence} .")
             lines.append("")
 
-        # Convert relationships to RDF triples
+        # Convert relationships to RDF triplets
         relationships = rdf_data.get("relationships", [])
         for rel in relationships:
             source_id = rel.get("source_id") or rel.get("source")
             target_id = rel.get("target_id") or rel.get("target")
             rel_type = rel.get("type", "semantica:related_to")
 
-            # Simple triple: subject predicate object .
+            # Simple triplet: subject predicate object .
             lines.append(f"<{source_id}> <{rel_type}> <{target_id}> .")
 
         return "\n".join(lines)

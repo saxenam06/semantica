@@ -16,7 +16,7 @@ Algorithms Used:
     - Semantic Boundary Detection: Sentence transformer embeddings and similarity
     - LLM-based Splitting: Prompt engineering for optimal split point detection
     - Entity Boundary Detection: NER-based entity extraction and boundary preservation
-    - Triple Preservation: Graph-based triple integrity checking
+    - Triplet Preservation: Graph-based triplet integrity checking
     - Graph Centrality Analysis: Degree, betweenness, closeness, eigenvector centrality
     - Community Detection: Louvain algorithm, Leiden algorithm, modularity optimization
 
@@ -43,7 +43,7 @@ Main Classes:
     - SlidingWindowChunker: Fixed-size sliding window chunking
     - TableChunker: Table-specific chunking
     - EntityAwareChunker: Entity boundary-preserving chunker
-    - RelationAwareChunker: Triple-preserving chunker
+    - RelationAwareChunker: Triplet-preserving chunker
     - GraphBasedChunker: Graph structure-based chunker
     - OntologyAwareChunker: Ontology concept-based chunker
     - HierarchicalChunker: Multi-level hierarchical chunker

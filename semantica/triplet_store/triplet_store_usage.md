@@ -21,7 +21,7 @@ This comprehensive guide demonstrates how to use the triplet store module for RD
 
 ```python
 from semantica.triplet_store import TripletManager
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 # Create triplet manager
 manager = TripletManager()
@@ -29,38 +29,38 @@ manager = TripletManager()
 # Register a store
 store = manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
 
-# Add a triple
-triple = Triple(
+# Add a triplet
+triplet = Triplet(
     subject="http://example.org/entity1",
     predicate="http://example.org/hasName",
     object="John Doe",
     confidence=0.9
 )
-result = manager.add_triple(triple, store_id="main")
+result = manager.add_triplet(triplet, store_id="main")
 
-print(f"Triple added: {result['success']}")
+print(f"Triplet added: {result['success']}")
 ```
 
 ### Using Convenience Functions
 
 ```python
-from semantica.triplet_store import register_store, add_triple, get_triples, execute_query
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.triplet_store import register_store, add_triplet, get_triplets, execute_query
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 # Register store
 store = register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
 
-# Add triple
-triple = Triple(
+# Add triplet
+triplet = Triplet(
     subject="http://example.org/entity1",
     predicate="http://example.org/hasName",
     object="John Doe"
 )
-result = add_triple(triple, store_id="main")
+result = add_triplet(triplet, store_id="main")
 
-# Get triples
-triples = get_triples(subject="http://example.org/entity1", store_id="main")
-print(f"Found {len(triples)} triples")
+# Get triplets
+triplets = get_triplets(subject="http://example.org/entity1", store_id="main")
+print(f"Found {len(triplets)} triplets")
 ```
 
 ### Using QueryEngine
@@ -162,36 +162,36 @@ print(f"Store endpoint: {store.endpoint}")
 
 ## CRUD Operations
 
-### Adding Triples
+### Adding Triplets
 
 ```python
 from semantica.triplet_store import TripletManager
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 manager = TripletManager()
 manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
 
-# Add single triple
-triple = Triple(
+# Add single triplet
+triplet = Triplet(
     subject="http://example.org/entity1",
     predicate="http://example.org/hasName",
     object="John Doe",
     confidence=0.9
 )
-result = manager.add_triple(triple, store_id="main")
+result = manager.add_triplet(triplet, store_id="main")
 print(f"Added: {result['success']}")
 
-# Add multiple triples
-triples = [
-    Triple("http://example.org/entity1", "http://example.org/hasAge", "30"),
-    Triple("http://example.org/entity1", "http://example.org/hasCity", "New York"),
-    Triple("http://example.org/entity2", "http://example.org/hasName", "Jane Smith")
+# Add multiple triplets
+triplets = [
+    Triplet("http://example.org/entity1", "http://example.org/hasAge", "30"),
+    Triplet("http://example.org/entity1", "http://example.org/hasCity", "New York"),
+    Triplet("http://example.org/entity2", "http://example.org/hasName", "Jane Smith")
 ]
-result = manager.add_triples(triples, store_id="main", batch_size=1000)
-print(f"Added {result['total_triples']} triples in {result['batches']} batches")
+result = manager.add_triplets(triplets, store_id="main", batch_size=1000)
+print(f"Added {result['total_triplets']} triplets in {result['batches']} batches")
 ```
 
-### Retrieving Triples
+### Retrieving Triplets
 
 ```python
 from semantica.triplet_store import TripletManager
@@ -199,22 +199,22 @@ from semantica.triplet_store import TripletManager
 manager = TripletManager()
 manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
 
-# Get all triples for a subject
-triples = manager.get_triple(
+# Get all triplets for a subject
+triplets = manager.get_triplets(
     subject="http://example.org/entity1",
     store_id="main"
 )
-print(f"Found {len(triples)} triples for entity1")
+print(f"Found {len(triplets)} triplets for entity1")
 
-# Get triples matching predicate
-triples = manager.get_triple(
+# Get triplets matching predicate
+triplets = manager.get_triplets(
     predicate="http://example.org/hasName",
     store_id="main"
 )
-print(f"Found {len(triples)} triples with hasName predicate")
+print(f"Found {len(triplets)} triplets with hasName predicate")
 
-# Get specific triple
-triples = manager.get_triple(
+# Get specific triplet
+triplets = manager.get_triplets(
     subject="http://example.org/entity1",
     predicate="http://example.org/hasName",
     object="John Doe",
@@ -222,46 +222,46 @@ triples = manager.get_triple(
 )
 ```
 
-### Deleting Triples
+### Deleting Triplets
 
 ```python
 from semantica.triplet_store import TripletManager
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 manager = TripletManager()
 manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
 
-# Delete triple
-triple = Triple(
+# Delete triplet
+triplet = Triplet(
     subject="http://example.org/entity1",
     predicate="http://example.org/hasName",
     object="John Doe"
 )
-result = manager.delete_triple(triple, store_id="main")
+result = manager.delete_triplet(triplet, store_id="main")
 print(f"Deleted: {result['success']}")
 ```
 
-### Updating Triples
+### Updating Triplets
 
 ```python
 from semantica.triplet_store import TripletManager
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 manager = TripletManager()
 manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
 
-# Update triple (delete old, add new)
-old_triple = Triple(
+# Update triplet (delete old, add new)
+old_triplet = Triplet(
     subject="http://example.org/entity1",
     predicate="http://example.org/hasAge",
     object="30"
 )
-new_triple = Triple(
+new_triplet = Triplet(
     subject="http://example.org/entity1",
     predicate="http://example.org/hasAge",
     object="31"
 )
-result = manager.update_triple(old_triple, new_triple, store_id="main")
+result = manager.update_triplet(old_triplet, new_triplet, store_id="main")
 print(f"Updated: {result['success']}")
 ```
 
@@ -428,7 +428,7 @@ print(f"Cache size: {stats['cache_size']}")
 
 ```python
 from semantica.triplet_store import BulkLoader, BlazegraphAdapter
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 # Create bulk loader
 loader = BulkLoader(batch_size=1000, max_retries=3)
@@ -436,27 +436,27 @@ loader = BulkLoader(batch_size=1000, max_retries=3)
 # Create adapter
 adapter = BlazegraphAdapter(endpoint="http://localhost:9999/blazegraph")
 
-# Generate triples
-triples = [
-    Triple(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
+# Generate triplets
+triplets = [
+    Triplet(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
     for i in range(10000)
 ]
 
-# Load triples
-progress = loader.load_triples(triples, adapter)
+# Load triplets
+progress = loader.load_triplets(triplets, adapter)
 
-print(f"Loaded: {progress.loaded_triples}/{progress.total_triples}")
-print(f"Failed: {progress.failed_triples}")
+print(f"Loaded: {progress.loaded_triplets}/{progress.total_triplets}")
+print(f"Failed: {progress.failed_triplets}")
 print(f"Progress: {progress.progress_percentage:.1f}%")
 print(f"Elapsed time: {progress.elapsed_time:.2f}s")
-print(f"Throughput: {progress.metadata.get('throughput', 0):.0f} triples/sec")
+print(f"Throughput: {progress.metadata.get('throughput', 0):.0f} triplets/sec")
 ```
 
 ### Progress Tracking
 
 ```python
 from semantica.triplet_store import BulkLoader, BlazegraphAdapter, LoadProgress
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 loader = BulkLoader(batch_size=1000)
 adapter = BlazegraphAdapter(endpoint="http://localhost:9999/blazegraph")
@@ -465,56 +465,56 @@ adapter = BlazegraphAdapter(endpoint="http://localhost:9999/blazegraph")
 def progress_callback(progress: LoadProgress):
     print(f"Batch {progress.current_batch}/{progress.total_batches}: "
           f"{progress.progress_percentage:.1f}% "
-          f"({progress.loaded_triples}/{progress.total_triples})")
+          f"({progress.loaded_triplets}/{progress.total_triplets})")
 
 # Load with progress callback
-triples = [Triple(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
+triplets = [Triplet(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
            for i in range(5000)]
-progress = loader.load_triples(triples, adapter, progress_callback=progress_callback)
+progress = loader.load_triplets(triplets, adapter, progress_callback=progress_callback)
 ```
 
 ### Pre-load Validation
 
 ```python
 from semantica.triplet_store import BulkLoader
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 loader = BulkLoader()
 
-# Create triples (some invalid)
-triples = [
-    Triple("http://example.org/entity1", "http://example.org/hasName", "John"),  # Valid
-    Triple("", "http://example.org/hasName", "Jane"),  # Invalid (empty subject)
-    Triple("http://example.org/entity3", "", "Bob"),  # Invalid (empty predicate)
-    Triple("http://example.org/entity4", "http://example.org/hasAge", "30"),  # Valid
+# Create triplets (some invalid)
+triplets = [
+    Triplet("http://example.org/entity1", "http://example.org/hasName", "John"),  # Valid
+    Triplet("", "http://example.org/hasName", "Jane"),  # Invalid (empty subject)
+    Triplet("http://example.org/entity3", "", "Bob"),  # Invalid (empty predicate)
+    Triplet("http://example.org/entity4", "http://example.org/hasAge", "30"),  # Valid
 ]
 
 # Validate before loading
-validation = loader.validate_before_load(triples)
+validation = loader.validate_before_load(triplets)
 
 print(f"Valid: {validation['valid']}")
 print(f"Errors: {validation['errors']}")
 print(f"Warnings: {validation['warnings']}")
-print(f"Valid triples: {validation['valid_triples']}/{validation['total_triples']}")
+print(f"Valid triplets: {validation['valid_triplets']}/{validation['total_triplets']}")
 ```
 
 ### Stream-based Loading
 
 ```python
 from semantica.triplet_store import BulkLoader, BlazegraphAdapter
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 loader = BulkLoader(batch_size=1000)
 adapter = BlazegraphAdapter(endpoint="http://localhost:9999/blazegraph")
 
-# Create stream of triples
-def triple_stream():
+# Create stream of triplets
+def triplet_stream():
     for i in range(10000):
-        yield Triple(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
+        yield Triplet(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
 
 # Load from stream
-progress = loader.load_from_stream(triple_stream(), adapter)
-print(f"Loaded {progress.loaded_triples} triples from stream")
+progress = loader.load_from_stream(triplet_stream(), adapter)
+print(f"Loaded {progress.loaded_triplets} triplets from stream")
 ```
 
 ## Store Adapters
@@ -523,7 +523,7 @@ print(f"Loaded {progress.loaded_triples} triples from stream")
 
 ```python
 from semantica.triplet_store import BlazegraphAdapter
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 # Create Blazegraph adapter
 adapter = BlazegraphAdapter(
@@ -532,11 +532,11 @@ adapter = BlazegraphAdapter(
     auth=("user", "password")  # Optional
 )
 
-# Add triples
-triples = [
-    Triple("http://example.org/entity1", "http://example.org/hasName", "John")
+# Add triplets
+triplets = [
+    Triplet("http://example.org/entity1", "http://example.org/hasName", "John")
 ]
-result = adapter.add_triples(triples)
+result = adapter.add_triplets(triplets)
 print(f"Added: {result['success']}")
 
 # Execute SPARQL query
@@ -549,7 +549,7 @@ print(f"Found {len(result['bindings'])} results")
 
 ```python
 from semantica.triplet_store import JenaAdapter
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 # Create Jena adapter (in-memory)
 adapter = JenaAdapter()
@@ -561,11 +561,11 @@ adapter = JenaAdapter(
     enable_inference=True
 )
 
-# Add triples
-triples = [
-    Triple("http://example.org/entity1", "http://example.org/hasName", "John")
+## Add triplets
+triplets = [
+    Triplet("http://example.org/entity1", "http://example.org/hasName", "John")
 ]
-result = adapter.add_triples(triples)
+result = adapter.add_triplets(triplets)
 
 # Serialize to Turtle
 turtle = adapter.serialize(format="turtle")
@@ -576,7 +576,7 @@ print(turtle)
 
 ```python
 from semantica.triplet_store import RDF4JAdapter
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 # Create RDF4J adapter
 adapter = RDF4JAdapter(
@@ -584,18 +584,18 @@ adapter = RDF4JAdapter(
     repository="test"
 )
 
-# Add triples
-triples = [
-    Triple("http://example.org/entity1", "http://example.org/hasName", "John")
+## Add triplets
+triplets = [
+    Triplet("http://example.org/entity1", "http://example.org/hasName", "John")
 ]
-result = adapter.add_triples(triples)
+result = adapter.add_triplets(triplets)
 ```
 
 ### Virtuoso Adapter
 
 ```python
 from semantica.triplet_store import VirtuosoAdapter
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 # Create Virtuoso adapter
 adapter = VirtuosoAdapter(
@@ -604,11 +604,11 @@ adapter = VirtuosoAdapter(
     password="dba"
 )
 
-# Add triples
-triples = [
-    Triple("http://example.org/entity1", "http://example.org/hasName", "John")
+## Add triplets
+triplets = [
+    Triplet("http://example.org/entity1", "http://example.org/hasName", "John")
 ]
-result = adapter.add_triples(triples)
+result = adapter.add_triplets(triplets)
 ```
 
 ## Algorithms and Methods
@@ -634,7 +634,7 @@ store = manager.register_store("main", "blazegraph", "http://localhost:9999/blaz
 #### Adapter Pattern
 **Algorithm**: Unified interface for multiple backends
 
-1. **Interface Definition**: Common interface for all adapters (add_triple, execute_sparql, etc.)
+1. **Interface Definition**: Common interface for all adapters (add_triplet, execute_sparql, etc.)
 2. **Backend-Specific Implementation**: Each adapter implements interface for its backend
 3. **Adapter Instantiation**: Create adapter instance on-demand
 4. **Operation Delegation**: Delegate operations to appropriate adapter
@@ -644,37 +644,37 @@ store = manager.register_store("main", "blazegraph", "http://localhost:9999/blaz
 
 ### CRUD Operations Algorithms
 
-#### Triple Addition
-**Algorithm**: Single and batch triple insertion
+#### Triplet Addition
+**Algorithm**: Single and batch triplet insertion
 
-1. **Triple Validation**: Check required fields (subject, predicate, object), validate confidence (0-1)
+1. **Triplet Validation**: Check required fields (subject, predicate, object), validate confidence (0-1)
 2. **Adapter Selection**: Get adapter for specified store
-3. **Operation Delegation**: Delegate to adapter's add_triple/add_triples method
+3. **Operation Delegation**: Delegate to adapter's add_triplet/add_triplets method
 4. **Result Processing**: Process and return operation result
 
-**Time Complexity**: O(1) for single, O(n) for batch where n = triples
+**Time Complexity**: O(1) for single, O(n) for batch where n = triplets
 **Space Complexity**: O(1) for single, O(n) for batch
 
 ```python
-# Triple addition
-result = manager.add_triple(triple, store_id="main")
-result = manager.add_triples(triples, store_id="main", batch_size=1000)
+# Triplet addition
+result = manager.add_triplet(triplet, store_id="main")
+result = manager.add_triplets(triplets, store_id="main", batch_size=1000)
 ```
 
-#### Triple Retrieval
-**Algorithm**: Pattern-based triple retrieval
+#### Triplet Retrieval
+**Algorithm**: Pattern-based triplet retrieval
 
 1. **Pattern Construction**: Build SPARQL query from subject/predicate/object patterns
 2. **Query Execution**: Execute SPARQL query via adapter
 3. **Result Binding Extraction**: Extract bindings from query result
-4. **Triple Reconstruction**: Convert bindings to Triple objects
+4. **Triplet Reconstruction**: Convert bindings to Triplet objects
 
 **Time Complexity**: O(n) where n = result count
 **Space Complexity**: O(n) for results
 
 ```python
-# Triple retrieval
-triples = manager.get_triple(subject="http://example.org/entity1", store_id="main")
+# Triplet retrieval
+triplets = manager.get_triplets(subject="http://example.org/entity1", store_id="main")
 ```
 
 ### Bulk Loading Algorithms
@@ -682,26 +682,26 @@ triples = manager.get_triple(subject="http://example.org/entity1", store_id="mai
 #### Batch Processing
 **Algorithm**: Chunking algorithm for large datasets
 
-1. **Batch Creation**: Divide triples into fixed-size batches
+1. **Batch Creation**: Divide triplets into fixed-size batches
 2. **Batch Processing**: Process each batch sequentially
 3. **Progress Tracking**: Track loaded count, failed count, progress percentage
 4. **Error Handling**: Retry failed batches with exponential backoff
 
-**Time Complexity**: O(n) where n = total triples
+**Time Complexity**: O(n) where n = total triplets
 **Space Complexity**: O(b) where b = batch size
 
 ```python
 # Batch processing
-progress = loader.load_triples(triples, adapter, batch_size=1000)
+progress = loader.load_triplets(triplets, adapter, batch_size=1000)
 ```
 
 #### Progress Tracking
 **Algorithm**: Load progress calculation
 
-1. **Progress Calculation**: loaded_triples / total_triples * 100
+1. **Progress Calculation**: loaded_triplets / total_triplets * 100
 2. **Elapsed Time Tracking**: Track time since start
 3. **Estimated Remaining**: (elapsed / loaded) * (total - loaded)
-4. **Throughput Calculation**: loaded_triples / elapsed_time
+4. **Throughput Calculation**: loaded_triplets / elapsed_time
 
 **Time Complexity**: O(1) per update
 **Space Complexity**: O(1)
@@ -786,11 +786,11 @@ cost = engine._estimate_query_cost(query)
 #### TripletManager Methods
 
 - `register_store(store_id, store_type, endpoint, **config)`: Register triplet store
-- `add_triple(triple, store_id, **options)`: Add single triple
+- `add_triplet(triple, store_id, **options)`: Add single triple
 - `add_triples(triples, store_id, **options)`: Add multiple triples
-- `get_triple(subject, predicate, object, store_id, **options)`: Get triples matching pattern
-- `delete_triple(triple, store_id, **options)`: Delete triple
-- `update_triple(old_triple, new_triple, store_id, **options)`: Update triple
+- `get_triplets(subject, predicate, object, store_id, **options)`: Get triplets matching pattern
+- `delete_triplet(triple, store_id, **options)`: Delete triple
+- `update_triplet(old_triple, new_triple, store_id, **options)`: Update triple
 - `get_store(store_id)`: Get store by ID
 - `list_stores()`: List all store IDs
 
@@ -804,23 +804,23 @@ cost = engine._estimate_query_cost(query)
 
 #### BulkLoader Methods
 
-- `load_triples(triples, store_adapter, **options)`: Load triples in bulk
-- `load_from_file(file_path, store_adapter, **options)`: Load triples from file
-- `load_from_stream(triples_stream, store_adapter, **options)`: Load triples from stream
-- `validate_before_load(triples, **options)`: Validate triples before loading
+- `load_triples(triples, store_adapter, **options)`: Load triplets in bulk
+- `load_from_file(file_path, store_adapter, **options)`: Load triplets from file
+- `load_from_stream(triples_stream, store_adapter, **options)`: Load triplets from stream
+- `validate_before_load(triples, **options)`: Validate triplets before loading
 
 #### Convenience Functions
 
 - `register_store(store_id, store_type, endpoint, method, **options)`: Register store wrapper
-- `add_triple(triple, store_id, method, **options)`: Add triple wrapper
-- `add_triples(triples, store_id, method, **options)`: Add triples wrapper
-- `get_triples(subject, predicate, object, store_id, method, **options)`: Get triples wrapper
-- `delete_triple(triple, store_id, method, **options)`: Delete triple wrapper
-- `update_triple(old_triple, new_triple, store_id, method, **options)`: Update triple wrapper
+- `add_triplet(triple, store_id, method, **options)`: Add triplet wrapper
+- `add_triples(triples, store_id, method, **options)`: Add triplets wrapper
+- `get_triples(subject, predicate, object, store_id, method, **options)`: Get triplets wrapper
+- `delete_triplet(triple, store_id, method, **options)`: Delete triplet wrapper
+- `update_triplet(old_triple, new_triple, store_id, method, **options)`: Update triplet wrapper
 - `execute_query(query, store_adapter, method, **options)`: Execute query wrapper
 - `optimize_query(query, method, **options)`: Optimize query wrapper
 - `bulk_load(triples, store_adapter, method, **options)`: Bulk load wrapper
-- `validate_triples(triples, method, **options)`: Validate triples wrapper
+- `validate_triples(triples, method, **options)`: Validate triplets wrapper
 
 ## Dataclasses
 
@@ -967,14 +967,14 @@ from semantica.triplet_store import (
     add_triples,
     execute_query
 )
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 # 1. Register store
 store = register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
 
 # 2. Generate and add triples
-triples = [
-    Triple(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
+triplets = [
+    Triplet(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
     for i in range(1000)
 ]
 result = add_triples(triples, store_id="main", batch_size=100)
@@ -993,7 +993,7 @@ print(f"Query returned {len(query_result.bindings)} results")
 
 ```python
 from semantica.triplet_store import TripletManager
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 manager = TripletManager()
 
@@ -1002,11 +1002,11 @@ manager.register_store("primary", "blazegraph", "http://localhost:9999/blazegrap
 manager.register_store("backup", "jena", "http://localhost:3030/ds")
 
 # Add to primary store
-triple = Triple("http://example.org/entity1", "http://example.org/hasName", "John")
-manager.add_triple(triple, store_id="primary")
+triplet = Triplet("http://example.org/entity1", "http://example.org/hasName", "John")
+manager.add_triplet(triple, store_id="primary")
 
 # Replicate to backup store
-manager.add_triple(triple, store_id="backup")
+manager.add_triplet(triple, store_id="backup")
 ```
 
 ### Query Optimization Workflow
@@ -1041,14 +1041,14 @@ print(f"Optimized: {result.metadata.get('optimized', False)}")
 
 ```python
 from semantica.triplet_store import BulkLoader, BlazegraphAdapter
-from semantica.semantic_extract.triple_extractor import Triple
+from semantica.semantic_extract.triplet_extractor import Triplet
 
 loader = BulkLoader(batch_size=1000, max_retries=3)
 adapter = BlazegraphAdapter(endpoint="http://localhost:9999/blazegraph")
 
 # Generate triples
-triples = [
-    Triple(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
+triplets = [
+    Triplet(f"http://example.org/entity{i}", "http://example.org/hasName", f"Entity {i}")
     for i in range(10000)
 ]
 
@@ -1070,19 +1070,19 @@ from semantica.triplet_store.registry import method_registry
 from semantica.triplet_store import add_triple
 
 # Register custom add method
-def custom_add_triple(triple, store_id=None, **options):
+def custom_add_triplet(triple, store_id=None, **options):
     # Custom logic
-    print(f"Custom add: {triple.subject}")
+    print(f"Custom add: {triplet.subject}")
     # Call default implementation
     from semantica.triplet_store.methods import _get_manager
     manager = _get_manager()
-    return manager.add_triple(triple, store_id=store_id, **options)
+    return manager.add_triplet(triple, store_id=store_id, **options)
 
 method_registry.register("add", "custom", custom_add_triple)
 
 # Use custom method
 from semantica.triplet_store.methods import add_triple
-result = add_triple(triple, store_id="main", method="custom")
+result = add_triplet(triple, store_id="main", method="custom")
 ```
 
 ## Best Practices
@@ -1093,8 +1093,8 @@ result = add_triple(triple, store_id="main", method="custom")
    - Set appropriate default store
    - Configure store-specific options
 
-2. **Triple Operations**:
-   - Validate triples before adding
+2. **Triplet Operations**:
+   - Validate triplets before adding
    - Use batch operations for multiple triples
    - Set appropriate batch sizes
    - Handle errors gracefully
@@ -1106,7 +1106,7 @@ result = add_triple(triple, store_id="main", method="custom")
    - Use appropriate LIMIT clauses
 
 4. **Bulk Loading**:
-   - Validate triples before loading
+   - Validate triplets before loading
    - Use appropriate batch sizes
    - Monitor progress for large loads
    - Handle retries appropriately
@@ -1118,7 +1118,7 @@ result = add_triple(triple, store_id="main", method="custom")
    - Monitor query statistics
 
 6. **Error Handling**:
-   - Validate triples before operations
+   - Validate triplets before operations
    - Handle adapter errors gracefully
    - Use retry mechanisms for bulk operations
    - Log errors for debugging

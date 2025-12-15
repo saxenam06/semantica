@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, patch
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from semantica.semantic_extract.triple_extractor import (
-    TripleExtractor, Triple, TripleValidator, RDFSerializer, TripleQualityChecker
+from semantica.semantic_extract.triplet_extractor import (
+    TripletExtractor, Triplet, TripletValidator, RDFSerializer, TripletQualityChecker
 )
 from semantica.semantic_extract.ner_extractor import Entity
 from semantica.semantic_extract.relation_extractor import Relation
 
-class TestSemanticExtractTriples(unittest.TestCase):
+class TestSemanticExtractTriplets(unittest.TestCase):
 
     def setUp(self):
         self.entities = [
@@ -29,66 +29,66 @@ class TestSemanticExtractTriples(unittest.TestCase):
                 context="Steve Jobs founded Apple."
             )
         ]
-        self.triples = [
-            Triple(subject="Steve_Jobs", predicate="founded", object="Apple", confidence=0.9),
-            Triple(subject="Apple", predicate="located_in", object="Cupertino", confidence=0.8)
+        self.triplets = [
+            Triplet(subject="Steve_Jobs", predicate="founded", object="Apple", confidence=0.9),
+            Triplet(subject="Apple", predicate="located_in", object="Cupertino", confidence=0.8)
         ]
 
-    # --- Triple Extractor Tests ---
+    # --- Triplet Extractor Tests ---
 
-    def test_triple_extractor_init(self):
-        """Test TripleExtractor initialization"""
-        extractor = TripleExtractor()
-        self.assertIsNotNone(extractor.triple_validator)
+    def test_triplet_extractor_init(self):
+        """Test TripletExtractor initialization"""
+        extractor = TripletExtractor()
+        self.assertIsNotNone(extractor.triplet_validator)
         self.assertIsNotNone(extractor.rdf_serializer)
         self.assertIsNotNone(extractor.quality_checker)
 
-    def test_triple_extractor_extract_from_relations(self):
-        """Test extracting triples by converting relations (fallback/default)"""
-        extractor = TripleExtractor(method=[]) # No specific method, force fallback
+    def test_triplet_extractor_extract_from_relations(self):
+        """Test extracting triplets by converting relations (fallback/default)"""
+        extractor = TripletExtractor(method=[]) # No specific method, force fallback
         
         # Mocking progress tracker to avoid console clutter/errors
         extractor.progress_tracker = MagicMock()
         
-        triples = extractor.extract_triples(
+        triplets = extractor.extract_triplets(
             text="Steve Jobs founded Apple.",
             entities=self.entities,
-            relationships=self.relations
+            relations=self.relations
         )
         
-        self.assertEqual(len(triples), 1)
+        self.assertEqual(len(triplets), 1)
         # Predicate is formatted as URI
-        self.assertTrue(triples[0].predicate.endswith("founded") or triples[0].predicate == "founded")
+        self.assertTrue(triplets[0].predicate.endswith("founded") or triplets[0].predicate == "founded")
         # Check URI formatting (simple implementation in _format_uri)
         # "Steve Jobs" -> "Steve_Jobs", prepended with http://example.org/ if not http
-        self.assertIn("Steve_Jobs", triples[0].subject)
+        self.assertIn("Steve_Jobs", triplets[0].subject)
 
-    # --- Triple Validator Tests ---
+    # --- Triplet Validator Tests ---
 
-    def test_triple_validator_valid(self):
-        """Test TripleValidator with valid triple"""
-        validator = TripleValidator()
-        triple = Triple(subject="S", predicate="P", object="O", confidence=0.9)
-        self.assertTrue(validator.validate_triple(triple))
+    def test_triplet_validator_valid(self):
+        """Test TripletValidator with valid triplet"""
+        validator = TripletValidator()
+        triplet = Triplet(subject="S", predicate="P", object="O", confidence=0.9)
+        self.assertTrue(validator.validate_triplet(triplet))
 
-    def test_triple_validator_invalid_structure(self):
-        """Test TripleValidator with missing fields"""
-        validator = TripleValidator()
-        triple = Triple(subject="", predicate="P", object="O") # Empty subject
-        self.assertFalse(validator.validate_triple(triple))
+    def test_triplet_validator_invalid_structure(self):
+        """Test TripletValidator with missing fields"""
+        validator = TripletValidator()
+        triplet = Triplet(subject="", predicate="P", object="O") # Empty subject
+        self.assertFalse(validator.validate_triplet(triplet))
 
-    def test_triple_validator_low_confidence(self):
-        """Test TripleValidator confidence threshold"""
-        validator = TripleValidator()
-        triple = Triple(subject="S", predicate="P", object="O", confidence=0.4)
-        self.assertFalse(validator.validate_triple(triple, min_confidence=0.5))
+    def test_triplet_validator_low_confidence(self):
+        """Test TripletValidator confidence threshold"""
+        validator = TripletValidator()
+        triplet = Triplet(subject="S", predicate="P", object="O", confidence=0.4)
+        self.assertFalse(validator.validate_triplet(triplet, min_confidence=0.5))
 
     # --- RDF Serializer Tests ---
 
     def test_rdf_serializer_turtle(self):
         """Test RDF serialization to Turtle"""
         serializer = RDFSerializer()
-        output = serializer.serialize_to_rdf(self.triples, format="turtle")
+        output = serializer.serialize_to_rdf(self.triplets, format="turtle")
         self.assertIn("@prefix", output)
         self.assertIn("Steve_Jobs", output)
         self.assertIn("founded", output)
@@ -98,7 +98,7 @@ class TestSemanticExtractTriples(unittest.TestCase):
     def test_rdf_serializer_ntriples(self):
         """Test RDF serialization to N-Triples"""
         serializer = RDFSerializer()
-        output = serializer.serialize_to_rdf(self.triples, format="ntriples")
+        output = serializer.serialize_to_rdf(self.triplets, format="ntriples")
         self.assertNotIn("@prefix", output)
         self.assertIn("<Steve_Jobs>", output)
         self.assertIn("<founded>", output)
@@ -106,7 +106,7 @@ class TestSemanticExtractTriples(unittest.TestCase):
     def test_rdf_serializer_jsonld(self):
         """Test RDF serialization to JSON-LD"""
         serializer = RDFSerializer()
-        output = serializer.serialize_to_rdf(self.triples, format="jsonld")
+        output = serializer.serialize_to_rdf(self.triplets, format="jsonld")
         import json
         data = json.loads(output)
         self.assertIn("@graph", data)
@@ -115,26 +115,26 @@ class TestSemanticExtractTriples(unittest.TestCase):
     def test_rdf_serializer_xml(self):
         """Test RDF serialization to XML"""
         serializer = RDFSerializer()
-        output = serializer.serialize_to_rdf(self.triples, format="xml")
+        output = serializer.serialize_to_rdf(self.triplets, format="xml")
         self.assertIn("rdf:RDF", output)
         self.assertIn("rdf:Description", output)
 
-    # --- Triple Quality Checker Tests ---
+    # --- Triplet Quality Checker Tests ---
 
-    def test_triple_quality_checker_assess(self):
-        """Test TripleQualityChecker assessment"""
-        checker = TripleQualityChecker()
-        triple = Triple(subject="S", predicate="P", object="O", confidence=0.85)
-        assessment = checker.assess_triple_quality(triple)
+    def test_triplet_quality_checker_assess(self):
+        """Test TripletQualityChecker assessment"""
+        checker = TripletQualityChecker()
+        triplet = Triplet(subject="S", predicate="P", object="O", confidence=0.85)
+        assessment = checker.assess_triplet_quality(triplet)
         
         self.assertEqual(assessment["confidence"], 0.85)
         self.assertEqual(assessment["completeness"], 1.0)
         self.assertEqual(assessment["quality_score"], 0.85)
 
-    def test_triple_quality_checker_stats(self):
-        """Test TripleQualityChecker statistics"""
-        checker = TripleQualityChecker()
-        stats = checker.calculate_quality_scores(self.triples)
+    def test_triplet_quality_checker_stats(self):
+        """Test TripletQualityChecker statistics"""
+        checker = TripletQualityChecker()
+        stats = checker.calculate_quality_scores(self.triplets)
         
         # Implementation returns average_score, min_score, max_score, high_quality, medium_quality, low_quality
         self.assertIn("average_score", stats)

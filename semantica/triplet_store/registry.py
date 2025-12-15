@@ -7,10 +7,10 @@ enabling extensibility and community contributions to the triplet store toolkit.
 Supported Registration Types:
     - Method Registry: Register custom triplet store methods for:
         * "register": Store registration methods
-        * "add": Triple addition methods
-        * "get": Triple retrieval methods
-        * "delete": Triple deletion methods
-        * "update": Triple update methods
+        * "add": Triplet addition methods
+        * "get": Triplet retrieval methods
+        * "delete": Triplet deletion methods
+        * "update": Triplet update methods
         * "query": SPARQL query execution methods
         * "optimize": Query optimization methods
         * "bulk_load": Bulk loading methods

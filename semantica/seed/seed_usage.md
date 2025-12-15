@@ -752,10 +752,10 @@ integrated = manager.integrate_with_extracted(
 **Space Complexity**: O(n + m) for merged entities
 
 #### Relationship Merging
-**Algorithm**: Triple-based relationship matching
+**Algorithm**: Triplet-based relationship matching
 
-1. **Triple Indexing**: Create (source_id, target_id, type) to relationship mapping
-2. **Triple Matching**: Match relationships by triple
+1. **Triplet Indexing**: Create (source_id, target_id, type) to relationship mapping
+2. **Triplet Matching**: Match relationships by triple
 3. **Property Merging**: Merge relationship properties
 4. **Duplicate Handling**: Handle duplicate relationships
 5. **Result Construction**: Build merged relationship list
@@ -789,11 +789,11 @@ validation = manager.validate_quality(foundation)
 1. **Entity ID Collection**: Collect all entity IDs
 2. **Set Creation**: Create set of unique IDs
 3. **Duplicate Counting**: Count duplicates (total - unique)
-4. **Relationship Triple Collection**: Collect (source_id, target_id, type) triples
+4. **Relationship Triplet Collection**: Collect (source_id, target_id, type) triplets
 5. **Duplicate Detection**: Detect duplicate relationships
 
 **Time Complexity**: O(n + r) where n = entities, r = relationships
-**Space Complexity**: O(n + r) for ID/triple sets
+**Space Complexity**: O(n + r) for ID/triplet sets
 
 ```python
 # Duplicate detection

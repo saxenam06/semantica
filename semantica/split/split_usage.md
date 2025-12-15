@@ -226,11 +226,11 @@ chunks = split_relation_aware(
     text,
     chunk_size=1000,
     chunk_overlap=200,
-    preserve_triples=True
+    preserve_triplets=True
 )
 
 for chunk in chunks:
-    print(f"Triples in chunk: {chunk.metadata.get('triples')}")
+    print(f"Triplets in chunk: {chunk.metadata.get('triplets')}")
 ```
 
 ### Graph-based Splitting
@@ -332,7 +332,7 @@ chunks = entity_chunker.chunk(text)
 # Relation-aware chunking
 relation_chunker = RelationAwareChunker(
     chunk_size=1000,
-    preserve_triples=True
+    preserve_triplets=True
 )
 chunks = relation_chunker.chunk(text)
 
@@ -612,20 +612,20 @@ for chunk in chunks:
 ```python
 from semantica.split import RelationAwareChunker
 
-# Relation-aware chunking preserves triple integrity
+# Relation-aware chunking preserves triplet integrity
 relation_chunker = RelationAwareChunker(
     chunk_size=1000,
-    preserve_triples=True
+    preserve_triplets=True
 )
 
 chunks = relation_chunker.chunk(text)
 
 for chunk in chunks:
-    triples = chunk.metadata.get("triples", [])
-    print(f"Chunk triples: {len(triples)}")
+    triplets = chunk.metadata.get("triplets", [])
+    print(f"Chunk triplets: {len(triplets)}")
     
     # Use for knowledge graph construction
-    # Triples are preserved within chunks
+    # Triplets are preserved within chunks
 ```
 
 ### Semantic Chunking with Custom Model

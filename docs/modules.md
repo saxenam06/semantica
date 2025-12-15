@@ -142,7 +142,7 @@ for doc in parsed_docs:
 - `SlidingWindowChunker` — Fixed-size sliding window chunking
 - `TableChunker` — Table-specific chunking
 - `EntityAwareChunker` — Entity boundary-preserving chunker
-- `RelationAwareChunker` — Triple-preserving chunker
+- `RelationAwareChunker` — Triplet-preserving chunker
 - `GraphBasedChunker` — Graph structure-based chunker
 - `OntologyAwareChunker` — Ontology concept-based chunker
 - `HierarchicalChunker` — Multi-level hierarchical chunker
@@ -412,7 +412,7 @@ print(f"Inferred {len(new_facts)} new facts")
 
 ## Storage Layer
 
-These modules handle persistence and retrieval of vectors, graphs, and triples.
+These modules handle persistence and retrieval of vectors, graphs, and triplets.
 
 ---
 
@@ -605,8 +605,8 @@ from semantica.triplet_store import TripletManager, execute_query
 manager = TripletManager()
 store = manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
 
-# Add triple
-result = manager.add_triple({
+# Add triplet
+result = manager.add_triplet({
     "subject": "http://example.org/Alice",
     "predicate": "http://example.org/knows",
     "object": "http://example.org/Bob"

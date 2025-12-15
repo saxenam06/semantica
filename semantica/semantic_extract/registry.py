@@ -10,7 +10,7 @@ Supported Registration Types:
     - Method Registry: Register custom extraction methods for:
         * "entity": Entity extraction methods
         * "relation": Relation extraction methods
-        * "triple": Triple extraction methods
+        * "triplet": Triplet extraction methods
         * "event": Event extraction methods
         * "coreference": Coreference resolution methods
 
@@ -24,7 +24,7 @@ Algorithms Used:
 Key Features:
     - Provider registry for custom LLM providers
     - Method registry for custom extraction methods
-    - Task-based method organization (entity, relation, triple, event, coreference)
+    - Task-based method organization (entity, relation, triplet, event, coreference)
     - Dynamic registration and unregistration
     - Easy discovery of available providers and methods
     - Support for community-contributed extensions
@@ -83,7 +83,7 @@ class MethodRegistry:
     _methods: Dict[str, Dict[str, Callable]] = {
         "entity": {},
         "relation": {},
-        "triple": {},
+        "triplet": {},
         "event": {},
         "coreference": {},
     }

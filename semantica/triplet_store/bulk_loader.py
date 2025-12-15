@@ -20,9 +20,9 @@ Main Classes:
 Example Usage:
     >>> from semantica.triplet_store import BulkLoader
     >>> loader = BulkLoader(batch_size=1000, max_retries=3)
-    >>> progress = loader.load_triples(triples, store_adapter)
-    >>> print(f"Loaded {progress.loaded_triples}/{progress.total_triples} triples")
-    >>> validation = loader.validate_before_load(triples)
+    >>> progress = loader.load_triplets(triplets, store_adapter)
+    >>> print(f"Loaded {progress.loaded_triplets}/{progress.total_triplets} triplets")
+    >>> validation = loader.validate_before_load(triplets)
 
 Author: Semantica Contributors
 License: MIT
@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from ..semantic_extract.triple_extractor import Triple
+from ..semantic_extract.triplet_extractor import Triplet
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
@@ -43,9 +43,9 @@ from ..utils.progress_tracker import get_progress_tracker
 class LoadProgress:
     """Bulk loading progress information."""
 
-    total_triples: int
-    loaded_triples: int
-    failed_triples: int = 0
+    total_triplets: int
+    loaded_triplets: int
+    failed_triplets: int = 0
     current_batch: int = 0
     total_batches: int = 0
     progress_percentage: float = 0.0
@@ -86,15 +86,15 @@ class BulkLoader:
         self.max_retries = self.config.get("max_retries", 3)
         self.retry_delay = self.config.get("retry_delay", 1.0)
 
-    def load_triples(
-        self, triples: List[Triple], store_adapter: Any, **options
+    def load_triplets(
+        self, triplets: List[Triplet], store_adapter: Any, **options
     ) -> LoadProgress:
         """
-        Load triples in bulk.
+        Load triplets in bulk.
 
         Args:
-            triples: List of triples to load
-            store_adapter: Triple store adapter instance
+            triplets: List of triplets to load
+            store_adapter: Triplet store adapter instance
             **options: Additional options:
                 - batch_size: Override default batch size
                 - progress_callback: Callback function for progress updates
@@ -106,7 +106,7 @@ class BulkLoader:
         tracking_id = self.progress_tracker.start_tracking(
             module="triplet_store",
             submodule="BulkLoader",
-            message=f"Loading {len(triples)} triples in bulk",
+            message=f"Loading {len(triplets)} triplets in bulk",
         )
 
         try:
@@ -115,14 +115,14 @@ class BulkLoader:
             stop_on_error = options.get("stop_on_error", False)
             progress_callback = options.get("progress_callback")
 
-            total_triples = len(triples)
-            total_batches = (total_triples + batch_size - 1) // batch_size
+            total_triplets = len(triplets)
+            total_batches = (total_triplets + batch_size - 1) // batch_size
 
             loaded_count = 0
             failed_count = 0
 
             self.logger.info(
-                f"Starting bulk load: {total_triples} triples in {total_batches} batches"
+                f"Starting bulk load: {total_triplets} triplets in {total_batches} batches"
             )
 
             # Process in batches
@@ -132,8 +132,8 @@ class BulkLoader:
                     message=f"Processing batch {batch_num + 1}/{total_batches}...",
                 )
                 batch_start = batch_num * batch_size
-                batch_end = min(batch_start + batch_size, total_triples)
-                batch = triples[batch_start:batch_end]
+                batch_end = min(batch_start + batch_size, total_triplets)
+                batch = triplets[batch_start:batch_end]
 
                 # Load batch with retries
                 batch_loaded = 0
@@ -141,8 +141,8 @@ class BulkLoader:
                     try:
                         if hasattr(store_adapter, "bulk_load"):
                             result = store_adapter.bulk_load(batch, **options)
-                        elif hasattr(store_adapter, "add_triples"):
-                            result = store_adapter.add_triples(batch, **options)
+                        elif hasattr(store_adapter, "add_triplets"):
+                            result = store_adapter.add_triplets(batch, **options)
                         else:
                             raise ProcessingError(
                                 "Store adapter does not support bulk loading"
@@ -177,18 +177,18 @@ class BulkLoader:
                 # Update progress
                 elapsed = time.time() - start_time
                 progress = (
-                    (loaded_count / total_triples * 100) if total_triples > 0 else 0.0
+                    (loaded_count / total_triplets * 100) if total_triplets > 0 else 0.0
                 )
                 estimated_remaining = None
                 if loaded_count > 0:
                     estimated_remaining = (elapsed / loaded_count) * (
-                        total_triples - loaded_count
+                        total_triplets - loaded_count
                     )
 
                 progress_info = LoadProgress(
-                    total_triples=total_triples,
-                    loaded_triples=loaded_count,
-                    failed_triples=failed_count,
+                    total_triplets=total_triplets,
+                    loaded_triplets=loaded_count,
+                    failed_triplets=failed_count,
                     current_batch=batch_num + 1,
                     total_batches=total_batches,
                     progress_percentage=progress,
@@ -205,15 +205,15 @@ class BulkLoader:
                     progress_callback(progress_info)
 
                 self.logger.debug(
-                    f"Progress: {progress:.1f}% ({loaded_count}/{total_triples} triples)"
+                    f"Progress: {progress:.1f}% ({loaded_count}/{total_triplets} triplets)"
                 )
 
             elapsed = time.time() - start_time
 
             final_progress = LoadProgress(
-                total_triples=total_triples,
-                loaded_triples=loaded_count,
-                failed_triples=failed_count,
+                total_triplets=total_triplets,
+                loaded_triplets=loaded_count,
+                failed_triplets=failed_count,
                 current_batch=total_batches,
                 total_batches=total_batches,
                 progress_percentage=100.0,
@@ -226,14 +226,14 @@ class BulkLoader:
             )
 
             self.logger.info(
-                f"Bulk load completed: {loaded_count}/{total_triples} triples loaded "
-                f"in {elapsed:.2f}s ({loaded_count / elapsed:.0f} triples/sec)"
+                f"Bulk load completed: {loaded_count}/{total_triplets} triplets loaded "
+                f"in {elapsed:.2f}s ({loaded_count / elapsed:.0f} triplets/sec)"
             )
 
             self.progress_tracker.stop_tracking(
                 tracking_id,
                 status="completed",
-                message=f"Bulk load completed: {loaded_count}/{total_triples} triples loaded",
+                message=f"Bulk load completed: {loaded_count}/{total_triplets} triplets loaded",
             )
             return final_progress
 
@@ -247,11 +247,11 @@ class BulkLoader:
         self, file_path: str, store_adapter: Any, **options
     ) -> LoadProgress:
         """
-        Load triples from file.
+        Load triplets from file.
 
         Args:
             file_path: Path to RDF file
-            store_adapter: Triple store adapter
+            store_adapter: Triplet store adapter
             **options: Additional options:
                 - format: File format (turtle, ntriples, rdfxml)
                 - chunk_size: Chunk size for reading large files
@@ -262,62 +262,62 @@ class BulkLoader:
         format = options.get("format", "turtle")
         chunk_size = options.get("chunk_size", 10000)
 
-        # This would parse the file and extract triples
+        # This would parse the file and extract triplets
         # For now, return placeholder
         self.logger.warning(
             "File loading not fully implemented - would parse and load RDF file"
         )
 
         return LoadProgress(
-            total_triples=0,
-            loaded_triples=0,
+            total_triplets=0,
+            loaded_triplets=0,
             metadata={"file_path": file_path, "format": format},
         )
 
     def load_from_stream(
-        self, triples_stream: Any, store_adapter: Any, **options
+        self, triplets_stream: Any, store_adapter: Any, **options
     ) -> LoadProgress:
         """
-        Load triples from stream.
+        Load triplets from stream.
 
         Args:
-            triples_stream: Stream of triples
-            store_adapter: Triple store adapter
+            triplets_stream: Stream of triplets
+            store_adapter: Triplet store adapter
             **options: Additional options
 
         Returns:
             Load progress information
         """
-        # Collect triples from stream in batches
+        # Collect triplets from stream in batches
         batch = []
         total_loaded = 0
 
-        for triple in triples_stream:
-            batch.append(triple)
+        for triplet in triplets_stream:
+            batch.append(triplet)
 
             if len(batch) >= self.batch_size:
                 # Load batch
-                progress = self.load_triples(batch, store_adapter, **options)
-                total_loaded += progress.loaded_triples
+                progress = self.load_triplets(batch, store_adapter, **options)
+                total_loaded += progress.loaded_triplets
                 batch = []
 
-        # Load remaining triples
+        # Load remaining triplets
         if batch:
-            progress = self.load_triples(batch, store_adapter, **options)
-            total_loaded += progress.loaded_triples
+            progress = self.load_triplets(batch, store_adapter, **options)
+            total_loaded += progress.loaded_triplets
 
         return LoadProgress(
-            total_triples=total_loaded,
-            loaded_triples=total_loaded,
+            total_triplets=total_loaded,
+            loaded_triplets=total_loaded,
             metadata={"source": "stream"},
         )
 
-    def validate_before_load(self, triples: List[Triple], **options) -> Dict[str, Any]:
+    def validate_before_load(self, triplets: List[Triplet], **options) -> Dict[str, Any]:
         """
-        Validate triples before loading.
+        Validate triplets before loading.
 
         Args:
-            triples: List of triples to validate
+            triplets: List of triplets to validate
             **options: Validation options
 
         Returns:
@@ -326,37 +326,37 @@ class BulkLoader:
         errors = []
         warnings = []
 
-        # Check for empty triples
-        empty_triples = [
-            t for t in triples if not t.subject or not t.predicate or not t.object
+        # Check for empty triplets
+        empty_triplets = [
+            t for t in triplets if not t.subject or not t.predicate or not t.object
         ]
-        if empty_triples:
-            errors.append(f"{len(empty_triples)} triples have empty components")
+        if empty_triplets:
+            errors.append(f"{len(empty_triplets)} triplets have empty components")
 
         # Check for invalid URIs
         invalid_uris = []
-        for triple in triples:
-            if not triple.subject.startswith("http") and not triple.subject.startswith(
+        for triplet in triplets:
+            if not triplet.subject.startswith("http") and not triplet.subject.startswith(
                 "<"
             ):
-                invalid_uris.append(f"Subject: {triple.subject}")
-            if not triple.predicate.startswith(
+                invalid_uris.append(f"Subject: {triplet.subject}")
+            if not triplet.predicate.startswith(
                 "http"
-            ) and not triple.predicate.startswith("<"):
-                invalid_uris.append(f"Predicate: {triple.predicate}")
+            ) and not triplet.predicate.startswith("<"):
+                invalid_uris.append(f"Predicate: {triplet.predicate}")
 
         if invalid_uris:
-            warnings.append(f"{len(invalid_uris)} triples may have invalid URIs")
+            warnings.append(f"{len(invalid_uris)} triplets may have invalid URIs")
 
         # Check confidence scores
-        low_confidence = [t for t in triples if t.confidence < 0.5]
+        low_confidence = [t for t in triplets if t.confidence < 0.5]
         if low_confidence:
-            warnings.append(f"{len(low_confidence)} triples have low confidence scores")
+            warnings.append(f"{len(low_confidence)} triplets have low confidence scores")
 
         return {
             "valid": len(errors) == 0,
             "errors": errors,
             "warnings": warnings,
-            "total_triples": len(triples),
-            "valid_triples": len(triples) - len(empty_triples),
+            "total_triplets": len(triplets),
+            "valid_triplets": len(triplets) - len(empty_triplets),
         }

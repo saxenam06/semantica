@@ -19,7 +19,7 @@ Example Usage:
     >>> from semantica.triplet_store import VirtuosoAdapter
     >>> adapter = VirtuosoAdapter(endpoint="http://localhost:8890/sparql", username="dba", password="dba")
     >>> result = adapter.execute_sparql(sparql_query)
-    >>> load_result = adapter.bulk_load(triples, graph="http://example.org/graph")
+    >>> load_result = adapter.bulk_load(triplets, graph="http://example.org/graph")
     >>> cluster_status = adapter.connect_cluster(cluster_config)
 
 Author: Semantica Contributors
@@ -31,9 +31,10 @@ from urllib.parse import urljoin
 
 import requests
 
-from ..semantic_extract.triple_extractor import Triple
+from ..semantic_extract.triplet_extractor import Triplet
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
+from ..utils.progress_tracker import get_progress_tracker
 
 
 class VirtuosoAdapter:
@@ -226,12 +227,12 @@ class VirtuosoAdapter:
 
         return optimized
 
-    def bulk_load(self, triples: List[Triple], **options) -> Dict[str, Any]:
+    def bulk_load(self, triplets: List[Triplet], **options) -> Dict[str, Any]:
         """
-        Load triples in bulk.
+        Load triplets in bulk.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             **options: Additional options:
                 - graph: Named graph URI
                 - format: RDF format (turtle, ntriples)
@@ -242,7 +243,7 @@ class VirtuosoAdapter:
         tracking_id = self.progress_tracker.start_tracking(
             module="triplet_store",
             submodule="VirtuosoAdapter",
-            message=f"Bulk loading {len(triples)} triples to Virtuoso",
+            message=f"Bulk loading {len(triplets)} triplets to Virtuoso",
         )
 
         try:
@@ -255,17 +256,17 @@ class VirtuosoAdapter:
             graph = options.get("graph", self.default_graph)
             format = options.get("format", "turtle")
 
-            # Convert triples to RDF
+            # Convert triplets to RDF
             self.progress_tracker.update_tracking(
-                tracking_id, message="Converting triples to RDF format..."
+                tracking_id, message="Converting triplets to RDF format..."
             )
-            rdf_data = self._triples_to_rdf(triples, format)
+            rdf_data = self._triplets_to_rdf(triplets, format)
 
             # Use SPARQL INSERT for bulk loading
             update_endpoint = self._get_sparql_update_endpoint()
 
             graph_clause = f"GRAPH <{graph}>" if graph else ""
-            insert_data = self._build_insert_data(triples)
+            insert_data = self._build_insert_data(triplets)
             query = f"INSERT DATA {graph_clause} {{ {insert_data} }}"
 
             self.progress_tracker.update_tracking(
@@ -284,9 +285,9 @@ class VirtuosoAdapter:
             self.progress_tracker.stop_tracking(
                 tracking_id,
                 status="completed",
-                message=f"Bulk loaded {len(triples)} triples",
+                message=f"Bulk loaded {len(triplets)} triplets",
             )
-            return {"success": True, "triples_loaded": len(triples), "graph": graph}
+            return {"success": True, "triplets_loaded": len(triplets), "graph": graph}
         except Exception as e:
             self.logger.error(f"Bulk load failed: {e}")
             self.progress_tracker.stop_tracking(
@@ -294,46 +295,46 @@ class VirtuosoAdapter:
             )
             raise ProcessingError(f"Bulk load failed: {e}")
 
-    def _triples_to_rdf(self, triples: List[Triple], format: str = "turtle") -> str:
-        """Convert triples to RDF format."""
+    def _triplets_to_rdf(self, triplets: List[Triplet], format: str = "turtle") -> str:
+        """Convert triplets to RDF format."""
         if format == "turtle":
             lines = []
-            for triple in triples:
+            for triplet in triplets:
                 lines.append(
-                    f"<{triple.subject}> <{triple.predicate}> <{triple.object}> ."
+                    f"<{triplet.subject}> <{triplet.predicate}> <{triplet.object}> ."
                 )
             return "\n".join(lines)
         else:  # ntriples
             lines = []
-            for triple in triples:
+            for triplet in triplets:
                 lines.append(
-                    f"<{triple.subject}> <{triple.predicate}> <{triple.object}> ."
+                    f"<{triplet.subject}> <{triplet.predicate}> <{triplet.object}> ."
                 )
             return "\n".join(lines)
 
-    def _build_insert_data(self, triples: List[Triple]) -> str:
+    def _build_insert_data(self, triplets: List[Triplet]) -> str:
         """Build SPARQL INSERT DATA clause."""
         lines = []
-        for triple in triples:
-            lines.append(f"<{triple.subject}> <{triple.predicate}> <{triple.object}> .")
+        for triplet in triplets:
+            lines.append(f"<{triplet.subject}> <{triplet.predicate}> <{triplet.object}> .")
         return " ".join(lines)
 
-    def add_triple(self, triple: Triple, **options) -> Dict[str, Any]:
-        """Add single triple."""
-        return self.bulk_load([triple], **options)
+    def add_triplet(self, triplet: Triplet, **options) -> Dict[str, Any]:
+        """Add single triplet."""
+        return self.bulk_load([triplet], **options)
 
-    def add_triples(self, triples: List[Triple], **options) -> Dict[str, Any]:
-        """Add multiple triples."""
-        return self.bulk_load(triples, **options)
+    def add_triplets(self, triplets: List[Triplet], **options) -> Dict[str, Any]:
+        """Add multiple triplets."""
+        return self.bulk_load(triplets, **options)
 
-    def get_triples(
+    def get_triplets(
         self,
         subject: Optional[str] = None,
         predicate: Optional[str] = None,
         object: Optional[str] = None,
         **options,
-    ) -> List[Triple]:
-        """Get triples matching criteria."""
+    ) -> List[Triplet]:
+        """Get triplets matching criteria."""
         # Build SPARQL query
         where_clauses = []
         if subject:
@@ -348,11 +349,11 @@ class VirtuosoAdapter:
 
         result = self.execute_sparql(query, **options)
 
-        # Convert bindings to triples
-        triples = []
+        # Convert bindings to triplets
+        triplets = []
         for binding in result["bindings"]:
-            triples.append(
-                Triple(
+            triplets.append(
+                Triplet(
                     subject=binding.get("s", {}).get("value", ""),
                     predicate=binding.get("p", {}).get("value", ""),
                     object=binding.get("o", {}).get("value", ""),
@@ -360,16 +361,16 @@ class VirtuosoAdapter:
                 )
             )
 
-        return triples
+        return triplets
 
-    def delete_triple(self, triple: Triple, **options) -> Dict[str, Any]:
-        """Delete triple."""
+    def delete_triplet(self, triplet: Triplet, **options) -> Dict[str, Any]:
+        """Delete triplet."""
         if not self.connected:
             raise ProcessingError("Not connected to Virtuoso")
 
         update_endpoint = self._get_sparql_update_endpoint()
 
-        query = f"DELETE DATA {{ <{triple.subject}> <{triple.predicate}> <{triple.object}> }}"
+        query = f"DELETE DATA {{ <{triplet.subject}> <{triplet.predicate}> <{triplet.object}> }}"
 
         try:
             response = requests.post(
@@ -384,5 +385,5 @@ class VirtuosoAdapter:
 
             return {"success": True}
         except Exception as e:
-            self.logger.error(f"Delete triple failed: {e}")
-            raise ProcessingError(f"Delete triple failed: {e}")
+            self.logger.error(f"Delete triplet failed: {e}")
+            raise ProcessingError(f"Delete triplet failed: {e}")

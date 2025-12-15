@@ -15,12 +15,12 @@ from semantica.semantic_extract.named_entity_recognizer import (
     CustomEntityDetector
 )
 from semantica.semantic_extract.relation_extractor import RelationExtractor, Relation
-from semantica.semantic_extract.triple_extractor import (
-    TripleExtractor, 
-    TripleValidator, 
-    TripleQualityChecker,
+from semantica.semantic_extract.triplet_extractor import (
+    TripletExtractor, 
+    TripletValidator, 
+    TripletQualityChecker,
     RDFSerializer,
-    Triple
+    Triplet
 )
 from semantica.semantic_extract.methods import get_entity_method, get_relation_method
 
@@ -145,77 +145,77 @@ class TestSemanticExtractDeepDive(unittest.TestCase):
         self.assertTrue(len(relations) > 0)
         self.assertEqual(relations[0].predicate, "related_to")
 
-    # --- Triple Tests ---
+    # --- Triplet Tests ---
 
-    def test_triple_extractor(self):
-        """Test TripleExtractor"""
-        # Mocking get_triple_method to return a simple extraction function
-        with patch('semantica.semantic_extract.methods.get_triple_method') as mock_get:
+    def test_triplet_extractor(self):
+        """Test TripletExtractor"""
+        # Mocking get_triplet_method to return a simple extraction function
+        with patch('semantica.semantic_extract.methods.get_triplet_method') as mock_get:
             def mock_extract(text, entities, relations, **kwargs):
-                triples = []
+                triplets = []
                 for rel in relations:
-                    triples.append(Triple(
+                    triplets.append(Triplet(
                         subject=rel.subject.text,
                         predicate=rel.predicate,
                         object=rel.object.text,
                         confidence=rel.confidence
                     ))
-                return triples
+                return triplets
             
             mock_get.return_value = mock_extract
             
-            extractor = TripleExtractor()
-            triples = extractor.extract_triples(self.text, self.entities, self.relations)
+            extractor = TripletExtractor()
+            triplets = extractor.extract_triplets(self.text, self.entities, self.relations)
             
-            self.assertEqual(len(triples), 2)
-            self.assertEqual(triples[0].subject, "Apple Inc.")
-            self.assertEqual(triples[0].predicate, "founded_by")
-            self.assertEqual(triples[0].object, "Steve Jobs")
+            self.assertEqual(len(triplets), 2)
+            self.assertEqual(triplets[0].subject, "Apple Inc.")
+            self.assertEqual(triplets[0].predicate, "founded_by")
+            self.assertEqual(triplets[0].object, "Steve Jobs")
 
-    def test_triple_validator(self):
-        """Test TripleValidator"""
-        validator = TripleValidator()
+    def test_triplet_validator(self):
+        """Test TripletValidator"""
+        validator = TripletValidator()
         
-        # Create a valid and invalid triple
-        valid_triple = Triple(subject="S", predicate="P", object="O", confidence=0.9)
-        invalid_triple = Triple(subject="", predicate="P", object="O", confidence=0.9) # Empty subject
-        low_conf_triple = Triple(subject="S", predicate="P", object="O", confidence=0.2)
+        # Create a valid and invalid triplet
+        valid_triplet = Triplet(subject="S", predicate="P", object="O", confidence=0.9)
+        invalid_triplet = Triplet(subject="", predicate="P", object="O", confidence=0.9) # Empty subject
+        low_conf_triplet = Triplet(subject="S", predicate="P", object="O", confidence=0.2)
         
-        triples = [valid_triple, invalid_triple, low_conf_triple]
+        triplets = [valid_triplet, invalid_triplet, low_conf_triplet]
         
-        validated = validator.validate_triples(triples, min_confidence=0.5)
+        validated = validator.validate_triplets(triplets, min_confidence=0.5)
         
         self.assertEqual(len(validated), 1)
-        self.assertEqual(validated[0], valid_triple)
+        self.assertEqual(validated[0], valid_triplet)
 
     def test_rdf_serializer(self):
         """Test RDFSerializer"""
         serializer = RDFSerializer()
-        triple = Triple(subject="Apple_Inc", predicate="founded_by", object="Steve_Jobs")
+        triplet = Triplet(subject="Apple_Inc", predicate="founded_by", object="Steve_Jobs")
         
         # Test N-Triples format
-        rdf_output = serializer.serialize_to_rdf([triple], format="ntriples")
+        rdf_output = serializer.serialize_to_rdf([triplet], format="ntriples")
         self.assertIsInstance(rdf_output, str)
         # Check if basic components are in the output (format might vary slightly)
         # N-Triples: <subject> <predicate> <object> .
         # The serializer might handle URIs, let's just check non-empty
         self.assertTrue(len(rdf_output) > 0)
 
-    def test_triple_quality_checker(self):
-        """Test TripleQualityChecker"""
-        checker = TripleQualityChecker()
-        triples = [
-            Triple(subject="Apple", predicate="founded", object="Jobs", confidence=0.9),
-            Triple(subject="Apple", predicate="located", object="US", confidence=0.8)
+    def test_triplet_quality_checker(self):
+        """Test TripletQualityChecker"""
+        checker = TripletQualityChecker()
+        triplets = [
+            Triplet(subject="Apple", predicate="founded", object="Jobs", confidence=0.9),
+            Triplet(subject="Apple", predicate="located", object="US", confidence=0.8)
         ]
         
-        scores = checker.calculate_quality_scores(triples)
+        scores = checker.calculate_quality_scores(triplets)
         
         self.assertIn("average_score", scores)
         self.assertAlmostEqual(scores["average_score"], 0.85)
-        # triple_count is not returned by calculate_quality_scores
-        # self.assertIn("triple_count", scores)
-        # self.assertEqual(scores["triple_count"], 2)
+        # triplet_count is not returned by calculate_quality_scores
+        # self.assertIn("triplet_count", scores)
+        # self.assertEqual(scores["triplet_count"], 2)
 
 if __name__ == "__main__":
     unittest.main()

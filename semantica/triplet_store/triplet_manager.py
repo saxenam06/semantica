@@ -21,9 +21,9 @@ Example Usage:
     >>> from semantica.triplet_store import TripletManager
     >>> manager = TripletManager()
     >>> store = manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph")
-    >>> result = manager.add_triple(triple, store_id="main")
-    >>> triples = manager.get_triple(subject="http://example.org/entity1")
-    >>> result = manager.add_triples(triple_list, store_id="main", batch_size=1000)
+    >>> result = manager.add_triplet(triplet, store_id="main")
+    >>> triplets = manager.get_triplets(subject="http://example.org/entity1")
+    >>> result = manager.add_triplets(triplet_list, store_id="main", batch_size=1000)
 
 Author: Semantica Contributors
 License: MIT
@@ -32,7 +32,7 @@ License: MIT
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from ..semantic_extract.triple_extractor import Triple
+from ..semantic_extract.triplet_extractor import Triplet
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
@@ -53,9 +53,9 @@ class TripletManager:
     """
     Triplet store management system.
 
-    • CRUD operations for RDF triples
+    • CRUD operations for RDF triplets
     • Batch operations and bulk loading
-    • Triple validation and consistency
+    • Triplet validation and consistency
     • Transaction support
     • Performance optimization
     • Error handling and recovery
@@ -106,14 +106,14 @@ class TripletManager:
 
         return store
 
-    def add_triple(
-        self, triple: Triple, store_id: Optional[str] = None, **options
+    def add_triplet(
+        self, triplet: Triplet, store_id: Optional[str] = None, **options
     ) -> Dict[str, Any]:
         """
-        Add single triple to store.
+        Add single triplet to store.
 
         Args:
-            triple: Triple to add
+            triplet: Triplet to add
             store_id: Store identifier (uses default if not provided)
             **options: Additional options
 
@@ -122,37 +122,37 @@ class TripletManager:
         """
         store = self._get_store(store_id)
 
-        # Validate triple
-        if not self._validate_triple(triple):
-            raise ValidationError("Invalid triple")
+        # Validate triplet
+        if not self._validate_triplet(triplet):
+            raise ValidationError("Invalid triplet")
 
         # Add to store (delegates to adapter)
         try:
             adapter = self._get_adapter(store)
-            result = adapter.add_triple(triple, **options)
+            result = adapter.add_triplet(triplet, **options)
 
             return {
                 "success": True,
                 "store_id": store.store_id,
-                "triple": triple,
+                "triplet": triplet,
                 **result,
             }
         except Exception as e:
-            self.logger.error(f"Failed to add triple: {e}")
-            raise ProcessingError(f"Failed to add triple: {e}")
+            self.logger.error(f"Failed to add triplet: {e}")
+            raise ProcessingError(f"Failed to add triplet: {e}")
 
-    def add_triples(
-        self, triples: List[Triple], store_id: Optional[str] = None, **options
+    def add_triplets(
+        self, triplets: List[Triplet], store_id: Optional[str] = None, **options
     ) -> Dict[str, Any]:
         """
-        Add multiple triples to store.
+        Add multiple triplets to store.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             store_id: Store identifier
             **options: Additional options:
                 - batch_size: Batch size for bulk operations
-                - validate: Validate triples before adding
+                - validate: Validate triplets before adding
 
         Returns:
             Operation status
@@ -160,69 +160,69 @@ class TripletManager:
         tracking_id = self.progress_tracker.start_tracking(
             module="triplet_store",
             submodule="TripletManager",
-            message=f"Adding {len(triples)} triples to store",
+            message=f"Adding {len(triplets)} triplets to store",
         )
 
         try:
             store = self._get_store(store_id)
 
-            # Validate triples
+            # Validate triplets
             if options.get("validate", True):
                 self.progress_tracker.update_tracking(
-                    tracking_id, message="Validating triples..."
+                    tracking_id, message="Validating triplets..."
                 )
-                valid_triples = [t for t in triples if self._validate_triple(t)]
-                invalid_count = len(triples) - len(valid_triples)
+                valid_triplets = [t for t in triplets if self._validate_triplet(t)]
+                invalid_count = len(triplets) - len(valid_triplets)
                 if invalid_count > 0:
-                    self.logger.warning(f"{invalid_count} invalid triples filtered out")
+                    self.logger.warning(f"{invalid_count} invalid triplets filtered out")
             else:
-                valid_triples = triples
+                valid_triplets = triplets
 
             # Add to store
             adapter = self._get_adapter(store)
             batch_size = options.get("batch_size", 1000)
-            total_batches = (len(valid_triples) + batch_size - 1) // batch_size
+            total_batches = (len(valid_triplets) + batch_size - 1) // batch_size
 
             results = []
-            for i in range(0, len(valid_triples), batch_size):
+            for i in range(0, len(valid_triplets), batch_size):
                 batch_num = i // batch_size + 1
                 self.progress_tracker.update_tracking(
                     tracking_id,
                     message=f"Processing batch {batch_num}/{total_batches}...",
                 )
-                batch = valid_triples[i : i + batch_size]
-                result = adapter.add_triples(batch, **options)
+                batch = valid_triplets[i : i + batch_size]
+                result = adapter.add_triplets(batch, **options)
                 results.append(result)
 
             self.progress_tracker.stop_tracking(
                 tracking_id,
                 status="completed",
-                message=f"Added {len(valid_triples)} triples in {len(results)} batches",
+                message=f"Added {len(valid_triplets)} triplets in {len(results)} batches",
             )
             return {
                 "success": True,
                 "store_id": store.store_id,
-                "total_triples": len(valid_triples),
+                "total_triplets": len(valid_triplets),
                 "batches": len(results),
                 "results": results,
             }
         except Exception as e:
-            self.logger.error(f"Failed to add triples: {e}")
+            self.logger.error(f"Failed to add triplets: {e}")
             self.progress_tracker.stop_tracking(
                 tracking_id, status="failed", message=str(e)
             )
-            raise ProcessingError(f"Failed to add triples: {e}")
+            raise ProcessingError(f"Failed to add triplets: {e}")
 
-    def get_triple(
+    def get_triplets(
         self,
         subject: str,
         predicate: Optional[str] = None,
         object: Optional[str] = None,
         store_id: Optional[str] = None,
         **options,
-    ) -> List[Triple]:
+    ) -> List[Triplet]:
         """
-        Get triples matching criteria.
+        Get triplets matching criteria.
 
         Args:
             subject: Subject URI
@@ -232,25 +232,25 @@ class TripletManager:
             **options: Additional options
 
         Returns:
-            List of matching triples
+            List of matching triplets
         """
         store = self._get_store(store_id)
 
         try:
             adapter = self._get_adapter(store)
-            return adapter.get_triples(subject, predicate, object, **options)
+            return adapter.get_triplets(subject, predicate, object, **options)
         except Exception as e:
-            self.logger.error(f"Failed to get triples: {e}")
-            raise ProcessingError(f"Failed to get triples: {e}")
+            self.logger.error(f"Failed to get triplets: {e}")
+            raise ProcessingError(f"Failed to get triplets: {e}")
 
-    def delete_triple(
-        self, triple: Triple, store_id: Optional[str] = None, **options
+    def delete_triplet(
+        self, triplet: Triplet, store_id: Optional[str] = None, **options
     ) -> Dict[str, Any]:
         """
-        Delete triple from store.
+        Delete triplet from store.
 
         Args:
-            triple: Triple to delete
+            triplet: Triplet to delete
             store_id: Store identifier
             **options: Additional options
 
@@ -261,26 +261,26 @@ class TripletManager:
 
         try:
             adapter = self._get_adapter(store)
-            result = adapter.delete_triple(triple, **options)
+            result = adapter.delete_triplet(triplet, **options)
 
             return {"success": True, "store_id": store.store_id, **result}
         except Exception as e:
-            self.logger.error(f"Failed to delete triple: {e}")
-            raise ProcessingError(f"Failed to delete triple: {e}")
+            self.logger.error(f"Failed to delete triplet: {e}")
+            raise ProcessingError(f"Failed to delete triplet: {e}")
 
-    def update_triple(
+    def update_triplet(
         self,
-        old_triple: Triple,
-        new_triple: Triple,
+        old_triplet: Triplet,
+        new_triplet: Triplet,
         store_id: Optional[str] = None,
         **options,
     ) -> Dict[str, Any]:
         """
-        Update triple in store.
+        Update triplet in store.
 
         Args:
-            old_triple: Original triple
-            new_triple: Updated triple
+            old_triplet: Original triplet
+            new_triplet: Updated triplet
             store_id: Store identifier
             **options: Additional options
 
@@ -288,15 +288,15 @@ class TripletManager:
             Operation status
         """
         # Delete old and add new
-        self.delete_triple(old_triple, store_id, **options)
-        return self.add_triple(new_triple, store_id, **options)
+        self.delete_triplet(old_triplet, store_id, **options)
+        return self.add_triplet(new_triplet, store_id, **options)
 
-    def _validate_triple(self, triple: Triple) -> bool:
-        """Validate triple structure."""
-        if not triple.subject or not triple.predicate or not triple.object:
+    def _validate_triplet(self, triplet: Triplet) -> bool:
+        """Validate triplet structure."""
+        if not triplet.subject or not triplet.predicate or not triplet.object:
             return False
 
-        if triple.confidence < 0 or triple.confidence > 1:
+        if triplet.confidence < 0 or triplet.confidence > 1:
             return False
 
         return True

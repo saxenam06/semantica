@@ -543,14 +543,14 @@ graph LR
         print(f"  {rel['source_text']} {arrow} {rel['target_text']}")
         print(f"    Relation: {rel['type']}")
     ```
-=== "Triple Extraction (RDF)"
-    Extract subject-predicate-object triples for RDF/semantic web:
+=== "Triplet Extraction (RDF)"
+    Extract subject-predicate-object triplets for RDF/semantic web:
     
     ```python
     from semantica.semantic_extract import (
-        TripleExtractor,
+        TripletExtractor,
         RDFSerializer,
-        TripleValidator
+        TripletValidator
     )
     
     text = """
@@ -559,30 +559,30 @@ graph LR
     Einstein worked at Princeton University until his death in 1955.
     """
     
-    # Extract RDF-style triples
-    extractor = TripleExtractor(
+    # Extract RDF-style triplets
+    extractor = TripletExtractor(
         include_temporal=True,  # Include time information
         include_provenance=True  # Track source sentences
     )
     
-    triples = extractor.extract_triples(text)
+    triplets = extractor.extract_triplets(text)
     
-    print("Extracted Triples (Subject-Predicate-Object):")
-    for triple in triples:
-        print(f"  Subject:   {triple['subject']}")
-        print(f"  Predicate: {triple['predicate']}")
-        print(f"  Object:    {triple['object']}")
-        if triple.get('temporal'):
-            print(f"  When:      {triple['temporal']}")
+    print("Extracted Triplets (Subject-Predicate-Object):")
+    for triplet in triplets:
+        print(f"  Subject:   {triplet['subject']}")
+        print(f"  Predicate: {triplet['predicate']}")
+        print(f"  Object:    {triplet['object']}")
+        if triplet.get('temporal'):
+            print(f"  When:      {triplet['temporal']}")
         print()
     
-    validator = TripleValidator()
-    validation = validator.validate(triples)
-    print(f"Valid triples: {validation['valid_count']}/{len(triples)}")
+    validator = TripletValidator()
+    validation = validator.validate(triplets)
+    print(f"Valid triplets: {validation['valid_count']}/{len(triplets)}")
     
     serializer = RDFSerializer(format="turtle")
     turtle_output = serializer.serialize(
-        triples,
+        triplets,
         base_uri="https://example.org/knowledge/"
     )
     print("Turtle Output:")

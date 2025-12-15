@@ -102,7 +102,7 @@ flowchart TD
     D --> E[Semantic Layer<br/>Core Intelligence]
     
     E --> F[Entity Extraction<br/>NER + LLM Enhancement]
-    E --> G[Relationship Mapping<br/>Triple Generation]
+    E --> G[Relationship Mapping<br/>Triplet Generation]
     E --> H[Ontology Generation<br/>6-Stage Pipeline]
     E --> I[Context Engineering<br/>Semantic Enrichment]
     E --> J[Quality Assurance<br/>Conflict Detection]
@@ -155,7 +155,7 @@ flowchart TD
 
 **Universal Data Ingestion** — Handles 50+ formats (PDF, DOCX, HTML, JSON, CSV, databases, APIs, streams) with unified pipeline, no custom parsers needed.
 
-**Automated Semantic Extraction** — NER, relationship extraction, and triple generation with LLM enhancement discovers entities and relationships automatically.
+**Automated Semantic Extraction** — NER, relationship extraction, and triplet generation with LLM enhancement discovers entities and relationships automatically.
 
 **Knowledge Graph Construction** — Production-ready graphs with entity resolution, temporal support, and graph analytics. Queryable knowledge ready for AI applications.
 
@@ -174,7 +174,7 @@ flowchart TD
 | **Feature Category** | **Capabilities** | **Key Benefits** |
 |:---------------------|:-----------------|:------------------|
 | **Data Ingestion** | 50+ formats (PDF, DOCX, HTML, JSON, CSV, databases, APIs, streams, archives) | Universal ingestion, no custom parsers needed |
-| **Semantic Extraction** | NER, relationship extraction, triple generation, LLM enhancement | Automated discovery of entities and relationships |
+| **Semantic Extraction** | NER, relationship extraction, triplet generation, LLM enhancement | Automated discovery of entities and relationships |
 | **Knowledge Graphs** | Entity resolution, temporal support, graph analytics, query interface | Production-ready, queryable knowledge structures |
 | **Ontology Generation** | 6-stage LLM pipeline, OWL generation, HermiT/Pellet validation | Automated ontology creation from documents |
 | **GraphRAG** | Hybrid vector + graph retrieval, multi-hop reasoning | 91% accuracy, 30% improvement over vector-only |
@@ -284,7 +284,7 @@ print(f" Ingested {len(sources)} sources")
 
 ### Semantic Intelligence Engine
 
-> **Entity & Relation Extraction** • NER, Relationships, Events, Triples with LLM Enhancement
+> **Entity & Relation Extraction** • NER, Relationships, Events, Triplets with LLM Enhancement
 
 ```python
 from semantica import Semantica

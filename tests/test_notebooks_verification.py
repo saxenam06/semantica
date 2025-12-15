@@ -11,7 +11,7 @@ from semantica.semantic_extract import (
     NERExtractor, 
     NamedEntityRecognizer, 
     RelationExtractor, 
-    TripleExtractor,
+    TripletExtractor,
     Entity,
     Relation
 )

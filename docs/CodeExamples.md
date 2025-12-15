@@ -50,7 +50,7 @@ knowledge_base = core.build_knowledge_base(sources)
 
 print(f"Processed {len(knowledge_base.documents)} documents")
 print(f"Extracted {len(knowledge_base.entities)} entities")
-print(f"Generated {len(knowledge_base.triples)} semantic triples")
+print(f"Generated {len(knowledge_base.triplets)} semantic triplets")
 print(f"Created {len(knowledge_base.embeddings)} vector embeddings")
 
 # Query the knowledge base
@@ -85,7 +85,7 @@ excel_content = doc_processor.process_excel("data.xlsx")
 # Extract semantic information
 for content in [pdf_content, docx_content, pptx_content]:
     semantics = core.extract_semantics(content)
-    triples = core.generate_triples(semantics)
+    triplets = core.generate_triplets(semantics)
     embeddings = core.create_embeddings(content.chunks)
 ```
 
@@ -128,7 +128,7 @@ for feed_url in feeds:
 # Process new feed items
 async for item in feed_processor.stream_items():
     semantics = core.extract_semantics(item.content)
-    knowledge_graph.add_triples(core.generate_triples(semantics))
+    knowledge_graph.add_triplets(core.generate_triplets(semantics))
 ```
 
 ### 📊 Structured Data Processing Module
@@ -154,7 +154,7 @@ xml_data = structured_processor.process_xml("data.xml")
 # Extract semantic relationships
 for data in [json_data, csv_data, yaml_data, xml_data]:
     schema = structured_processor.generate_schema(data)
-    triples = structured_processor.extract_triples(data, schema)
+    triplets = structured_processor.extract_triplets(data, schema)
     ontology = structured_processor.create_ontology(schema)
 ```
 
@@ -189,7 +189,7 @@ archive_contents = archive_processor.process_archive("documents.zip")
 # Extract semantic information from all contents
 for content in archive_contents:
     semantics = core.extract_semantics(content)
-    triples = core.generate_triples(semantics)
+    triplets = core.generate_triplets(semantics)
 ```
 
 ### 🔬 Scientific & Academic Processing Module
@@ -212,47 +212,47 @@ latex_content = academic_processor.process_latex("paper.tex")
 bibtex_content = academic_processor.process_bibtex("references.bib")
 jats_content = academic_processor.process_jats("article.xml")
 
-# Extract academic semantic triples
+# Extract academic semantic triplets
 for content in [latex_content, bibtex_content, jats_content]:
     academic_semantics = academic_processor.extract_academic_entities(content)
     citation_graph = academic_processor.build_citation_network(content)
-    research_triples = academic_processor.generate_research_triples(content)
+    research_triplets = academic_processor.generate_research_triples(content)
 ```
 
 ---
 
 ## 🧩 Semantic Extraction & Transformation
 
-### 🎯 Automatic Triple Generation
+### 🎯 Automatic Triplet Generation
 
-Generate RDF triples from any content automatically:
+Generate semantic triplets from any content automatically:
 
 ```python
-from semantica.extraction import TripleExtractor
+from semantica.extraction import TripletExtractor
 
-# Initialize triple extractor
-triple_extractor = TripleExtractor(
+# Initialize triplet extractor
+triplet_extractor = TripletExtractor(
     confidence_threshold=0.8,
     include_implicit_relations=True,
     temporal_modeling=True
 )
 
-# Extract triples from any content
+# Extract triplets from any content
 text = "Apple Inc. was founded by Steve Jobs in 1976 in Cupertino, California."
-triples = triple_extractor.extract_triples(text)
+triplets = triplet_extractor.extract_triplets(text)
 
-print(triples)
+print(triplets)
 # [
-#   Triple(subject="Apple Inc.", predicate="founded_by", object="Steve Jobs"),
-#   Triple(subject="Apple Inc.", predicate="founded_in", object="1976"),
-#   Triple(subject="Apple Inc.", predicate="located_in", object="Cupertino"),
-#   Triple(subject="Cupertino", predicate="located_in", object="California")
+#   Triplet(subject="Apple Inc.", predicate="founded_by", object="Steve Jobs"),
+#   Triplet(subject="Apple Inc.", predicate="founded_in", object="1976"),
+#   Triplet(subject="Apple Inc.", predicate="located_in", object="Cupertino"),
+#   Triplet(subject="Cupertino", predicate="located_in", object="California")
 # ]
 
 # Export to various formats
-turtle_format = triple_extractor.to_turtle(triples)
-ntriples_format = triple_extractor.to_ntriples(triples)
-jsonld_format = triple_extractor.to_jsonld(triples)
+turtle_format = triplet_extractor.serialize_triplets(triplets, format="turtle")
+ntriples_format = triplet_extractor.serialize_triplets(triplets, format="ntriples")
+jsonld_format = triplet_extractor.serialize_triplets(triplets, format="jsonld")
 ```
 
 ### 🧠 Ontology Generation Module
@@ -280,7 +280,7 @@ rdf_ontology = ontology.to_rdf()
 turtle_ontology = ontology.to_turtle()
 
 # Save to triplet store
-ontology.save_to_triple_store("http://localhost:9999/blazegraph/sparql")
+ontology.save_to_triplet_store("http://localhost:9999/blazegraph/sparql")
 ```
 
 ### 📊 Graph Store - Persistent Property Graph Storage
@@ -398,11 +398,11 @@ async for feed_item in feed_processor.stream():
     # Extract semantics from new content
     semantics = core.extract_semantics(feed_item.content)
     
-    # Generate triples
-    triples = core.generate_triples(semantics)
+    # Generate triplets
+    triplets = core.generate_triplets(semantics)
     
     # Update knowledge graph
-    knowledge_graph.add_triples(triples)
+    knowledge_graph.add_triplets(triplets)
     
     # Create embeddings for search
     embeddings = core.create_embeddings([feed_item.content])
@@ -447,8 +447,8 @@ async for message in kafka_processor.consume():
     
     # Extract semantics and build knowledge
     semantics = core.extract_semantics(processed)
-    triples = core.generate_triples(semantics)
-    knowledge_graph.add_triples(triples)
+    triplets = core.generate_triplets(semantics)
+    knowledge_graph.add_triplets(triplets)
 ```
 
 ---
@@ -545,8 +545,8 @@ sources = [
 
 financial_knowledge = finance_processor.build_financial_knowledge_graph(sources)
 
-# Generate financial semantic triples
-triples = financial_knowledge.extract_financial_triples()
+# Generate financial semantic triplets
+triplets = financial_knowledge.extract_financial_triplets()
 
 # Export to financial analysis platforms
 financial_knowledge.export_to_bloomberg_api()
@@ -603,7 +603,7 @@ pipeline = PipelineBuilder() \
     .add_semantic_processing([
         "entity_extraction",
         "relation_extraction",
-        "triple_generation",
+        "triplet_generation",
         "ontology_mapping"
     ]) \
     .add_enrichment([
@@ -614,7 +614,7 @@ pipeline = PipelineBuilder() \
     .add_output_formats([
         "knowledge_graph",
         "vector_embeddings",
-        "rdf_triples",
+        "rdf_triplets",
         "json_ld"
     ]) \
     .build()
@@ -668,14 +668,14 @@ from semantica.quality import QualityAssurance
 qa = QualityAssurance(
     validation_rules=[
         "entity_consistency",
-        "triple_validity",
+        "triplet_validity",
         "schema_compliance",
         "ontology_alignment"
     ],
     confidence_thresholds={
         "entity_extraction": 0.8,
         "relation_extraction": 0.7,
-        "triple_generation": 0.9
+        "triplet_generation": 0.9
     }
 )
 

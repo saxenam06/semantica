@@ -1,13 +1,13 @@
 # Semantic Extract Module Usage Guide
 
-This comprehensive guide demonstrates how to use the semantic extraction module for extracting entities, relations, events, triples, and semantic networks from text. The module provides multiple extraction methods including pattern-based, ML-based, and LLM-based approaches, with support for custom method registration and configuration management.
+This comprehensive guide demonstrates how to use the semantic extraction module for extracting entities, relations, events, triplets, and semantic networks from text. The module provides multiple extraction methods including pattern-based, ML-based, and LLM-based approaches, with support for custom method registration and configuration management.
 
 ## Table of Contents
 
 1. [Basic Usage](#basic-usage)
 2. [Entity Extraction](#entity-extraction)
 3. [Relation Extraction](#relation-extraction)
-4. [Triple Extraction](#triple-extraction)
+4. [Triplet Extraction](#triplet-extraction)
 5. [Event Detection](#event-detection)
 6. [Coreference Resolution](#coreference-resolution)
 7. [Semantic Analysis](#semantic-analysis)
@@ -196,80 +196,80 @@ relation = Relation(
 print(f"Relation: {relation.subject} --[{relation.predicate}]--> {relation.object}")
 ```
 
-## Triple Extraction
+## Triplet Extraction
 
-### Basic Triple Extraction
+### Basic Triplet Extraction
 
 ```python
-from semantica.semantic_extract import TripleExtractor
+from semantica.semantic_extract import TripletExtractor
 
-extractor = TripleExtractor()
+extractor = TripletExtractor()
 text = "Apple Inc. was founded by Steve Jobs in 1976."
 
-triples = extractor.extract_triples(text)
+triplets = extractor.extract_triplets(text)
 
-for triple in triples:
-    print(f"({triple.subject}, {triple.predicate}, {triple.object})")
-    print(f"  Confidence: {triple.confidence:.2f}")
+for triplet in triplets:
+    print(f"({triplet.subject}, {triplet.predicate}, {triplet.object})")
+    print(f"  Confidence: {triplet.confidence:.2f}")
 ```
 
-### Different Triple Extraction Methods
+### Different Triplet Extraction Methods
 
 ```python
-from semantica.semantic_extract import TripleExtractor
+from semantica.semantic_extract import TripletExtractor
 
 text = "Apple Inc. was founded by Steve Jobs in 1976."
 
 # Pattern-based
-extractor = TripleExtractor(method="pattern")
-triples = extractor.extract_triples(text)
+extractor = TripletExtractor(method="pattern")
+triplets = extractor.extract_triplets(text)
 
 # Rules-based
-extractor = TripleExtractor(method="rules")
-triples = extractor.extract_triples(text)
+extractor = TripletExtractor(method="rules")
+triplets = extractor.extract_triplets(text)
 
 # HuggingFace model
-extractor = TripleExtractor(method="huggingface")
-triples = extractor.extract_triples(text, model="t5-base")
+extractor = TripletExtractor(method="huggingface")
+triplets = extractor.extract_triplets(text, model="t5-base")
 
 # LLM-based
-extractor = TripleExtractor(method="llm")
-triples = extractor.extract_triples(text, provider="openai", model="gpt-4")
+extractor = TripletExtractor(method="llm")
+triplets = extractor.extract_triplets(text, provider="openai", model="gpt-4")
 ```
 
 ### RDF Serialization
 
 ```python
-from semantica.semantic_extract import TripleExtractor, RDFSerializer
+from semantica.semantic_extract import TripletExtractor, RDFSerializer
 
-extractor = TripleExtractor()
-triples = extractor.extract_triples(text)
+extractor = TripletExtractor()
+triplets = extractor.extract_triplets(text)
 
 # Serialize to RDF
 serializer = RDFSerializer()
-rdf_output = serializer.serialize(triples, format="turtle")
+rdf_output = serializer.serialize(triplets, format="turtle")
 print(rdf_output)
 
 # Serialize to JSON-LD
-jsonld_output = serializer.serialize(triples, format="json-ld")
+jsonld_output = serializer.serialize(triplets, format="json-ld")
 print(jsonld_output)
 ```
 
-### Triple Validation
+### Triplet Validation
 
 ```python
-from semantica.semantic_extract import TripleValidator, TripleQualityChecker
+from semantica.semantic_extract import TripletValidator, TripletQualityChecker
 
-validator = TripleValidator()
-quality_checker = TripleQualityChecker()
+validator = TripletValidator()
+quality_checker = TripletQualityChecker()
 
-for triple in triples:
-    # Validate triple
-    is_valid = validator.validate(triple)
+for triplet in triplets:
+    # Validate triplet
+    is_valid = validator.validate(triplet)
     print(f"Valid: {is_valid}")
     
     # Check quality
-    quality = quality_checker.check_quality(triple)
+    quality = quality_checker.check_quality(triplet)
     print(f"Quality score: {quality:.2f}")
 ```
 
@@ -498,218 +498,3 @@ method_registry.register("entity", "custom_method", custom_entity_extraction)
 # Use custom method
 from semantica.semantic_extract import NERExtractor
 extractor = NERExtractor(method="custom_method")
-entities = extractor.extract(text)
-```
-
-### Listing Registered Methods
-
-```python
-from semantica.semantic_extract.registry import method_registry
-
-# List all registered methods
-all_methods = method_registry.list_all()
-print("Registered methods:", all_methods)
-
-# List methods for specific task
-entity_methods = method_registry.list_all("entity")
-print("Entity methods:", entity_methods)
-```
-
-## Configuration
-
-### Using Configuration Manager
-
-```python
-from semantica.semantic_extract.config import config
-
-# Get API key
-api_key = config.get_api_key("openai")
-print(f"OpenAI API key: {api_key[:10]}...")
-
-# Set provider configuration
-config.set_provider("openai", api_key="sk-...", model="gpt-4")
-
-# Get provider configuration
-provider_config = config.get_provider_config("openai")
-print(f"Provider config: {provider_config}")
-```
-
-### Environment Variables
-
-```bash
-# Set API keys
-export OPENAI_API_KEY=sk-...
-export GEMINI_API_KEY=...
-export GROQ_API_KEY=...
-export ANTHROPIC_API_KEY=...
-```
-
-### Configuration File
-
-```yaml
-# config.yaml
-openai:
-  api_key: sk-...
-  model: gpt-4
-
-gemini:
-  api_key: ...
-  model: gemini-pro
-```
-
-```python
-from semantica.semantic_extract.config import Config
-
-# Load from config file
-config = Config(config_file="config.yaml")
-api_key = config.get_api_key("openai")
-```
-
-## Advanced Examples
-
-### Complete Extraction Pipeline
-
-```python
-from semantica.semantic_extract import (
-    NamedEntityRecognizer,
-    RelationExtractor,
-    TripleExtractor,
-    EventDetector,
-    CoreferenceResolver
-)
-
-text = """
-Apple Inc. was founded by Steve Jobs, Steve Wozniak, and Ronald Wayne in 1976.
-The company launched the iPhone in 2007. It is headquartered in Cupertino, California.
-"""
-
-# Step 1: Extract entities
-ner = NamedEntityRecognizer()
-entities = ner.extract_entities(text)
-print(f"Entities: {len(entities)}")
-
-# Step 2: Resolve coreferences
-resolver = CoreferenceResolver()
-resolved_text = resolver.resolve(text)
-print(f"Resolved coreferences")
-
-# Step 3: Extract relations
-rel_extractor = RelationExtractor()
-relations = rel_extractor.extract_relations(resolved_text, entities=entities)
-print(f"Relations: {len(relations)}")
-
-# Step 4: Extract triples
-triple_extractor = TripleExtractor()
-triples = triple_extractor.extract_triples(resolved_text)
-print(f"Triples: {len(triples)}")
-
-# Step 5: Detect events
-event_detector = EventDetector()
-events = event_detector.detect_events(resolved_text)
-print(f"Events: {len(events)}")
-```
-
-### LLM-Enhanced Extraction
-
-```python
-from semantica.semantic_extract import LLMEnhancer
-
-enhancer = LLMEnhancer(provider="openai", model="gpt-4")
-
-# Enhance existing extraction
-entities = ner.extract_entities(text)
-enhanced_entities = enhancer.enhance_entities(entities, text)
-
-for original, enhanced in zip(entities, enhanced_entities):
-    print(f"Original: {original.text}")
-    print(f"Enhanced: {enhanced.text}")
-    print(f"  Additional info: {enhanced.metadata}")
-```
-
-### Extraction Validation
-
-```python
-from semantica.semantic_extract import ExtractionValidator
-
-validator = ExtractionValidator()
-
-# Validate extraction results
-result = {
-    "entities": entities,
-    "relations": relations,
-    "triples": triples
-}
-
-validation = validator.validate(result)
-
-print(f"Validation passed: {validation.passed}")
-print(f"Quality score: {validation.quality_score:.2f}")
-print(f"Issues: {validation.issues}")
-```
-
-### Building Knowledge Graph from Extraction
-
-```python
-from semantica.semantic_extract import NamedEntityRecognizer, RelationExtractor, TripleExtractor
-from semantica.kg import GraphBuilder
-
-# Extract all information
-ner = NamedEntityRecognizer()
-entities = ner.extract_entities(text)
-
-rel_extractor = RelationExtractor()
-relations = rel_extractor.extract_relations(text, entities=entities)
-
-triple_extractor = TripleExtractor()
-triples = triple_extractor.extract_triples(text, entities=entities, relationships=relations)
-
-# Build knowledge graph
-graph_builder = GraphBuilder()
-knowledge_graph = graph_builder.build({
-    "entities": entities,
-    "relations": relations,
-    "triples": triples
-})
-
-print(f"Knowledge graph nodes: {len(knowledge_graph.nodes)}")
-print(f"Knowledge graph edges: {len(knowledge_graph.edges)}")
-```
-
-### Batch Processing
-
-```python
-from semantica.semantic_extract import NamedEntityRecognizer, RelationExtractor
-
-texts = [
-    "Apple Inc. was founded in 1976.",
-    "Microsoft was founded in 1975.",
-    "Google was founded in 1998."
-]
-
-# Process multiple texts
-ner = NamedEntityRecognizer()
-rel_extractor = RelationExtractor()
-
-all_entities = []
-all_relations = []
-
-for text in texts:
-    entities = ner.extract_entities(text)
-    relations = rel_extractor.extract_relations(text, entities=entities)
-    all_entities.extend(entities)
-    all_relations.extend(relations)
-
-print(f"Total entities: {len(all_entities)}")
-print(f"Total relations: {len(all_relations)}")
-```
-
-## Best Practices
-
-1. **Choose appropriate extraction methods**: Use pattern-based for simple cases, LLM-based for complex extraction
-2. **Resolve coreferences first**: Resolve coreferences before relation extraction for better accuracy
-3. **Validate extraction results**: Always validate extraction results for quality assurance
-4. **Use appropriate providers**: Choose LLM providers based on your needs (cost, speed, accuracy)
-5. **Batch processing**: Process multiple texts together for efficiency
-6. **Combine methods**: Use multiple extraction methods and combine results for better coverage
-7. **Customize extraction**: Register custom methods for domain-specific extraction needs
-

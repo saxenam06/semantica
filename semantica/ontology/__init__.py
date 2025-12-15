@@ -11,7 +11,7 @@ Ontology Generation (6-Stage Pipeline):
     - Stage 2 - YAML-to-Definition: Transform concepts into class definitions, YAML parsing, definition structure creation, class inference (ClassInferrer.infer_classes)
     - Stage 3 - Definition-to-Types: Map definitions to OWL types, type inference, OWL class/property mapping (@type assignment: owl:Class, owl:ObjectProperty, owl:DatatypeProperty), property inference (PropertyGenerator.infer_properties)
     - Stage 4 - Hierarchy Generation: Build taxonomic structures, parent-child relationship inference, hierarchy validation, circular dependency detection (DFS), transitive closure calculation
-    - Stage 5 - TTL Generation: Generate OWL/Turtle syntax using rdflib, namespace prefix handling, RDF serialization (rdflib.serialize format="turtle"), triple generation (subject-predicate-object)
+    - Stage 5 - TTL Generation: Generate OWL/Turtle syntax using rdflib, namespace prefix handling, RDF serialization (rdflib.serialize format="turtle"), triplet generation (subject-predicate-object)
     - Stage 6 - Symbolic Validation: HermiT/Pellet reasoning (owlready2.sync_reasoner), consistency checking, satisfiability checking, constraint validation
 
 Class Inference:
@@ -30,7 +30,7 @@ Ontology Validation:
     - Hallucination Detection: LLM-generated ontology validation, fact verification, relationship validation, error/warning collection
 
 OWL/RDF Generation:
-    - RDF Graph Construction: rdflib.Graph creation, namespace binding, triple generation (subject-predicate-object), namespace prefix declaration
+    - RDF Graph Construction: rdflib.Graph creation, namespace binding, triplet generation (subject-predicate-object), namespace prefix declaration
     - Serialization: Turtle format (rdflib.serialize format="turtle"), RDF/XML format, JSON-LD format, N3 format, format selection and conversion
     - Namespace Management: Prefix declaration, IRI resolution, namespace prefix mapping, standard namespace registration (RDF, RDFS, OWL, XSD, SKOS, DC)
 

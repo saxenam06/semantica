@@ -58,7 +58,7 @@
 
 ### Query Algorithms
 - **SPARQL Query Optimization**: Join reordering with selectivity estimation
-- **Triple Pattern Matching**: Index-based lookup with B+ trees
+- **Triplet Pattern Matching**: Index-based lookup with B+ trees
 - **Graph Pattern Matching**: Subgraph isomorphism with backtracking
 - **Query Planning**: Cost-based optimization with statistics
 - **Join Algorithms**: Hash join, merge join, nested loop join
@@ -75,12 +75,12 @@
 ### Reasoning Algorithms
 - **RDFS Reasoning**: Subclass/subproperty inference, domain/range inference
 - **OWL Reasoning**: Class hierarchy, property characteristics, cardinality constraints
-- **Forward Chaining**: Materialization of inferred triples
+- **Forward Chaining**: Materialization of inferred triplets
 - **Backward Chaining**: On-demand inference during query execution
 - **Rule-Based Inference**: Custom SWRL rules
 
 ### Bulk Loading
-- **Batch Processing**: Chunked triple insertion with configurable batch size
+- **Batch Processing**: Chunked triplet insertion with configurable batch size
 - **Parallel Loading**: Multi-threaded data loading
 - **Index Building**: Deferred index construction for faster loading
 - **Transaction Management**: Atomic batch commits with rollback support
@@ -98,8 +98,8 @@ Main coordinator for triplet store operations across multiple backends.
 | Method | Description | Algorithm |
 |--------|-------------|-----------|
 | `register_store(store_id, backend, endpoint)` | Register triplet store | Store registration |
-| `add_triple(triple, store_id)` | Add single triplet | Index insertion |
-| `add_triples(triples, store_id)` | Batch add triplets | Bulk index insertion |
+| `add_triplet(triplet, store_id)` | Add single triplet | Index insertion |
+| `add_triplets(triplets, store_id)` | Batch add triplets | Bulk index insertion |
 | `query(sparql, store_id)` | Execute SPARQL query | Query optimization + execution |
 | `delete(pattern, store_id)` | Delete matching triplets | Pattern matching + deletion |
 | `bulk_load(file_path, format, store_id)` | Bulk load from file | Streaming parser + batch insert |
@@ -120,9 +120,9 @@ store = manager.register_store(
     endpoint="http://localhost:9999/blazegraph/sparql"
 )
 
-# Add single triple
-result = manager.add_triple(
-    triple={
+# Add single triplet
+result = manager.add_triplet(
+    triplet ={
         "subject": "http://example.org/Alice",
         "predicate": "http://example.org/knows",
         "object": "http://example.org/Bob"
@@ -130,8 +130,8 @@ result = manager.add_triple(
     store_id="main"
 )
 
-# Add multiple triples
-triples = [
+# Add multiple triplets
+triplets = [
     {
         "subject": "http://example.org/Alice",
         "predicate": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
@@ -144,7 +144,7 @@ triples = [
     }
 ]
 
-manager.add_triples(triples, store_id="main")
+manager.add_triplets(triplets, store_id="main")
 
 # Query with SPARQL
 results = manager.query("""
@@ -162,7 +162,7 @@ for row in results["results"]["bindings"]:
 
 # Get statistics
 stats = manager.get_stats("main")
-print(f"Total triples: {stats['triple_count']}")
+print(f"Total triplets: {stats['triplet_count']}")
 ```
 
 ---
@@ -261,8 +261,8 @@ High-performance bulk data loading with progress tracking.
 
 **Supported Formats:**
 - **RDF/XML**: W3C RDF/XML format
-- **Turtle**: Terse RDF Triple Language
-- **N-Triples**: Line-based triple format
+- **Turtle**: Terse RDF Triplet Language
+- **N-Triples**: Line-based triplet format
 - **N-Quads**: N-Triples with named graphs
 - **JSON-LD**: JSON-based RDF format
 - **TriG**: Turtle with named graphs
@@ -289,8 +289,8 @@ progress = loader.load(
     store=store
 )
 
-print(f"Loaded {progress['triples_loaded']} triples in {progress['elapsed_time']:.2f}s")
-print(f"Throughput: {progress['triples_per_second']:.0f} triples/sec")
+print(f"Loaded {progress['triplets_loaded']} triplets in {progress['elapsed_time']:.2f}s")
+print(f"Throughput: {progress['triplets_per_second']:.0f} triplets/sec")
 
 # Load from URL
 progress = loader.load_from_url(
@@ -350,8 +350,8 @@ adapter.create_namespace("my_kb", properties={
     "com.bigdata.rdf.store.AbstractTripleStore.geoSpatial": "true"
 })
 
-# Add triples
-adapter.add_triple(
+# Add triplets
+adapter.add_triplet(
     subject="http://example.org/Alice",
     predicate="http://example.org/name",
     object_literal="Alice",
@@ -394,14 +394,14 @@ adapter = JenaAdapter(
 
 adapter.connect()
 
-# Add triples with inference
-adapter.add_triple(
+# Add triplets with inference
+adapter.add_triplet(
     subject="http://example.org/Dog",
     predicate="http://www.w3.org/2000/01/rdf-schema#subClassOf",
     object="http://example.org/Animal"
 )
 
-adapter.add_triple(
+adapter.add_triplet(
     subject="http://example.org/Fido",
     predicate="http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
     object="http://example.org/Dog"
@@ -460,10 +460,10 @@ adapter = RDF4JAdapter(
 
 adapter.connect()
 
-# Add triples with transaction
+# Add triplet with transaction
 adapter.begin_transaction()
 try:
-    adapter.add_triple(
+    adapter.add_triplet(
         subject="http://example.org/Alice",
         predicate="http://example.org/name",
         object_literal="Alice"
@@ -508,11 +508,10 @@ adapter = VirtuosoAdapter(
 
 adapter.connect()
 
-# Add triples to named graph
+# Add triplets to named graph
 graph_uri = "http://example.org/graph1"
-adapter.create_graph(graph_uri)
 
-adapter.add_triple(
+adapter.add_triplet(
     subject="http://example.org/Alice",
     predicate="http://example.org/name",
     object_literal="Alice",
@@ -538,16 +537,17 @@ Quick access to triplet store operations:
 
 ```python
 from semantica.triplet_store import (
-    add_triple,
-    add_triples,
+    add_triplet,
+    add_triplets,
+    get_triplets,
     execute_query,
     bulk_load,
     export_graph,
     import_graph
 )
 
-# Add single triple
-add_triple(
+# Add single triplet
+add_triplet(
     subject="http://example.org/Alice",
     predicate="http://example.org/knows",
     object="http://example.org/Bob"
@@ -632,9 +632,9 @@ Bulk loading progress dataclass.
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `loaded_triples` | int | Number of triples loaded |
-| `total_triples` | int | Total triples to load |
-| `failed_triples` | int | Number of failed triples |
+| `loaded_triplets` | int | Number of triplets loaded |
+| `total_triplets` | int | Total triplets to load |
+| `failed_triplets` | int | Number of failed triplets |
 | `progress_percentage` | float | Loading progress (0-100) |
 | `elapsed_time` | float | Time elapsed (seconds) |
 | `current_batch` | int | Current batch number |
@@ -880,7 +880,7 @@ query = """
 ### Bulk Loading Optimization
 
 ```python
-from semantica.triple_store import BulkLoader
+from semantica.triplet_store import BulkLoader
 
 loader = BulkLoader(
     batch_size=50000,      # Larger batches for better performance
@@ -915,38 +915,38 @@ adapter.create_fulltext_index([
 
 ```python
 from semantica.kg import GraphBuilder
-from semantica.triple_store import TripleManager, BulkLoader
+from semantica.triplet_store import TripletManager, BulkLoader
 
 # Build knowledge graph
 builder = GraphBuilder()
 kg = builder.build(entities, relationships)
 
-# Convert to RDF triples
-triples = []
+# Convert to RDF triplets
+triplets = []
 for entity in kg.entities:
-    triples.append({
+    triplets.append({
         "subject": f"http://example.org/{entity.id}",
         "predicate": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
         "object": f"http://example.org/{entity.type}"
     })
     
     for prop, value in entity.properties.items():
-        triples.append({
+        triplets.append({
             "subject": f"http://example.org/{entity.id}",
             "predicate": f"http://example.org/{prop}",
             "object_literal": str(value)
         })
 
-# Load into triple store
-manager = TripleManager()
+# Load into triplet store
+manager = TripletManager()
 store = manager.register_store("main", "blazegraph", "http://localhost:9999/blazegraph/sparql")
-manager.add_triples(triples, store_id="main")
+manager.add_triplets(triplets, store_id="main")
 ```
 
 ### Semantic Search with SPARQL
 
 ```python
-from semantica.triple_store import QueryEngine
+from semantica.triplet_store import QueryEngine
 
 engine = QueryEngine()
 
@@ -1017,7 +1017,7 @@ loader = BulkLoader(
 
 ```python
 # Solution: Validate query first
-from semantica.triple_store import QueryEngine
+from semantica.triplet_store import QueryEngine
 
 engine = QueryEngine()
 is_valid = engine.validate_query(sparql_query)
@@ -1036,4 +1036,4 @@ if not is_valid:
 - [Export Module](export.md) - Export to various formats
 
 ## Cookbook
-- [Triple Store](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/20_Triple_Store.ipynb)
+- [Triplet Store](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/20_Triplet_Store.ipynb)

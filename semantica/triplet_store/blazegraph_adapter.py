@@ -20,7 +20,7 @@ Example Usage:
     >>> from semantica.triplet_store import BlazegraphAdapter
     >>> adapter = BlazegraphAdapter(endpoint="http://localhost:9999/blazegraph", namespace="kb")
     >>> result = adapter.execute_sparql(sparql_query)
-    >>> load_result = adapter.bulk_load(triples)
+    >>> load_result = adapter.bulk_load(triplets)
     >>> namespace_result = adapter.create_namespace("new_namespace")
 
 Author: Semantica Contributors
@@ -32,7 +32,7 @@ from urllib.parse import urljoin
 
 import requests
 
-from ..semantic_extract.triple_extractor import Triple
+from ..semantic_extract.triplet_extractor import Triplet
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
@@ -174,12 +174,12 @@ class BlazegraphAdapter:
             )
             raise ProcessingError(f"SPARQL query failed: {e}")
 
-    def bulk_load(self, triples: List[Triple], **options) -> Dict[str, Any]:
+    def bulk_load(self, triplets: List[Triplet], **options) -> Dict[str, Any]:
         """
-        Load triples in bulk.
+        Load triplets in bulk.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             **options: Additional options:
                 - format: RDF format (turtle, ntriples, rdfxml)
                 - graph: Named graph URI
@@ -190,9 +190,9 @@ class BlazegraphAdapter:
         if not self.connected:
             raise ProcessingError("Not connected to Blazegraph")
 
-        # Convert triples to RDF format
+        # Convert triplets to RDF format
         format = options.get("format", "turtle")
-        rdf_data = self._triples_to_rdf(triples, format)
+        rdf_data = self._triplets_to_rdf(triplets, format)
 
         # Upload endpoint
         upload_endpoint = urljoin(
@@ -205,7 +205,7 @@ class BlazegraphAdapter:
             graph_clause = f"GRAPH <{graph}>" if graph else ""
 
             # Build INSERT query
-            insert_data = self._build_insert_data(triples)
+            insert_data = self._build_insert_data(triplets)
             query = f"INSERT DATA {graph_clause} {{ {insert_data} }}"
 
             response = requests.post(
@@ -222,49 +222,49 @@ class BlazegraphAdapter:
 
             return {
                 "success": True,
-                "triples_loaded": len(triples),
+                "triplets_loaded": len(triplets),
                 "namespace": self.namespace,
             }
         except Exception as e:
             self.logger.error(f"Bulk load failed: {e}")
             raise ProcessingError(f"Bulk load failed: {e}")
 
-    def _triples_to_rdf(self, triples: List[Triple], format: str = "turtle") -> str:
-        """Convert triples to RDF format."""
+    def _triplets_to_rdf(self, triplets: List[Triplet], format: str = "turtle") -> str:
+        """Convert triplets to RDF format."""
         if format == "turtle":
             lines = []
-            for triple in triples:
+            for triplet in triplets:
                 lines.append(
-                    f"<{triple.subject}> <{triple.predicate}> <{triple.object}> ."
+                    f"<{triplet.subject}> <{triplet.predicate}> <{triplet.object}> ."
                 )
             return "\n".join(lines)
         else:
             # For other formats, use simple turtle conversion
-            return self._triples_to_rdf(triples, "turtle")
+            return self._triplets_to_rdf(triplets, "turtle")
 
-    def _build_insert_data(self, triples: List[Triple]) -> str:
+    def _build_insert_data(self, triplets: List[Triplet]) -> str:
         """Build SPARQL INSERT DATA clause."""
         lines = []
-        for triple in triples:
-            lines.append(f"<{triple.subject}> <{triple.predicate}> <{triple.object}> .")
+        for triplet in triplets:
+            lines.append(f"<{triplet.subject}> <{triplet.predicate}> <{triplet.object}> .")
         return " ".join(lines)
 
-    def add_triple(self, triple: Triple, **options) -> Dict[str, Any]:
-        """Add single triple."""
-        return self.bulk_load([triple], **options)
+    def add_triplet(self, triplet: Triplet, **options) -> Dict[str, Any]:
+        """Add single triplet."""
+        return self.bulk_load([triplet], **options)
 
-    def add_triples(self, triples: List[Triple], **options) -> Dict[str, Any]:
-        """Add multiple triples."""
-        return self.bulk_load(triples, **options)
+    def add_triplets(self, triplets: List[Triplet], **options) -> Dict[str, Any]:
+        """Add multiple triplets."""
+        return self.bulk_load(triplets, **options)
 
-    def get_triples(
+    def get_triplets(
         self,
         subject: Optional[str] = None,
         predicate: Optional[str] = None,
         object: Optional[str] = None,
         **options,
-    ) -> List[Triple]:
-        """Get triples matching criteria."""
+    ) -> List[Triplet]:
+        """Get triplets matching criteria."""
         # Build SPARQL query
         where_clauses = []
         if subject:
@@ -279,11 +279,11 @@ class BlazegraphAdapter:
 
         result = self.execute_sparql(query, **options)
 
-        # Convert bindings to triples
-        triples = []
+        # Convert bindings to triplets
+        triplets = []
         for binding in result["bindings"]:
-            triples.append(
-                Triple(
+            triplets.append(
+                Triplet(
                     subject=binding.get("s", {}).get("value", ""),
                     predicate=binding.get("p", {}).get("value", ""),
                     object=binding.get("o", {}).get("value", ""),
@@ -291,16 +291,16 @@ class BlazegraphAdapter:
                 )
             )
 
-        return triples
+        return triplets
 
-    def delete_triple(self, triple: Triple, **options) -> Dict[str, Any]:
-        """Delete triple."""
+    def delete_triplet(self, triplet: Triplet, **options) -> Dict[str, Any]:
+        """Delete triplet."""
         if not self.connected:
             raise ProcessingError("Not connected to Blazegraph")
 
         update_endpoint = self._get_update_endpoint()
 
-        query = f"DELETE DATA {{ <{triple.subject}> <{triple.predicate}> <{triple.object}> }}"
+        query = f"DELETE DATA {{ <{triplet.subject}> <{triplet.predicate}> <{triplet.object}> }}"
 
         try:
             response = requests.post(
@@ -317,8 +317,8 @@ class BlazegraphAdapter:
 
             return {"success": True}
         except Exception as e:
-            self.logger.error(f"Delete triple failed: {e}")
-            raise ProcessingError(f"Delete triple failed: {e}")
+            self.logger.error(f"Delete triplet failed: {e}")
+            raise ProcessingError(f"Delete triplet failed: {e}")
 
     def create_namespace(self, namespace: str, **options) -> Dict[str, Any]:
         """

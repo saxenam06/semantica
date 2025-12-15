@@ -2,7 +2,7 @@
 Triplet Store Methods Module
 
 This module provides all triplet store methods as simple, reusable functions for
-registering stores, adding triples, querying, and managing triplet stores. It supports
+registering stores, adding triplets, querying, and managing triplet stores. It supports
 multiple approaches and integrates with the method registry for extensibility.
 
 Supported Methods:
@@ -14,24 +14,24 @@ Store Registration:
     - "rdf4j": RDF4J-specific registration
     - "virtuoso": Virtuoso-specific registration
 
-Triple Addition:
-    - "default": Default triple addition
-    - "single": Single triple addition
-    - "batch": Batch triple addition
-    - "bulk": Bulk triple addition
+Triplet Addition:
+    - "default": Default triplet addition
+    - "single": Single triplet addition
+    - "batch": Batch triplet addition
+    - "bulk": Bulk triplet addition
 
-Triple Retrieval:
-    - "default": Default triple retrieval
+Triplet Retrieval:
+    - "default": Default triplet retrieval
     - "pattern": Pattern-based retrieval
     - "sparql": SPARQL-based retrieval
 
-Triple Deletion:
-    - "default": Default triple deletion
-    - "single": Single triple deletion
-    - "batch": Batch triple deletion
+Triplet Deletion:
+    - "default": Default triplet deletion
+    - "single": Single triplet deletion
+    - "batch": Batch triplet deletion
 
-Triple Update:
-    - "default": Default triple update (delete-then-add)
+Triplet Update:
+    - "default": Default triplet update (delete-then-add)
     - "atomic": Atomic update (when supported)
 
 SPARQL Query:
@@ -51,7 +51,7 @@ Bulk Loading:
 
 Validation:
     - "default": Default validation
-    - "triple": Triple structure validation
+    - "triplet": Triplet structure validation
     - "pre_load": Pre-load validation
 
 Algorithms Used:
@@ -61,8 +61,8 @@ Store Registration:
     - Configuration Management: Store configuration storage, default store selection
     - Adapter Instantiation: Backend-specific adapter creation, connection initialization
 
-Triple Operations:
-    - Triple Validation: Required field checking, confidence validation, URI validation
+Triplet Operations:
+    - Triplet Validation: Required field checking, confidence validation, URI validation
     - Batch Processing: Chunking algorithm, batch size optimization
     - Pattern Matching: Subject/predicate/object filtering, SPARQL query construction
 
@@ -86,28 +86,28 @@ Key Features:
 
 Main Functions:
     - register_store: Store registration wrapper
-    - add_triple: Triple addition wrapper
-    - add_triples: Multiple triple addition wrapper
-    - get_triples: Triple retrieval wrapper
-    - delete_triple: Triple deletion wrapper
-    - update_triple: Triple update wrapper
+    - add_triplet: Triplet addition wrapper
+    - add_triplets: Multiple triplet addition wrapper
+    - get_triplets: Triplet retrieval wrapper
+    - delete_triplet: Triplet deletion wrapper
+    - update_triplet: Triplet update wrapper
     - execute_query: SPARQL query execution wrapper
     - optimize_query: Query optimization wrapper
     - bulk_load: Bulk loading wrapper
-    - validate_triples: Triple validation wrapper
+    - validate_triplets: Triplet validation wrapper
     - get_triplet_store_method: Get triplet store method by task and name
     - list_available_methods: List registered methods
 
 Example Usage:
-    >>> from semantica.triplet_store.methods import register_store, add_triple, execute_query
+    >>> from semantica.triplet_store.methods import register_store, add_triplet, execute_query
     >>> store = register_store("main", "blazegraph", "http://localhost:9999/blazegraph", method="default")
-    >>> result = add_triple(triple, store_id="main", method="default")
+    >>> result = add_triplet(triplet, store_id="main", method="default")
     >>> query_result = execute_query(sparql_query, store_adapter, method="default")
 """
 
 from typing import Any, Dict, List, Optional, Union
 
-from ..semantic_extract.triple_extractor import Triple
+from ..semantic_extract.triplet_extractor import Triplet
 from .bulk_loader import BulkLoader, LoadProgress
 from .config import triplet_store_config
 from .query_engine import QueryEngine, QueryPlan, QueryResult
@@ -173,14 +173,14 @@ def register_store(
     return manager.register_store(store_id, store_type, endpoint, **options)
 
 
-def add_triple(
-    triple: Triple, store_id: Optional[str] = None, method: str = "default", **options
+def add_triplet(
+    triplet: Triplet, store_id: Optional[str] = None, method: str = "default", **options
 ) -> Dict[str, Any]:
     """
-    Add single triple to store.
+    Add single triplet to store.
 
     Args:
-        triple: Triple to add
+        triplet: Triplet to add
         store_id: Store identifier (uses default if not provided)
         method: Addition method name (default: "default")
         **options: Additional options
@@ -191,24 +191,24 @@ def add_triple(
     # Check registry for custom method
     custom_method = method_registry.get("add", method)
     if custom_method:
-        return custom_method(triple, store_id=store_id, **options)
+        return custom_method(triplet, store_id=store_id, **options)
 
     # Default implementation
     manager = _get_manager()
-    return manager.add_triple(triple, store_id=store_id, **options)
+    return manager.add_triplet(triplet, store_id=store_id, **options)
 
 
-def add_triples(
-    triples: List[Triple],
+def add_triplets(
+    triplets: List[Triplet],
     store_id: Optional[str] = None,
     method: str = "default",
     **options,
 ) -> Dict[str, Any]:
     """
-    Add multiple triples to store.
+    Add multiple triplets to store.
 
     Args:
-        triples: List of triples to add
+        triplets: List of triplets to add
         store_id: Store identifier
         method: Addition method name (default: "default")
         **options: Additional options
@@ -219,23 +219,23 @@ def add_triples(
     # Check registry for custom method
     custom_method = method_registry.get("add", method)
     if custom_method:
-        return custom_method(triples, store_id=store_id, **options)
+        return custom_method(triplets, store_id=store_id, **options)
 
     # Default implementation
     manager = _get_manager()
-    return manager.add_triples(triples, store_id=store_id, **options)
+    return manager.add_triplets(triplets, store_id=store_id, **options)
 
 
-def get_triples(
+def get_triplets(
     subject: Optional[str] = None,
     predicate: Optional[str] = None,
     object: Optional[str] = None,
     store_id: Optional[str] = None,
     method: str = "default",
     **options,
-) -> List[Triple]:
+) -> List[Triplet]:
     """
-    Get triples matching criteria.
+    Get triplets matching criteria.
 
     Args:
         subject: Optional subject URI
@@ -246,7 +246,7 @@ def get_triples(
         **options: Additional options
 
     Returns:
-        List of matching triples
+        List of matching triplets
     """
     # Check registry for custom method
     custom_method = method_registry.get("get", method)
@@ -255,17 +255,17 @@ def get_triples(
 
     # Default implementation
     manager = _get_manager()
-    return manager.get_triple(subject, predicate, object, store_id=store_id, **options)
+    return manager.get_triplets(subject, predicate, object, store_id=store_id, **options)
 
 
-def delete_triple(
-    triple: Triple, store_id: Optional[str] = None, method: str = "default", **options
+def delete_triplet(
+    triplet: Triplet, store_id: Optional[str] = None, method: str = "default", **options
 ) -> Dict[str, Any]:
     """
-    Delete triple from store.
+    Delete triplet from store.
 
     Args:
-        triple: Triple to delete
+        triplet: Triplet to delete
         store_id: Store identifier
         method: Deletion method name (default: "default")
         **options: Additional options
@@ -276,26 +276,26 @@ def delete_triple(
     # Check registry for custom method
     custom_method = method_registry.get("delete", method)
     if custom_method:
-        return custom_method(triple, store_id=store_id, **options)
+        return custom_method(triplet, store_id=store_id, **options)
 
     # Default implementation
     manager = _get_manager()
-    return manager.delete_triple(triple, store_id=store_id, **options)
+    return manager.delete_triplet(triplet, store_id=store_id, **options)
 
 
-def update_triple(
-    old_triple: Triple,
-    new_triple: Triple,
+def update_triplet(
+    old_triplet: Triplet,
+    new_triplet: Triplet,
     store_id: Optional[str] = None,
     method: str = "default",
     **options,
 ) -> Dict[str, Any]:
     """
-    Update triple in store.
+    Update triplet in store.
 
     Args:
-        old_triple: Original triple
-        new_triple: Updated triple
+        old_triplet: Original triplet
+        new_triplet: Updated triplet
         store_id: Store identifier
         method: Update method name (default: "default")
         **options: Additional options
@@ -306,11 +306,11 @@ def update_triple(
     # Check registry for custom method
     custom_method = method_registry.get("update", method)
     if custom_method:
-        return custom_method(old_triple, new_triple, store_id=store_id, **options)
+        return custom_method(old_triplet, new_triplet, store_id=store_id, **options)
 
     # Default implementation
     manager = _get_manager()
-    return manager.update_triple(old_triple, new_triple, store_id=store_id, **options)
+    return manager.update_triplet(old_triplet, new_triplet, store_id=store_id, **options)
 
 
 def execute_query(
@@ -376,13 +376,13 @@ def plan_query(query: str, **options) -> QueryPlan:
 
 
 def bulk_load(
-    triples: List[Triple], store_adapter: Any, method: str = "default", **options
+    triplets: List[Triplet], store_adapter: Any, method: str = "default", **options
 ) -> LoadProgress:
     """
-    Load triples in bulk.
+    Load triplets in bulk.
 
     Args:
-        triples: List of triples to load
+        triplets: List of triplets to load
         store_adapter: Triplet store adapter instance
         method: Loading method name (default: "default")
         **options: Additional options
@@ -393,21 +393,21 @@ def bulk_load(
     # Check registry for custom method
     custom_method = method_registry.get("bulk_load", method)
     if custom_method:
-        return custom_method(triples, store_adapter, **options)
+        return custom_method(triplets, store_adapter, **options)
 
     # Default implementation
     loader = _get_bulk_loader()
-    return loader.load_triples(triples, store_adapter, **options)
+    return loader.load_triplets(triplets, store_adapter, **options)
 
 
-def validate_triples(
-    triples: List[Triple], method: str = "default", **options
+def validate_triplets(
+    triplets: List[Triplet], method: str = "default", **options
 ) -> Dict[str, Any]:
     """
-    Validate triples before loading.
+    Validate triplets before loading.
 
     Args:
-        triples: List of triples to validate
+        triplets: List of triplets to validate
         method: Validation method name (default: "default")
         **options: Validation options
 
@@ -417,11 +417,11 @@ def validate_triples(
     # Check registry for custom method
     custom_method = method_registry.get("validate", method)
     if custom_method:
-        return custom_method(triples, **options)
+        return custom_method(triplets, **options)
 
     # Default implementation
     loader = _get_bulk_loader()
-    return loader.validate_before_load(triples, **options)
+    return loader.validate_before_load(triplets, **options)
 
 
 def get_triplet_store_method(task: str, method_name: str) -> Optional[Any]:

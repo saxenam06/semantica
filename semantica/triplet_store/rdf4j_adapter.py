@@ -20,7 +20,7 @@ Example Usage:
     >>> adapter = RDF4JAdapter(endpoint="http://localhost:8080/rdf4j-server", repository_id="repo1")
     >>> result = adapter.execute_sparql(sparql_query)
     >>> tx_id = adapter.begin_transaction()
-    >>> result = adapter.add_triples(triples)
+    >>> result = adapter.add_triplets(triplets)
 
 Author: Semantica Contributors
 License: MIT
@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from ..semantic_extract.triple_extractor import Triple
+from ..semantic_extract.triplet_extractor import Triplet
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
@@ -238,12 +238,12 @@ class RDF4JAdapter:
             )
             raise ProcessingError(f"SPARQL query failed: {e}")
 
-    def add_triples(self, triples: List[Triple], **options) -> Dict[str, Any]:
+    def add_triplets(self, triplets: List[Triplet], **options) -> Dict[str, Any]:
         """
-        Add triples to repository.
+        Add triplets to repository.
 
         Args:
-            triples: List of triples
+            triplets: List of triplets
             **options: Additional options
 
         Returns:
@@ -252,7 +252,7 @@ class RDF4JAdapter:
         tracking_id = self.progress_tracker.start_tracking(
             module="triplet_store",
             submodule="RDF4JAdapter",
-            message=f"Adding {len(triples)} triples to RDF4J repository",
+            message=f"Adding {len(triplets)} triplets to RDF4J repository",
         )
 
         try:
@@ -264,14 +264,14 @@ class RDF4JAdapter:
 
             update_endpoint = self._get_update_endpoint()
 
-            # Convert triples to RDF format
+            # Convert triplets to RDF format
             self.progress_tracker.update_tracking(
-                tracking_id, message="Converting triples to RDF format..."
+                tracking_id, message="Converting triplets to RDF format..."
             )
-            rdf_data = self._triples_to_ntriples(triples)
+            rdf_data = self._triplets_to_ntriples(triplets)
 
             self.progress_tracker.update_tracking(
-                tracking_id, message="Sending triples to RDF4J repository..."
+                tracking_id, message="Sending triplets to RDF4J repository..."
             )
             response = requests.post(
                 update_endpoint,
@@ -288,29 +288,29 @@ class RDF4JAdapter:
             self.progress_tracker.stop_tracking(
                 tracking_id,
                 status="completed",
-                message=f"Added {len(triples)} triples to repository",
+                message=f"Added {len(triplets)} triplets to repository",
             )
 
-            return {"success": True, "triples_added": len(triples)}
+            return {"success": True, "triplets_added": len(triplets)}
         except Exception as e:
-            self.logger.error(f"Add triples failed: {e}")
+            self.logger.error(f"Add triplets failed: {e}")
             self.progress_tracker.stop_tracking(
                 tracking_id, status="failed", message=str(e)
             )
-            raise ProcessingError(f"Add triples failed: {e}")
+            raise ProcessingError(f"Add triplets failed: {e}")
 
-    def add_triple(self, triple: Triple, **options) -> Dict[str, Any]:
-        """Add single triple."""
-        return self.add_triples([triple], **options)
+    def add_triplet(self, triplet: Triplet, **options) -> Dict[str, Any]:
+        """Add single triplet."""
+        return self.add_triplets([triplet], **options)
 
-    def get_triples(
+    def get_triplets(
         self,
         subject: Optional[str] = None,
         predicate: Optional[str] = None,
         object: Optional[str] = None,
         **options,
-    ) -> List[Triple]:
-        """Get triples matching criteria."""
+    ) -> List[Triplet]:
+        """Get triplets matching criteria."""
         # Build SPARQL query
         where_clauses = []
         if subject:
@@ -325,11 +325,11 @@ class RDF4JAdapter:
 
         result = self.execute_sparql(query, **options)
 
-        # Convert bindings to triples
-        triples = []
+        # Convert bindings to triplets
+        triplets = []
         for binding in result["bindings"]:
-            triples.append(
-                Triple(
+            triplets.append(
+                Triplet(
                     subject=binding.get("s", {}).get("value", ""),
                     predicate=binding.get("p", {}).get("value", ""),
                     object=binding.get("o", {}).get("value", ""),
@@ -337,17 +337,17 @@ class RDF4JAdapter:
                 )
             )
 
-        return triples
+        return triplets
 
-    def delete_triple(self, triple: Triple, **options) -> Dict[str, Any]:
-        """Delete triple."""
+    def delete_triplet(self, triplet: Triplet, **options) -> Dict[str, Any]:
+        """Delete triplet."""
         if not self.connected:
             raise ProcessingError("Not connected to RDF4J")
 
         update_endpoint = self._get_update_endpoint()
 
         # Use SPARQL DELETE
-        query = f"DELETE DATA {{ <{triple.subject}> <{triple.predicate}> <{triple.object}> }}"
+        query = f"DELETE DATA {{ <{triplet.subject}> <{triplet.predicate}> <{triplet.object}> }}"
 
         try:
             response = requests.post(
@@ -364,12 +364,12 @@ class RDF4JAdapter:
 
             return {"success": True}
         except Exception as e:
-            self.logger.error(f"Delete triple failed: {e}")
-            raise ProcessingError(f"Delete triple failed: {e}")
+            self.logger.error(f"Delete triplet failed: {e}")
+            raise ProcessingError(f"Delete triplet failed: {e}")
 
-    def _triples_to_ntriples(self, triples: List[Triple]) -> str:
-        """Convert triples to N-Triples format."""
+    def _triplets_to_ntriples(self, triplets: List[Triplet]) -> str:
+        """Convert triplets to N-Triples format."""
         lines = []
-        for triple in triples:
-            lines.append(f"<{triple.subject}> <{triple.predicate}> <{triple.object}> .")
+        for triplet in triplets:
+            lines.append(f"<{triplet.subject}> <{triplet.predicate}> <{triplet.object}> .")
         return "\n".join(lines)
