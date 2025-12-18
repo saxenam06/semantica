@@ -336,11 +336,11 @@ def extract_entities(
 #### ⚡ Performance and Latency
 We deeply value efficiency. Contributions that make Semantica faster and lighter are highly appreciated!
 
-- **Latency Reduction**: Optimizing critical paths, reducing function call overhead, and improving response times for RAG pipelines.
-- **Memory Optimization**: Reducing memory footprint during graph processing and vector operations.
-- **Throughput**: Improving the number of operations processed per second (e.g., bulk ingestion, parallel queries).
-- **Benchmarks**: Adding performance benchmarks to track regressions.
-- **Async/Concurrency**: Improving asynchronous execution and concurrency handling.
+- **Latency Reduction**: Optimize critical paths and RAG pipeline response times.
+- **Memory Optimization**: Reduce graph/vector processing memory footprint.
+- **Throughput**: Improve operations per second (bulk ingestion, parallel queries).
+- **Benchmarks**: Add performance benchmarks to track regressions.
+- **Async/Concurrency**: Enhance asynchronous execution and concurrency.
 
 ### 📚 Documentation Contributions
 
