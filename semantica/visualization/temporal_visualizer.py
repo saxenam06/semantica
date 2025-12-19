@@ -47,6 +47,7 @@ from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
 from .utils.color_schemes import ColorPalette, ColorScheme
 from .utils.export_formats import export_plotly_figure
+from .utils.layout_algorithms import ForceDirectedLayout
 
 
 class TemporalVisualizer:
@@ -54,10 +55,13 @@ class TemporalVisualizer:
     Temporal graph visualizer.
 
     Provides visualization methods for temporal graphs including:
-    - Timeline views
-    - Temporal network animations
-    - Snapshot comparisons
-    - Temporal pattern visualizations
+    - Timeline views of entity/relationship changes
+    - Temporal pattern detection and visualization
+    - Snapshot comparison across time points
+    - Version history tree visualization
+    - Metrics evolution over time
+    - Comprehensive temporal dashboards
+    - Interactive and static output formats
     """
 
     def __init__(self, **config):
@@ -78,6 +82,398 @@ class TemporalVisualizer:
                 "Plotly is required for temporal visualization. "
                 "Install with: pip install plotly"
             )
+
+    def visualize_temporal_dashboard(
+        self,
+        temporal_kg: Dict[str, Any],
+        metrics: Optional[Dict[str, Dict[str, List[Any]]]] = None,
+        output: str = "interactive",
+        file_path: Optional[Union[str, Path]] = None,
+        **options,
+    ) -> Optional[Any]:
+        """
+        Create a comprehensive temporal dashboard combining lifelines, network activity, and metrics.
+
+        Args:
+            temporal_kg: Temporal knowledge graph data
+            metrics: Optional metrics history
+            output: Output type
+            file_path: Output file path
+            **options: Additional options
+
+        Returns:
+            Visualization figure or None
+        """
+        self._check_dependencies()
+        self.logger.info("Visualizing temporal dashboard")
+
+        if make_subplots is None:
+             raise ProcessingError("Plotly subplots required but not available")
+
+        # 1. Prepare Data
+        timestamps_map = temporal_kg.get("timestamps", {})
+        entities = temporal_kg.get("entities", [])
+        entity_map = {e.get("id"): e for e in entities}
+        
+        # Get all unique time points
+        all_times = set()
+        for times in timestamps_map.values():
+            if isinstance(times, list):
+                all_times.update(times)
+        sorted_times = sorted(list(all_times))
+
+        # 2. Create Subplots
+        rows = 2 if not metrics else 3
+        row_heights = [0.5, 0.5] if not metrics else [0.4, 0.3, 0.3]
+        specs = [[{"type": "xy"}]] * rows
+
+        fig = make_subplots(
+            rows=rows, 
+            cols=1, 
+            row_heights=row_heights,
+            specs=specs,
+            subplot_titles=("Entity Lifecycles", "Network Activity" + (" & Metrics" if not metrics else ""), "Metrics Evolution")
+        )
+
+        # --- Panel 1: Entity Lifelines (Gantt-like) with Relationship Connections ---
+        entity_ids = sorted(timestamps_map.keys())
+        colors = ColorPalette.get_colors(self.color_scheme, len(entity_ids))
+        
+        # 1.1 Draw Entity Lines
+        for i, eid in enumerate(entity_ids):
+            times = timestamps_map.get(eid, [])
+            if not times: continue
+            
+            # Draw a line for duration
+            start, end = min(times), max(times)
+            name = entity_map.get(eid, {}).get("name", eid)
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=[start, end],
+                    y=[name, name],
+                    mode="lines+markers",
+                    name=name,
+                    line=dict(color=colors[i], width=5),
+                    marker=dict(size=10),
+                    showlegend=False
+                ),
+                row=1, col=1
+            )
+            
+        # 1.2 Draw Relationship Connections
+        # We draw vertical lines connecting entities when they have a relationship and overlap in time
+        relationships = temporal_kg.get("relationships", [])
+        if relationships:
+            rel_x = []
+            rel_y = []
+            
+            for rel in relationships:
+                src = rel.get("source")
+                tgt = rel.get("target")
+                
+                # Check if both entities exist in our timeline map
+                if src in timestamps_map and tgt in timestamps_map:
+                    # Find time overlap
+                    src_times = set(timestamps_map[src])
+                    tgt_times = set(timestamps_map[tgt])
+                    overlap = sorted(list(src_times.intersection(tgt_times)))
+                    
+                    if overlap:
+                        src_name = entity_map.get(src, {}).get("name", src)
+                        tgt_name = entity_map.get(tgt, {}).get("name", tgt)
+                        
+                        for t in overlap:
+                            # Add a vertical line segment
+                            rel_x.extend([t, t, None])
+                            rel_y.extend([src_name, tgt_name, None])
+            
+            if rel_x:
+                fig.add_trace(
+                    go.Scatter(
+                        x=rel_x,
+                        y=rel_y,
+                        mode="lines",
+                        name="Relationships",
+                        line=dict(color="rgba(150, 150, 150, 0.5)", width=1, dash="dot"),
+                        hoverinfo="none",
+                        showlegend=True
+                    ),
+                    row=1, col=1
+                )
+
+        # --- Panel 2: Network Activity (Stacked Area or Line) ---
+        # Calculate counts per timestamp
+        entity_counts = []
+        # Simple relationship count estimation (assuming rels exist if endpoints exist)
+        # This is an approximation for visualization
+        rel_counts = [] 
+        
+        for t in sorted_times:
+            # Count active entities
+            active_ents = [e for e, times in timestamps_map.items() if t in times]
+            entity_counts.append(len(active_ents))
+            
+            # Count potentially active relationships
+            # (If we had strict relationship timestamps, we'd use them. Here we use entity existence)
+            active_rels = 0
+            for rel in temporal_kg.get("relationships", []):
+                src = rel.get("source")
+                tgt = rel.get("target")
+                # Check if both source and target are active at t
+                if (src in timestamps_map and t in timestamps_map[src]) and \
+                   (tgt in timestamps_map and t in timestamps_map[tgt]):
+                    active_rels += 1
+            rel_counts.append(active_rels)
+
+        fig.add_trace(
+            go.Scatter(
+                x=sorted_times, y=entity_counts,
+                mode="lines", name="Active Entities",
+                fill='tozeroy', line=dict(color='blue')
+            ),
+            row=2, col=1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=sorted_times, y=rel_counts,
+                mode="lines", name="Active Relationships",
+                fill='tonexty', line=dict(color='red')
+            ),
+            row=2, col=1
+        )
+
+        # --- Panel 3: Metrics (Optional) ---
+        if metrics:
+            # Metrics input: {"MetricName": [val1, val2...], "timestamps": [t1, t2...]} 
+            # OR simple dict from previous example: {"MetricName": [values]} (assumes alignment)
+            
+            # Let's support the simple format from the user's example
+            # We assume metrics align with sorted_times or are just passed as is if they have their own timestamps
+            
+            metric_colors = ColorPalette.get_colors(self.color_scheme, len(metrics))
+            
+            for i, (m_name, m_data) in enumerate(metrics.items()):
+                # Check if m_data is complex or simple list
+                if isinstance(m_data, dict) and "values" in m_data:
+                    vals = m_data["values"]
+                    ts = m_data.get("timestamps", sorted_times)
+                else:
+                    vals = m_data
+                    ts = sorted_times[:len(vals)] # Best effort alignment
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=ts, y=vals,
+                        mode="lines+markers", name=m_name,
+                        line=dict(color=metric_colors[i])
+                    ),
+                    row=3, col=1
+                )
+
+        fig.update_layout(
+            height=900 if metrics else 600,
+            width=1200,
+            title_text="Temporal Analysis Dashboard",
+            showlegend=True
+        )
+
+        if output == "interactive":
+            return fig
+        elif file_path:
+            export_plotly_figure(
+                fig, file_path, format=output if output != "interactive" else "html"
+            )
+            return None
+
+
+    def visualize_network_evolution(
+        self,
+        temporal_kg: Dict[str, Any],
+        output: str = "interactive",
+        file_path: Optional[Union[str, Path]] = None,
+        **options,
+    ) -> Optional[Any]:
+        """
+        Visualize the evolution of the network structure over time using animation.
+
+        Args:
+            temporal_kg: Temporal knowledge graph data
+            output: Output type ("interactive", "html", etc.)
+            file_path: Output file path
+            **options: Additional options
+                - title: Chart title
+                - show_labels: Whether to show node labels
+
+        Returns:
+            Visualization figure or None
+        """
+        self._check_dependencies()
+        self.logger.info("Visualizing network evolution")
+
+        # 1. Prepare Data
+        timestamps_map = temporal_kg.get("timestamps", {})
+        entities = temporal_kg.get("entities", [])
+        relationships = temporal_kg.get("relationships", [])
+        entity_map = {e.get("id"): e for e in entities}
+        
+        # Get all unique time points
+        all_times = set()
+        for times in timestamps_map.values():
+            if isinstance(times, list):
+                all_times.update(times)
+        sorted_times = sorted(list(all_times))
+
+        if not sorted_times:
+            raise ProcessingError("No timestamps found for network evolution.")
+
+        # 2. Compute Global Layout (Stable positions)
+        all_node_ids = list(entity_map.keys())
+        all_edges = [(r.get("source"), r.get("target")) for r in relationships]
+        
+        layout_algo = ForceDirectedLayout()
+        pos = layout_algo.compute_layout(all_node_ids, all_edges)
+
+        # 3. Create Frames
+        frames = []
+        max_x, min_x = -1, 1
+        max_y, min_y = -1, 1
+
+        if pos:
+            xs = [p[0] for p in pos.values()]
+            ys = [p[1] for p in pos.values()]
+            if xs and ys:
+                max_x, min_x = max(xs), min(xs)
+                max_y, min_y = max(ys), min(ys)
+
+        # Pad ranges
+        range_x = [min_x - 0.1, max_x + 0.1]
+        range_y = [min_y - 0.1, max_y + 0.1]
+
+        for t in sorted_times:
+            # Active entities
+            active_node_ids = [eid for eid, times in timestamps_map.items() if t in times]
+            
+            # Active relationships (both endpoints must be active)
+            active_edges = []
+            for rel in relationships:
+                src = rel.get("source")
+                tgt = rel.get("target")
+                if src in active_node_ids and tgt in active_node_ids:
+                    # Ideally check relationship timestamps if available, else assume existence if nodes exist
+                    active_edges.append(rel)
+
+            # Node Trace
+            node_x = []
+            node_y = []
+            node_text = []
+            node_color = []
+            
+            for nid in active_node_ids:
+                if nid in pos:
+                    x, y = pos[nid]
+                    node_x.append(x)
+                    node_y.append(y)
+                    ent = entity_map.get(nid, {})
+                    node_text.append(ent.get("name", nid))
+                    # Simple color by type
+                    node_color.append(hash(ent.get("type", "Entity")) % 100)
+
+            node_trace = go.Scatter(
+                x=node_x, y=node_y,
+                mode="markers+text" if options.get("show_labels", True) else "markers",
+                text=node_text,
+                textposition="top center",
+                marker=dict(size=15, color=node_color, colorscale="Viridis", showscale=False),
+                name="Entities"
+            )
+
+            # Edge Trace
+            edge_x = []
+            edge_y = []
+            
+            for rel in active_edges:
+                src = rel.get("source")
+                tgt = rel.get("target")
+                if src in pos and tgt in pos:
+                    x0, y0 = pos[src]
+                    x1, y1 = pos[tgt]
+                    edge_x.extend([x0, x1, None])
+                    edge_y.extend([y0, y1, None])
+
+            edge_trace = go.Scatter(
+                x=edge_x, y=edge_y,
+                mode="lines",
+                line=dict(width=1, color="#888"),
+                hoverinfo="none",
+                name="Relationships"
+            )
+
+            frames.append(go.Frame(
+                data=[edge_trace, node_trace],
+                name=str(t)
+            ))
+
+        # 4. Create Initial Figure (First frame)
+        if frames:
+            initial_data = frames[0].data
+        else:
+            initial_data = []
+
+        fig = go.Figure(
+            data=initial_data,
+            layout=go.Layout(
+                title=options.get("title", "Network Evolution"),
+                xaxis=dict(range=range_x, showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(range=range_y, showgrid=False, zeroline=False, showticklabels=False),
+                width=options.get("width", 900),
+                height=options.get("height", 700),
+                updatemenus=[{
+                    "type": "buttons",
+                    "buttons": [
+                        {
+                            "label": "Play",
+                            "method": "animate",
+                            "args": [None, {"frame": {"duration": 1000, "redraw": True}, "fromcurrent": True}]
+                        },
+                        {
+                            "label": "Pause",
+                            "method": "animate",
+                            "args": [[], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate", "transition": {"duration": 0}}]
+                        }
+                    ],
+                    "showactive": False,
+                    "y": 0,
+                    "x": 0.1,
+                    "xanchor": "right",
+                    "yanchor": "top"
+                }],
+                sliders=[{
+                    "currentvalue": {"prefix": "Time: "},
+                    "pad": {"t": 50},
+                    "steps": [
+                        {
+                            "method": "animate",
+                            "label": str(t),
+                            "args": [[str(t)], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]
+                        }
+                        for t in sorted_times
+                    ]
+                }]
+            ),
+            frames=frames
+        )
+
+        if output == "interactive":
+            return fig
+        elif file_path:
+            export_plotly_figure(
+                fig, file_path, format=output if output != "interactive" else "html"
+            )
+            return None
+
+
 
     def visualize_timeline(
         self,
@@ -114,6 +510,27 @@ class TemporalVisualizer:
             )
             events = temporal_data.get("events", [])
             timestamps = temporal_data.get("timestamps", [])
+
+            # Handle case where timestamps is a dictionary mapping entities to time points
+            if not events and isinstance(timestamps, dict):
+                entities = temporal_data.get("entities", [])
+                entity_map = {e.get("id"): e for e in entities} if entities else {}
+
+                for entity_id, times in timestamps.items():
+                    if not isinstance(times, list):
+                        continue
+
+                    entity_name = entity_id
+                    if entity_id in entity_map:
+                        entity_name = entity_map[entity_id].get("name", entity_id)
+
+                    for t in times:
+                        events.append({
+                            "timestamp": t,
+                            "type": "activity",
+                            "label": entity_name,
+                            "entity": entity_id
+                        })
 
             if not events:
                 self.progress_tracker.stop_tracking(
