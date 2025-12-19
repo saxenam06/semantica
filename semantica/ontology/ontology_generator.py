@@ -217,6 +217,21 @@ class OntologyGenerator:
             )
             raise
 
+    def generate_from_graph(self, graph: Dict[str, Any], **options) -> Dict[str, Any]:
+        """
+        Generate ontology from a knowledge graph.
+
+        Alias for generate_ontology.
+
+        Args:
+            graph: Knowledge graph dictionary (output from GraphBuilder)
+            **options: Additional options
+
+        Returns:
+            Generated ontology dictionary
+        """
+        return self.generate_ontology(graph, **options)
+
     def _stage1_parse_semantic_network(
         self, data: Dict[str, Any], **options
     ) -> Dict[str, Any]:

@@ -240,6 +240,52 @@ class RDFSerializer:
 
         self.logger.debug("RDF serializer initialized")
 
+    def convert_kg_to_rdf(self, knowledge_graph: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert knowledge graph to RDF data structure.
+
+        This method prepares a knowledge graph for RDF serialization by ensuring
+        it has the expected structure and normalizing fields (e.g., mapping 'name'
+        to 'label' or 'text').
+
+        Args:
+            knowledge_graph: Knowledge graph dictionary from GraphBuilder
+
+        Returns:
+            Dictionary containing RDF-ready data:
+                - entities: List of normalized entity dictionaries
+                - relationships: List of relationship dictionaries
+        """
+        import copy
+
+        # Create a shallow copy of the graph structure to avoid modifying original
+        rdf_data = {
+            "entities": [],
+            "relationships": knowledge_graph.get("relationships", []),
+            "metadata": knowledge_graph.get("metadata", {}),
+        }
+
+        # Copy @context if present
+        if "@context" in knowledge_graph:
+            rdf_data["@context"] = knowledge_graph["@context"]
+
+        # Normalize entities
+        for entity in knowledge_graph.get("entities", []):
+            # Create copy of entity
+            norm_entity = entity.copy()
+
+            # Ensure 'text' or 'label' exists
+            if "text" not in norm_entity and "label" not in norm_entity:
+                if "name" in norm_entity:
+                    norm_entity["label"] = norm_entity["name"]
+                elif "id" in norm_entity:
+                    # Use ID part as label if no name/text
+                    norm_entity["label"] = str(norm_entity["id"]).split(":")[-1]
+
+            rdf_data["entities"].append(norm_entity)
+
+        return rdf_data
+
     def serialize_to_turtle(self, rdf_data: Dict[str, Any], **options) -> str:
         """
         Serialize RDF to Turtle format.
@@ -460,6 +506,83 @@ class RDFSerializer:
             )
 
         return json.dumps(jsonld, indent=2, ensure_ascii=False)
+
+    def serialize_to_ntriples(self, rdf_data: Dict[str, Any], **options) -> str:
+        """
+        Serialize RDF to N-Triples format.
+
+        N-Triples is a line-based, plain text format for encoding an RDF graph.
+        Each line represents a triple: subject predicate object .
+
+        Args:
+            rdf_data: RDF data dictionary
+            **options: Additional options
+
+        Returns:
+            String containing N-Triples serialization
+        """
+        lines = []
+
+        def expand_uri(uri: str) -> str:
+            if not uri:
+                return ""
+            if uri.startswith("http"):
+                return f"<{uri}>"
+            if uri.startswith("semantica:"):
+                return f"<https://semantica.dev/ns#{uri.split(':', 1)[1]}>"
+            if uri.startswith("rdf:"):
+                return f"<http://www.w3.org/1999/02/22-rdf-syntax-ns#{uri.split(':', 1)[1]}>"
+            if uri.startswith("rdfs:"):
+                return f"<http://www.w3.org/2000/01/rdf-schema#{uri.split(':', 1)[1]}>"
+            if ":" in uri:
+                return f"<{uri}>"
+            return f"<https://semantica.dev/ns#{uri}>"
+
+        # Convert entities
+        entities = rdf_data.get("entities", [])
+        for entity in entities:
+            # Generate entity ID if not provided
+            entity_id = entity.get("id")
+            if not entity_id:
+                entity_text = entity.get("text", "")
+                entity_id = f"semantica:entity_{hash(entity_text)}"
+
+            subject = expand_uri(entity_id)
+
+            # Type triple
+            entity_type = entity.get("type", "semantica:Entity")
+            lines.append(
+                f"{subject} <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> {expand_uri(entity_type)} ."
+            )
+
+            # Text property
+            text = entity.get("text") or entity.get("label", "")
+            if text:
+                safe_text = text.replace('"', '\\"').replace("\n", "\\n")
+                lines.append(
+                    f'{subject} {expand_uri("semantica:text")} "{safe_text}" .'
+                )
+
+            # Confidence property
+            confidence = entity.get("confidence")
+            if confidence is not None:
+                lines.append(
+                    f'{subject} {expand_uri("semantica:confidence")} "{confidence}"^^<http://www.w3.org/2001/XMLSchema#float> .'
+                )
+
+        # Convert relationships
+        relationships = rdf_data.get("relationships", [])
+        for rel in relationships:
+            source_id = rel.get("source_id") or rel.get("source")
+            target_id = rel.get("target_id") or rel.get("target")
+            rel_type = rel.get("type", "semantica:related_to")
+
+            if source_id and target_id:
+                lines.append(
+                    f"{expand_uri(source_id)} {expand_uri(rel_type)} {expand_uri(target_id)} ."
+                )
+
+        return "\n".join(lines)
 
 
 class RDFValidator:
@@ -800,6 +923,8 @@ class RDFExporter:
                 result = self.serializer.serialize_to_rdfxml(data, **options)
             elif format == "jsonld":
                 result = self.serializer.serialize_to_jsonld(data, **options)
+            elif format == "ntriples":
+                result = self.serializer.serialize_to_ntriples(data, **options)
             else:
                 raise ValidationError(
                     f"Format '{format}' not yet implemented. "
@@ -857,6 +982,28 @@ class RDFExporter:
             f.write(rdf_content)
 
         self.logger.info(f"Exported RDF ({format}) to: {file_path}")
+
+    def export_knowledge_graph(
+        self,
+        graph: Dict[str, Any],
+        file_path: Union[str, Path],
+        format: str = "turtle",
+        encoding: str = "utf-8",
+        **options,
+    ) -> None:
+        """
+        Export knowledge graph to RDF file.
+
+        Alias for export.
+
+        Args:
+            graph: Knowledge graph dictionary
+            file_path: Output file path
+            format: RDF format
+            encoding: File encoding
+            **options: Additional options
+        """
+        self.export(graph, file_path, format=format, encoding=encoding, **options)
 
     def serialize_rdf(
         self, rdf_data: Dict[str, Any], format: str = "turtle", **options
