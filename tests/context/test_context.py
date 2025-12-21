@@ -13,7 +13,6 @@ from semantica.context.context_graph import ContextGraph, ContextNode, ContextEd
 from semantica.context.agent_memory import AgentMemory, MemoryItem
 from semantica.context.context_retriever import ContextRetriever, RetrievedContext
 from semantica.context.agent_context import AgentContext
-from semantica.context import methods
 
 class MockVectorStore:
     def __init__(self):
@@ -142,20 +141,6 @@ class TestContextModule(unittest.TestCase):
         # Verify internal components
         self.assertIsNotNone(ctx._memory)
         self.assertEqual(len(ctx._memory.short_term_memory), 1)
-
-    # --- Method Wrapper Tests ---
-    def test_method_wrappers(self):
-        # Test retrieve_context wrapper
-        # We need to patch ContextRetriever inside the method or just check if it runs
-        # Since it creates a new ContextRetriever internally, we can mock the class in the module
-        
-        with patch('semantica.context.methods.ContextRetriever') as MockRetriever:
-            instance = MockRetriever.return_value
-            instance.retrieve.return_value = []
-            
-            results = methods.retrieve_context("query", vector_store=self.mock_vector_store)
-            self.assertIsInstance(results, list)
-            MockRetriever.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()

@@ -196,6 +196,34 @@ neighbors = graph.get_neighbors("FastAPI", hops=1)
 
 ---
 
+### Production Graph Store Integration
+
+For production environments, you can replace the in-memory `ContextGraph` with a persistent `GraphStore` (Neo4j, FalkorDB) by passing it to the `knowledge_graph` parameter.
+
+```python
+from semantica.context import AgentContext
+from semantica.graph_store import GraphStore
+
+# 1. Initialize Persistent Graph Store (Neo4j)
+gs = GraphStore(
+    backend="neo4j",
+    uri="bolt://localhost:7687",
+    user="neo4j",
+    password="password"
+)
+
+# 2. Initialize Agent Context with Persistent Graph
+context = AgentContext(
+    vector_store=vs,      # Your VectorStore instance
+    knowledge_graph=gs,   # Your persistent GraphStore
+    use_graph_expansion=True
+)
+
+# Now all graph operations (store, retrieve, build_graph) use Neo4j directly.
+```
+
+---
+
 ### ContextRetriever (The Search Engine)
 The retrieval logic that powers the `retrieve()` command. It implements the **Hybrid Retrieval** algorithm.
 

@@ -10,7 +10,6 @@ This guide demonstrates how to use the Semantica context module for building con
 4. [Agent Memory Management](#agent-memory-management)
 5. [Context Retrieval](#context-retrieval)
 6. [Entity Linking](#entity-linking)
-7. [Using Methods](#using-methods)
 
 ## High-Level Interface (Quick Start)
 
@@ -43,9 +42,15 @@ for result in results:
 
 ```python
 from semantica.context import AgentContext, ContextGraph
+from semantica.graph_store import GraphStore
 
-# Initialize knowledge graph
-kg = ContextGraph()
+# Initialize persistent knowledge graph (Recommended for production)
+try:
+    kg = GraphStore(backend="neo4j", uri="bolt://localhost:7687", user="neo4j", password="password")
+    kg.connect()
+except:
+    print("Neo4j not available, falling back to in-memory graph")
+    kg = ContextGraph()
 
 # Initialize context with vector store and knowledge graph
 context = AgentContext(vector_store=vs, knowledge_graph=kg)
@@ -320,26 +325,4 @@ print(uri) # e.g., "python_programming_language"
 
 # Similarity matching
 score = linker._calculate_text_similarity("Python", "Python Language")
-```
-
-## Using Methods
-
-The methods module provides simple, reusable functions for context operations.
-
-```python
-from semantica.context.methods import (
-    build_context_graph,
-    store_memory,
-    retrieve_context,
-    link_entities
-)
-
-# Build graph
-graph = build_context_graph(entities, relationships, method="entities_relationships")
-
-# Store memory
-memory_id = store_memory("User asked about Python", vector_store=vs, method="store")
-
-# Retrieve context
-results = retrieve_context("Python programming", vector_store=vs, method="hybrid")
 ```

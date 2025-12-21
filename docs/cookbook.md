@@ -212,6 +212,16 @@ Deep dive into advanced features, customization, and complex workflows.
     
     [Open Notebook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/02_Advanced_Graph_Analytics.ipynb)
 
+-   :material-brain: **Advanced Context Engineering**
+    ---
+    Build a production-grade memory system for AI agents using persistent Vector (FAISS) and Graph (Neo4j) stores.
+    
+    **Topics**: Agent Memory, GraphRAG, Entity Injection, Lifecycle Management
+    
+    **Difficulty**: Advanced
+    
+    [Open Notebook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/11_Advanced_Context_Engineering.ipynb)
+
 -   :material-monitor-dashboard: **Complete Visualization Suite**
     ---
     Creating interactive, publication-ready visualizations of your graphs.

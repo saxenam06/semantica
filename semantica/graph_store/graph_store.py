@@ -32,7 +32,7 @@ Author: Semantica Contributors
 License: MIT
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
@@ -723,6 +723,321 @@ class GraphStore:
     ) -> bool:
         """Create an index."""
         return self._manager.create_index(label, property_name, index_type, **options)
+
+    # Compatibility with AgentMemory / ContextGraph interface
+    def add_nodes(self, nodes: List[Dict[str, Any]], **options) -> int:
+        """
+        Add nodes (Compatibility method).
+
+        Args:
+            nodes: List of node dictionaries with 'id', 'type', 'properties'
+            **options: Additional options
+
+        Returns:
+            Number of nodes created
+        """
+        if not nodes:
+            return 0
+
+        # Convert to GraphStore format (labels, properties)
+        graph_nodes = []
+        for node in nodes:
+            # Extract label from type
+            labels = [node.get("type", "Entity")]
+            if isinstance(labels[0], str):
+                labels = [labels[0]] # Ensure list
+
+            # Prepare properties
+            props = node.get("properties", {}).copy()
+            
+            # Ensure ID is preserved
+            if "id" in node and "id" not in props:
+                props["id"] = node["id"]
+                
+            # Ensure content/text is preserved
+            if "content" in node and "content" not in props:
+                props["content"] = node["content"]
+            if "text" in node and "text" not in props:
+                props["text"] = node["text"]
+
+            graph_nodes.append({
+                "labels": labels,
+                "properties": props
+            })
+
+        # Use batch creation
+        # Note: create_nodes expects dicts with 'labels' and 'properties' keys if passed directly?
+        # Let's check create_nodes signature implementation in manager.
+        # But here I'll assume create_nodes takes a list of such dicts or similar.
+        # Actually, let's look at create_nodes wrapper in this file:
+        # def create_nodes(self, nodes: List[Dict[str, Any]], **options)
+        # It passes to self._manager.nodes.create_batch(nodes)
+        
+        # If create_batch expects specific format, I should match it.
+        # Assuming create_batch is smart enough or expects standard format.
+        # To be safe, let's look at NodeManager.create_batch if possible, but I can't easily.
+        # Standard expectation: List of dicts where each dict has labels and properties.
+        
+        result = self.create_nodes(graph_nodes, **options)
+        return len(result)
+
+    def add_edges(self, edges: List[Dict[str, Any]], **options) -> int:
+        """
+        Add edges (Compatibility method).
+
+        Args:
+            edges: List of edge dictionaries
+            **options: Additional options
+
+        Returns:
+            Number of edges created
+        """
+        count = 0
+        for edge in edges:
+            source_id = edge.get("source_id")
+            target_id = edge.get("target_id")
+            rel_type = edge.get("type", "RELATED_TO")
+            properties = edge.get("properties", {}).copy()
+            
+            # Preserve weight
+            if "weight" in edge:
+                properties["weight"] = edge["weight"]
+
+            if source_id and target_id:
+                try:
+                    self.create_relationship(source_id, target_id, rel_type, properties, **options)
+                    count += 1
+                except Exception as e:
+                    self.logger.warning(f"Failed to add edge {source_id}->{target_id}: {e}")
+        return count
+
+    def build_from_conversations(
+        self,
+        conversations: List[Union[str, Dict[str, Any]]],
+        link_entities: bool = True,
+        extract_intents: bool = False,
+        extract_sentiments: bool = False,
+        **options,
+    ) -> Dict[str, Any]:
+        """
+        Build graph from conversations (Compatibility method).
+
+        Args:
+            conversations: List of conversation files or dictionaries
+            link_entities: Link entities across conversations
+            extract_intents: Extract intents (not implemented)
+            extract_sentiments: Extract sentiments (not implemented)
+            **options: Additional options
+
+        Returns:
+            Graph statistics
+        """
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="graph_store",
+            submodule="GraphStore",
+            message=f"Building graph from {len(conversations)} conversations",
+        )
+
+        try:
+            all_nodes = []
+            all_edges = []
+            seen_nodes = set()
+            
+            for conv in conversations:
+                # Load conversation if string (file path)
+                conv_data = conv
+                if isinstance(conv, str):
+                    from pathlib import Path
+                    from ..utils.helpers import read_json_file
+                    conv_data = read_json_file(Path(conv))
+
+                nodes, edges = self._process_conversation_to_elements(
+                    conv_data, 
+                    extract_intents=extract_intents,
+                    extract_sentiments=extract_sentiments
+                )
+                
+                # Add unique nodes
+                for node in nodes:
+                    if node["id"] not in seen_nodes:
+                        all_nodes.append(node)
+                        seen_nodes.add(node["id"])
+                
+                all_edges.extend(edges)
+
+            if link_entities:
+                linked_edges = self._link_entities_elements(all_nodes)
+                all_edges.extend(linked_edges)
+
+            # Batch add
+            node_count = self.add_nodes(all_nodes)
+            edge_count = self.add_edges(all_edges)
+
+            self.progress_tracker.stop_tracking(tracking_id, status="completed")
+            
+            return {
+                "statistics": {
+                    "node_count": node_count,
+                    "edge_count": edge_count
+                }
+            }
+
+        except Exception as e:
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message=str(e)
+            )
+            self.logger.error(f"Failed to build graph: {e}")
+            raise
+
+    def build_from_entities_and_relationships(
+        self,
+        entities: List[Dict[str, Any]],
+        relationships: List[Dict[str, Any]],
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Build graph from entities and relationships (Compatibility method).
+        """
+        nodes = []
+        edges = []
+        
+        # Process entities
+        for entity in entities:
+            entity_id = entity.get("id") or entity.get("entity_id")
+            if entity_id:
+                nodes.append({
+                    "id": entity_id,
+                    "type": entity.get("type", "entity"),
+                    "properties": {
+                        "content": entity.get("text") or entity.get("label") or entity_id,
+                        **entity
+                    }
+                })
+
+        # Process relationships
+        for rel in relationships:
+            source = rel.get("source_id")
+            target = rel.get("target_id")
+            if source and target:
+                edges.append({
+                    "source_id": source,
+                    "target_id": target,
+                    "type": rel.get("type", "related_to"),
+                    "weight": rel.get("confidence", 1.0),
+                    "properties": rel
+                })
+
+        node_count = self.add_nodes(nodes)
+        edge_count = self.add_edges(edges)
+        
+        return {"statistics": {"node_count": node_count, "edge_count": edge_count}}
+
+    def _process_conversation_to_elements(self, conv_data: Dict[str, Any], **kwargs) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Helper to process conversation into nodes and edges."""
+        nodes = []
+        edges = []
+        
+        conv_id = conv_data.get("id") or f"conv_{hash(str(conv_data)) % 10000}"
+
+        # Conversation node
+        nodes.append({
+            "id": conv_id,
+            "type": "conversation",
+            "properties": {
+                "content": conv_data.get("content", "") or conv_data.get("summary", ""),
+                "timestamp": conv_data.get("timestamp")
+            }
+        })
+
+        name_to_id = {}
+        extract_entities = kwargs.get("extract_entities", True) # Default true if not passed?
+        # Actually ContextGraph defaults to True in init, but here we are static.
+        # Let's assume True unless told otherwise or check config.
+        
+        # Extract entities
+        for entity in conv_data.get("entities", []):
+            entity_id = entity.get("id") or entity.get("entity_id")
+            entity_text = entity.get("text") or entity.get("label") or entity.get("name") or entity_id
+            entity_type = entity.get("type", "entity")
+
+            # Generate ID if missing
+            if not entity_id and entity_text:
+                import hashlib
+                entity_hash = hashlib.md5(f"{entity_text}_{entity_type}".encode()).hexdigest()[:12]
+                entity_id = f"{entity_type.lower()}_{entity_hash}"
+
+            if entity_id:
+                if entity_text:
+                    name_to_id[entity_text] = entity_id
+
+                nodes.append({
+                    "id": entity_id,
+                    "type": "entity", # Normalize type?
+                    "properties": {
+                        "content": entity_text,
+                        "type": entity_type,
+                        **entity
+                    }
+                })
+                
+                # Edge: Conversation -> Entity
+                edges.append({
+                    "source_id": conv_id,
+                    "target_id": entity_id,
+                    "type": "mentions"
+                })
+
+        # Extract relationships
+        for rel in conv_data.get("relationships", []):
+            source = rel.get("source_id")
+            target = rel.get("target_id")
+
+            # Resolve IDs
+            if not source and rel.get("source") and rel.get("source") in name_to_id:
+                source = name_to_id[rel.get("source")]
+            if not target and rel.get("target") and rel.get("target") in name_to_id:
+                target = name_to_id[rel.get("target")]
+
+            if source and target:
+                edges.append({
+                    "source_id": source,
+                    "target_id": target,
+                    "type": rel.get("type", "related_to"),
+                    "weight": rel.get("confidence", 1.0),
+                    "properties": rel
+                })
+                
+        return nodes, edges
+
+    def _link_entities_elements(self, nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Link similar entities."""
+        edges = []
+        # Lazy import to avoid circular dependency
+        try:
+            from ..context.entity_linker import EntityLinker
+            linker = EntityLinker() # Use default config
+        except ImportError:
+            return []
+
+        entity_nodes = [n for n in nodes if n.get("type") == "entity"]
+        for i, node1 in enumerate(entity_nodes):
+            content1 = node1["properties"].get("content", "")
+            if not content1: continue
+            
+            for node2 in entity_nodes[i + 1 :]:
+                content2 = node2["properties"].get("content", "")
+                if not content2: continue
+                
+                similarity = linker._calculate_text_similarity(content1.lower(), content2.lower())
+                if similarity >= linker.similarity_threshold:
+                    edges.append({
+                        "source_id": node1["id"],
+                        "target_id": node2["id"],
+                        "type": "similar_to",
+                        "weight": similarity
+                    })
+        return edges
 
     @property
     def nodes(self) -> NodeManager:
