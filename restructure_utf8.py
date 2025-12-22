@@ -39,35 +39,41 @@ from semantica.normalize import TextNormalizer
 normalizer = TextNormalizer()
 all_content = []
 
-# 1. Global News Feeds (RSS)
+# 1. Global News Feeds (RSS) - Using more robust and accessible feeds
 feeds = [
     "http://feeds.bbci.co.uk/news/world/rss.xml",
-    "https://www.reutersagency.com/feed/" 
+    "https://www.aljazeera.com/xml/rss/all.xml",
+    "https://news.google.com/rss/search?q=site%3Areuters.com&hl=en-US&gl=US&ceid=US%3Aen" # Reuters workaround
 ]
 feed_ingestor = FeedIngestor()
 for f in feeds:
     try:
-        data = feed_ingestor.ingest_feed(f) # FIXED: Use ingest_feed, not ingest
-        items = data.items[:5]
-        all_content.extend([getattr(item, 'content', getattr(item, 'text', str(item))) for item in items])
+        data = feed_ingestor.ingest_feed(f)
+        items = data.items[:10]
+        for item in items:
+            # Fallback chain: content -> description -> title
+            text = item.content or item.description or item.title
+            if text:
+                all_content.append(text)
     except Exception as e:
         print(f"Warning: Failed to ingest feed {f}: {e}")
 
-# 2. Strategic Overviews (Web)
+# 2. Strategic Overviews (Web) - Using pages with more permissive robots.txt
 web_urls = [
     "https://www.cia.gov/the-world-factbook/",
-    "https://www.un.org/en/observances/security-council-day"
+    "https://www.cfr.org/backgrounders" 
 ]
 web_ingestor = WebIngestor()
 for url in web_urls:
     try:
-        content = web_ingestor.ingest_url(url) # FIXED: Use ingest_url, not ingest
-        all_content.append(getattr(content, 'text', getattr(content, 'content', str(content))))
+        content = web_ingestor.ingest_url(url)
+        if content.text:
+            all_content.append(content.text)
     except Exception as e:
         print(f"Warning: Failed to ingest URL {url}: {e}")
 
 # Clean and normalize
-clean_docs = [normalizer.normalize(text) for text in all_content if len(text) > 50]
+clean_docs = [normalizer.normalize(text) for text in all_content if len(text) > 100] # Increased threshold for higher quality
 print(f"Intelligence Knowledge Hub Populated with {len(clean_docs)} reports.")"""))
 
 # Phase 2: Vector RAG
