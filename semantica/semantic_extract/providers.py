@@ -101,6 +101,68 @@ class BaseProvider:
         """Generate structured output - must be implemented."""
         raise NotImplementedError
 
+<<<<<<< HEAD
+<<<<<<< Updated upstream
+=======
+    def _parse_json(self, text: str) -> Union[dict, list]:
+        """Extract and parse JSON from text, supporting objects and lists."""
+        if not text:
+            raise ProcessingError("Empty response from LLM")
+            
+        # Clean up text - remove markdown code blocks if present
+        cleaned_text = text.strip()
+        if "```json" in cleaned_text:
+            cleaned_text = cleaned_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in cleaned_text:
+            # Try to find the block that looks most like JSON
+            blocks = cleaned_text.split("```")
+            for block in blocks:
+                block = block.strip()
+                if (block.startswith("{") and block.endswith("}")) or \
+                   (block.startswith("[") and block.endswith("]")):
+                    cleaned_text = block
+                    break
+
+        try:
+            return json.loads(cleaned_text)
+        except json.JSONDecodeError:
+            # Try to find JSON boundaries (outermost { } or [ ])
+            start_obj = cleaned_text.find("{")
+            start_list = cleaned_text.find("[")
+            
+            # Determine which one starts first
+            if start_obj >= 0 and (start_list < 0 or start_obj < start_list):
+                # Potential object
+                end_obj = cleaned_text.rfind("}")
+                if end_obj > start_obj:
+                    try:
+                        return json.loads(cleaned_text[start_obj:end_obj+1])
+                    except json.JSONDecodeError:
+                        pass
+            
+            if start_list >= 0:
+                # Potential list
+                end_list = cleaned_text.rfind("]")
+                if end_list > start_list:
+                    try:
+                        return json.loads(cleaned_text[start_list:end_list+1])
+                    except json.JSONDecodeError:
+                        pass
+            
+            # If we still haven't found it, try any combination
+            start = min(s for s in [start_obj, start_list] if s >= 0) if (start_obj >= 0 or start_list >= 0) else -1
+            end = max(e for e in [cleaned_text.rfind("}"), cleaned_text.rfind("]")] if e >= 0) if (cleaned_text.rfind("}") >= 0 or cleaned_text.rfind("]") >= 0) else -1
+            
+            if start >= 0 and end > start:
+                try:
+                    return json.loads(cleaned_text[start:end+1])
+                except json.JSONDecodeError as e:
+                    raise ProcessingError(f"Failed to parse extracted JSON: {e}\nRaw snippet: {cleaned_text[start:min(start+50, end+1)]}...")
+            
+            raise ProcessingError(f"No JSON structure found in response. Raw response: {text[:100]}...")
+
+>>>>>>> Stashed changes
+=======
     def _parse_json(self, text: str) -> Union[dict, list]:
         """Extract and parse JSON from text, supporting objects and lists."""
         try:
@@ -140,6 +202,7 @@ class BaseProvider:
                     raise ProcessingError(f"Failed to parse extracted JSON: {e}")
             raise ProcessingError("No JSON structure found in response")
 
+>>>>>>> main
 
 class OpenAIProvider(BaseProvider):
     """OpenAI provider implementation."""

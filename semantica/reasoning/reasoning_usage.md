@@ -1,28 +1,13 @@
-# Reasoning and Inference Module Usage Guide
+# Reasoning Module Usage Guide
 
-This comprehensive guide demonstrates how to use the reasoning and inference module for rule-based inference, SPARQL reasoning, Rete algorithm matching, abductive and deductive reasoning, rule management, and explanation generation.
+The **Semantica Reasoning Module** provides a suite of tools for deriving new knowledge from existing facts and knowledge graphs. It supports multiple strategies including deductive, abductive, and SPARQL-based reasoning.
 
-## Table of Contents
-
-1. [Basic Usage](#basic-usage)
-2. [Rule-Based Inference](#rule-based-inference)
-3. [SPARQL Reasoning](#sparql-reasoning)
-4. [Rete Algorithm](#rete-algorithm)
-5. [Abductive Reasoning](#abductive-reasoning)
-6. [Deductive Reasoning](#deductive-reasoning)
-7. [Rule Management](#rule-management)
-8. [Explanation Generation](#explanation-generation)
-9. [Algorithms and Methods](#algorithms-and-methods)
-10. [Configuration](#configuration)
-11. [Advanced Examples](#advanced-examples)
-
-## Basic Usage
-
-### Using Main Classes
+## 🚀 Quick Start
 
 ```python
-from semantica.reasoning import InferenceEngine, SPARQLReasoner, ReteEngine
+from semantica.reasoning import DeductiveReasoner, Rule, Premise
 
+<<<<<<< Updated upstream
 # Create inference engine
 engine = InferenceEngine()
 
@@ -466,295 +451,64 @@ hypotheses = reasoner.generate_hypotheses([observation])
 from semantica.reasoning import DeductiveReasoner, Premise
 
 # Create deductive reasoner
+=======
+# 1. Initialize Reasoner
+>>>>>>> Stashed changes
 reasoner = DeductiveReasoner()
 
-# Define premises
+# 2. Define Rules
+reasoner.rule_manager.add_rule(Rule(
+    name="GrandparentOf",
+    conditions=["parent_of(?a, ?b)", "parent_of(?b, ?c)"],
+    conclusion="grandparent_of(?a, ?c)"
+))
+
+# 3. Define Premises
 premises = [
-    Premise("p1", "All humans are mortal", confidence=1.0),
-    Premise("p2", "Socrates is human", confidence=1.0)
+    Premise("p1", "parent_of(Alice, Bob)"),
+    Premise("p2", "parent_of(Bob, Charlie)")
 ]
 
-# Apply logical inference
+# 4. Infer Conclusions
 conclusions = reasoner.apply_logic(premises)
-
-for conclusion in conclusions:
-    print(f"Conclusion: {conclusion.statement}")
-    print(f"From premises: {[p.statement for p in conclusion.premises]}")
-    print(f"Confidence: {conclusion.confidence}")
+for c in conclusions:
+    print(f"Inferred: {c.statement}")
+# Output: Inferred: grandparent_of(Alice, Charlie)
 ```
 
-### Proof Generation
+## 🧠 Reasoning Strategies
 
-```python
-from semantica.reasoning import DeductiveReasoner, Premise
+### 1. Deductive Reasoning
+Used for proving statements that logically follow from premises.
+*   **Class**: `DeductiveReasoner`
+*   **Key Methods**: `apply_logic`, `prove_theorem`, `validate_argument`.
 
-reasoner = DeductiveReasoner()
+### 2. Abductive Reasoning
+Used for generating the best possible explanation for an observation.
+*   **Class**: `AbductiveReasoner`
+*   **Key Method**: `abduce`
 
-# Define premises
-premises = [
-    Premise("p1", "All humans are mortal"),
-    Premise("p2", "Socrates is human")
-]
+### 3. SPARQL Reasoning
+Used for reasoning over RDF/Triplet stores using SPARQL query expansion.
+*   **Class**: `SPARQLReasoner`
+*   **Key Method**: `query`
 
-# Generate proof for conclusion
-conclusion_statement = "Socrates is mortal"
-proof = reasoner.prove_theorem(conclusion_statement)
+### 4. Rete Engine
+High-performance pattern matching for complex rule sets.
+*   **Class**: `ReteEngine`
+*   **Key Method**: `match`
 
-if proof:
-    print(f"Theorem: {proof.theorem}")
-    print(f"Valid: {proof.valid}")
-    print(f"Proof steps: {len(proof.steps)}")
-    for step in proof.steps:
-        print(f"  Step: {step.statement}")
-        print(f"    Rule: {step.rule_applied.name if step.rule_applied else 'N/A'}")
-```
-
-### Theorem Proving
-
-```python
-from semantica.reasoning import DeductiveReasoner
-
-reasoner = DeductiveReasoner()
-
-# Prove theorem
-theorem = "Socrates is mortal"
-proof = reasoner.prove_theorem(theorem)
-
-if proof and proof.valid:
-    print(f"Theorem '{theorem}' is provable")
-    print(f"Proof steps: {len(proof.steps)}")
-    for i, step in enumerate(proof.steps, 1):
-        print(f"{i}. {step.statement}")
-else:
-    print(f"Theorem '{theorem}' cannot be proven")
-```
-
-### Logical Argument Construction
-
-```python
-from semantica.reasoning import DeductiveReasoner, Premise, Argument
-
-reasoner = DeductiveReasoner()
-
-# Build argument
-premises = [
-    Premise("p1", "If it rains, the ground gets wet"),
-    Premise("p2", "It is raining")
-]
-
-conclusion = reasoner.apply_logic(premises)[0]
-
-# Validate argument
-argument = Argument(
-    argument_id="arg1",
-    premises=premises,
-    conclusion=conclusion
-)
-
-is_valid = reasoner.validate_argument(argument)
-print(f"Argument is valid: {is_valid}")
-```
-
-## Rule Management
-
-### Defining Rules
-
-```python
-from semantica.reasoning import RuleManager, RuleType
-
-# Create rule manager
-manager = RuleManager()
-
-# Define rule using natural language
-rule = manager.define_rule(
-    "IF Person(?x) AND WorksFor(?x, ?y) THEN Employee(?x, ?y)",
-    name="EmployeeRule",
-    confidence=0.9,
-    priority=1
-)
-
-print(f"Rule ID: {rule.rule_id}")
-print(f"Conditions: {rule.conditions}")
-print(f"Conclusion: {rule.conclusion}")
-```
-
-### Rule Types
-
-```python
-from semantica.reasoning import RuleManager, RuleType
-
-manager = RuleManager()
-
-# Implication rule (IF-THEN)
-implication = manager.define_rule(
-    "IF Person(?x) THEN Human(?x)",
-    rule_type=RuleType.IMPLICATION
-)
-
-# Equivalence rule (IFF)
-equivalence = manager.define_rule(
-    "Person(?x) IFF Human(?x)",
-    rule_type=RuleType.EQUIVALENCE
-)
-
-# Constraint rule
-constraint = manager.define_rule(
-    "IF Person(?x) THEN Age(?x) >= 0",
-    rule_type=RuleType.CONSTRAINT
-)
-
-# Transformation rule
-transformation = manager.define_rule(
-    "IF Name(?x, ?n) THEN NormalizedName(?x, ?n.lower())",
-    rule_type=RuleType.TRANSFORMATION
-)
-```
-
-### Rule Execution
-
-```python
-from semantica.reasoning import RuleManager
-
-manager = RuleManager()
-
-# Add rule
-rule = manager.define_rule("IF Person(?x) THEN Human(?x)")
-
-# Execute rule with facts
-facts = ["Person(John)", "Person(Jane)"]
-execution = manager.execute_rule(rule, facts)
-
-print(f"Execution successful: {execution.success}")
-print(f"Output fact: {execution.output_fact}")
-print(f"Execution time: {execution.execution_time}s")
-```
-
-### Rule Validation
-
-```python
-from semantica.reasoning import RuleManager
-
-manager = RuleManager()
-
-# Define rule
-rule = manager.define_rule("IF Person(?x) THEN Human(?x)")
-
-# Validate rule
-validation = manager.validate_rule(rule)
-
-if validation["valid"]:
-    print("Rule is valid")
-else:
-    print(f"Validation errors: {validation['errors']}")
-    print(f"Warnings: {validation.get('warnings', [])}")
-```
-
-### Rule Execution History
-
-```python
-from semantica.reasoning import RuleManager
-
-manager = RuleManager()
-
-# Execute multiple rules
-for rule in rules:
-    manager.execute_rule(rule, facts)
-
-# Get execution history
-history = manager.get_execution_history()
-
-print(f"Total executions: {len(history)}")
-for execution in history:
-    print(f"Rule: {execution.rule_id}")
-    print(f"Success: {execution.success}")
-    print(f"Time: {execution.execution_time}s")
-```
-
-## Explanation Generation
-
-### Generating Explanations
-
-```python
-from semantica.reasoning import ExplanationGenerator, InferenceEngine
-
-# Create inference engine and perform inference
-engine = InferenceEngine()
-results = engine.forward_chain()
-
-# Generate explanation for inference result
-generator = ExplanationGenerator()
-explanation = generator.generate_explanation(results[0])
-
-print(f"Explanation type: {explanation.explanation_type}")
-print(f"Conclusion: {explanation.conclusion}")
-print(f"Natural language: {explanation.natural_language}")
-```
-
-### Reasoning Path Generation
+## 💡 Explanation Generation
+All reasoning results can be passed to the `ExplanationGenerator` to produce human-readable justifications.
 
 ```python
 from semantica.reasoning import ExplanationGenerator
 
-generator = ExplanationGenerator()
-
-# Generate reasoning path
-path = generator.show_reasoning_path(inference_result)
-
-print(f"Path ID: {path.path_id}")
-print(f"Steps: {len(path.steps)}")
-print(f"Start facts: {path.start_facts}")
-print(f"End conclusion: {path.end_conclusion}")
-print(f"Total confidence: {path.total_confidence}")
-
-for i, step in enumerate(path.steps, 1):
-    print(f"\nStep {i}:")
-    print(f"  Description: {step.description}")
-    print(f"  Rule: {step.rule_applied.name if step.rule_applied else 'N/A'}")
-    print(f"  Input facts: {step.input_facts}")
-    print(f"  Output fact: {step.output_fact}")
-```
-
-### Justification Creation
-
-```python
-from semantica.reasoning import ExplanationGenerator
-
-generator = ExplanationGenerator()
-
-# Create justification
-justification = generator.justify_conclusion(conclusion, reasoning_path)
-
-print(f"Justification ID: {justification.justification_id}")
-print(f"Conclusion: {justification.conclusion}")
-print(f"Supporting evidence: {justification.supporting_evidence}")
-print(f"Confidence: {justification.confidence}")
-print(f"Explanation: {justification.explanation_text}")
-```
-
-### Natural Language Explanations
-
-```python
-from semantica.reasoning import ExplanationGenerator
-
-generator = ExplanationGenerator(generate_nl=True, detail_level="detailed")
-
-# Generate natural language explanation
-explanation = generator.generate_explanation(inference_result)
-
-print("Natural Language Explanation:")
+explainer = ExplanationGenerator()
+explanation = explainer.generate_explanation(conclusions[0])
 print(explanation.natural_language)
-
-# Generate for different detail levels
-simple_explanation = generator.generate_explanation(
-    inference_result,
-    detail_level="simple"
-)
-
-verbose_explanation = generator.generate_explanation(
-    inference_result,
-    detail_level="verbose"
-)
 ```
+<<<<<<< Updated upstream
 
 ### Explanation for Different Reasoning Types
 
@@ -1406,3 +1160,5 @@ result = reasoner.execute_query(query)
     - Validate explanations
     - Test edge cases and boundary conditions
 
+=======
+>>>>>>> Stashed changes

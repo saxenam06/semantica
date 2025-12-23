@@ -1372,25 +1372,6 @@ flowchart TD
         print(f"  ID: {result['id']}, Score: {result['score']:.3f}")
     ```
 
-=== "Reasoning with Inference"
-    Use the reasoning module for graph inference:
-    
-    ```python
-    from semantica.reasoning import (
-        InferenceEngine,
-        RuleManager,
-        Rule,
-        ExplanationGenerator
-    )
-    
-    # Initialize engine and rule manager
-    engine = InferenceEngine()
-    rule_manager = RuleManager()
-    
-    # Add inference rules
-    rule_manager.add_rule(Rule(
-        name="ceo_works_for",
-        conditions=["?person CEO_OF ?company"],
         conclusions=["?person WORKS_FOR ?company"],
         priority=1
     ))

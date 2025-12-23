@@ -333,14 +333,16 @@ class TextEmbedder:
             np.ndarray: 128-dimensional hash-based embedding vector
         """
         import hashlib
+        import numpy as np
 
-        # Generate hash from text
-        hash_obj = hashlib.sha256(text.encode("utf-8"))
-        hash_bytes = hash_obj.digest()
-
-        # Convert to numpy array (128-dimensional)
-        # Use hash bytes + first 64 bytes to get 128 bytes total
-        embedding = np.frombuffer(hash_bytes + hash_bytes[:64], dtype=np.float32)[:128]
+        # Generate deterministic but safe "embedding" using hash as seed
+        # This prevents overflow and produces values in [0, 1)
+        hash_val = int(hashlib.sha256(text.encode("utf-8")).hexdigest(), 16)
+        rng = np.random.RandomState(hash_val % (2**32))
+        
+        # Determine dimension - use config or default
+        dim = self.config.get("dimension", 128)
+        embedding = rng.rand(dim).astype(np.float32)
 
         # Normalize if requested
         if self.normalize:

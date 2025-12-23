@@ -224,6 +224,11 @@ class VectorStore:
             )
             raise
 
+<<<<<<< HEAD
+<<<<<<< Updated upstream
+=======
+=======
+>>>>>>> main
     def save(self, path: str) -> None:
         """
         Save vector store to disk.
@@ -303,11 +308,19 @@ class VectorStore:
             List of results with scores
         """
         # Generate embedding for query
+<<<<<<< HEAD
+        query_vector = self.embed(query)
+=======
         query_vector = self.embed([query])[0]
+>>>>>>> main
 
         # Search by vector
         return self.search_vectors(query_vector=query_vector, k=limit, **options)
 
+<<<<<<< HEAD
+>>>>>>> Stashed changes
+=======
+>>>>>>> main
     def search_vectors(
         self, query_vector: np.ndarray, k: int = 10, **options
     ) -> List[Dict[str, Any]]:
@@ -491,11 +504,14 @@ class VectorRetriever:
         if isinstance(query_vector, list):
             query_vector = np.array(query_vector)
 
-        # Calculate cosine similarity
+        # Calculate cosine similarity with epsilon to avoid division by zero
+        epsilon = 1e-10
         query_norm = np.linalg.norm(query_vector)
         vector_norms = np.linalg.norm(vectors, axis=1)
 
-        similarities = np.dot(vectors, query_vector) / (vector_norms * query_norm)
+        similarities = np.dot(vectors, query_vector) / (
+            (vector_norms * query_norm) + epsilon
+        )
 
         # Get top k
         top_indices = np.argsort(similarities)[::-1][:k]

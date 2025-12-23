@@ -3,13 +3,20 @@ Reasoner Module
 
 This module provides a high-level Reasoner class that unifies various reasoning strategies
 supported by the Semantica framework. It serves as a facade for different reasoning engines
+<<<<<<< HEAD
+like SPARQLReasoner, etc.
+=======
 like InferenceEngine, SPARQLReasoner, etc.
+>>>>>>> main
 """
 
 from typing import Any, Dict, List, Optional, Union
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
+<<<<<<< HEAD
+=======
 from .inference_engine import InferenceEngine, InferenceStrategy
+>>>>>>> main
 from .rule_manager import Rule
 
 class Reasoner:
@@ -33,6 +40,10 @@ class Reasoner:
         self.strategy = strategy
         self.config = kwargs
         
+<<<<<<< HEAD
+        # Inference engine disabled
+        self.engine = None
+=======
         # Initialize the underlying engine based on strategy
         # Currently defaults to InferenceEngine for forward/backward chaining
         if strategy in ["forward", "backward"]:
@@ -40,6 +51,7 @@ class Reasoner:
         else:
             # Default to forward chaining if unknown strategy
             self.engine = InferenceEngine(strategy="forward", **kwargs)
+>>>>>>> main
             
     def infer_facts(
         self, 
@@ -51,12 +63,34 @@ class Reasoner:
         
         Args:
             facts: List of initial facts or a knowledge graph dictionary.
+<<<<<<< HEAD
+                   If a list is provided, it can contain strings, dicts, or MergeOperation objects.
+=======
                   If a list is provided, it can contain strings, dicts, or MergeOperation objects.
+>>>>>>> main
             rules: List of rules to apply (strings or Rule objects)
             
         Returns:
             List of inferred facts (conclusions)
         """
+<<<<<<< HEAD
+        if self.engine is None:
+            self.logger.warning("Inference engine is currently disabled.")
+            return []
+
+        # Note: This method is a placeholder as the InferenceEngine is currently disabled.
+        return []
+            
+    def add_rule(self, rule: Union[str, Rule]) -> None:
+        """Add a rule to the reasoner."""
+        if self.engine:
+            self.engine.add_rule(rule)
+        
+    def clear(self) -> None:
+        """Clear facts and rules."""
+        if self.engine:
+            self.engine.reset()
+=======
         # Pre-process facts if they come from a knowledge graph or are MergeOperation objects
         processed_facts = []
         
@@ -147,3 +181,4 @@ class Reasoner:
     def clear(self) -> None:
         """Clear facts and rules."""
         self.engine.reset()
+>>>>>>> main

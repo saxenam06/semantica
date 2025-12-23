@@ -1,18 +1,12 @@
 # Reasoning
 
-> **Advanced inference engine supporting Rule-based, SPARQL, Abductive, and Deductive reasoning strategies.**
+> **Advanced reasoning module supporting SPARQL, Abductive, and Deductive strategies.**
 
 ---
 
 ## 🎯 Overview
 
 <div class="grid cards" markdown>
-
--   :material-graph-outline:{ .lg .middle } **Rule-Based Inference**
-
-    ---
-
-    Forward and Backward chaining with Rete algorithm optimization
 
 -   :material-database-search:{ .lg .middle } **SPARQL Reasoning**
 
@@ -56,11 +50,6 @@
 
 ## ⚙️ Algorithms Used
 
-### Rule-Based Inference
-- **Forward Chaining**: Data-driven. Apply rules to facts to derive new facts until saturation.
-- **Backward Chaining**: Goal-driven. Start from a goal and work backward to find supporting facts.
-- **Bidirectional Chaining**: Meet-in-the-middle strategy for complex paths.
-
 ### Rete Algorithm
 - **Alpha Nodes**: Filter facts by single attributes (e.g., `type=Person`).
 - **Beta Nodes**: Join results from Alpha nodes (e.g., `Person.id == Parent.child_id`).
@@ -80,32 +69,6 @@
 ---
 
 ## Main Classes
-
-### InferenceEngine
-
-General-purpose inference engine supporting multiple strategies.
-
-**Methods:**
-
-| Method | Description | Algorithm |
-|--------|-------------|-----------|
-| `infer(facts, rules)` | Derive new facts | Forward Chaining |
-| `query(goal, rules)` | Check if goal is true | Backward Chaining |
-
-**Example:**
-
-```python
-from semantica.reasoning import InferenceEngine, Rule
-
-rules = [
-    Rule("Grandparent", "Parent(x, y) & Parent(y, z) -> Grandparent(x, z)")
-]
-facts = ["Parent(Alice, Bob)", "Parent(Bob, Charlie)"]
-
-engine = InferenceEngine()
-inferred = engine.infer(facts, rules)
-# Result: ["Grandparent(Alice, Charlie)"]
-```
 
 ### ReteEngine
 
@@ -167,14 +130,12 @@ Explains *why* a fact was inferred.
 ## Convenience Functions
 
 ```python
-from semantica.reasoning import forward_chain, backward_chain, generate_explanation
-
-# Quick inference
-new_facts = forward_chain(facts, rules)
+from semantica.reasoning import ExplanationGenerator
 
 # Explain result
-explanation = generate_explanation(new_facts[0], rules)
-print(explanation.text)
+explainer = ExplanationGenerator()
+explanation = explainer.generate_explanation(conclusion)
+print(explanation.natural_language)
 ```
 
 ---
@@ -210,7 +171,7 @@ reasoning:
 ### Knowledge Graph Enrichment
 
 ```python
-from semantica.reasoning import InferenceEngine, Rule
+from semantica.reasoning import Rule, ReteEngine, DeductiveReasoner
 from semantica.kg import KnowledgeGraph
 
 # 1. Define Ontology Rules
@@ -223,12 +184,33 @@ rules = [
 kg = KnowledgeGraph()
 facts = kg.get_all_triplets()
 
+<<<<<<< Updated upstream
 # 3. Run Inference
 engine = InferenceEngine()
 inferred_triplets = engine.infer(facts, rules)
 
 # 4. Update Graph
+<<<<<<< HEAD
+kg.add_triples(inferred_triples)
+=======
+# 3. Run Inference 
+# For example, using a ReteEngine:
+rete_engine = ReteEngine()
+# rete_engine.add_facts(facts)
+# matches = rete_engine.match_patterns()
+
+# Or using a DeductiveReasoner:
+# deductive = DeductiveReasoner()
+# inferred = deductive.apply_logic(premises)
+
+inferred = [] # Placeholder for actual inference logic
+
+# 4. Update Graph
+# kg.add_triplets(inferred)
+>>>>>>> Stashed changes
+=======
 kg.add_triplets(inferred_triplets)
+>>>>>>> main
 ```
 
 ---
@@ -247,7 +229,3 @@ kg.add_triplets(inferred_triplets)
 - [Ontology Module](ontology.md) - Source of schema-based rules
 - [Triplet Store Module](triplet_store.md) - Backend for SPARQL reasoning
 - [Modules Guide](../modules.md#quality-assurance) - Consistency checking overview
-
-## Cookbook
-
-- [Reasoning and Inference](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/08_Reasoning_and_Inference.ipynb)

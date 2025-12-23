@@ -3,14 +3,14 @@ Reasoning Module
 
 This module provides reasoning and inference capabilities for knowledge graph
 analysis and query answering, supporting multiple reasoning strategies including
-rule-based inference, SPARQL reasoning, abductive and deductive reasoning.
+rule-based inference via Rete, SPARQL reasoning, abductive and deductive reasoning.
 
 Algorithms Used:
 
 Rule-Based Inference:
-    - Forward Chaining: Data-driven inference, iterative rule application (while new facts exist, apply all applicable rules, add conclusions to fact set, repeat until no new facts), fact propagation through rule network, termination condition checking (no new facts or max iterations), conflict resolution (priority-based rule selection)
-    - Backward Chaining: Goal-driven inference, recursive goal decomposition (decompose goal into subgoals, recursively solve subgoals, combine solutions), proof tree construction (tree of subgoals and their proofs), backtracking mechanism (try alternative paths when subgoal fails), subgoal resolution (match subgoals to facts or rules)
-    - Bidirectional Chaining: Combined forward and backward chaining, meet-in-the-middle strategy (forward from facts, backward from goal, meet when paths connect), path intersection detection, combined path construction
+    - Rete Algorithm: Forward chaining optimized by rule network, iteration until maturity.
+    - Backward Chaining: Goal-driven inference, recursive goal decomposition.
+    - SPARQL Reasoning: Query expansion using inference rules.
     - Rule Matching: Pattern matching algorithms (condition-to-fact matching), unification algorithms (variable binding, term unification), variable binding mechanisms (substitution application, binding consistency checking), conflict resolution strategies (priority-based, recency-based, specificity-based)
 
 Rete Algorithm:
@@ -19,12 +19,15 @@ Rete Algorithm:
     - Join Operations: Beta node joins (left input × right input with unification constraints), variable unification (bind variables consistently across joins), binding management (maintain variable bindings through join chain), join optimization (selectivity-based join ordering)
     - Conflict Resolution: Rule activation ordering (priority-based, recency-based), conflict set management (maintain set of activatable rules), selection strategy (choose rule from conflict set)
 
+<<<<<<< Updated upstream
 SPARQL Reasoning:
     - Query Expansion: Inference rule integration (convert rules to SPARQL patterns), query rewriting (add inferred patterns to WHERE clause), transitive closure (compute transitive relationships), property chain inference (infer relationships through property chains)
     - Query Optimization: Query plan generation (logical plan construction), join ordering (selectivity-based ordering), filter pushdown (apply filters early), projection pushdown (select only needed variables)
     - Inference Rule Integration: Rule-to-SPARQL translation (convert rule conditions/conclusions to SPARQL triplet patterns), query augmentation (add inferred patterns), materialization (pre-compute inferred triplets)
     - Caching: Query result caching (cache query results by query pattern), cache invalidation (invalidate on data updates), cache hit optimization (fast lookup for repeated queries)
 
+=======
+>>>>>>> Stashed changes
 Abductive Reasoning:
     - Hypothesis Generation: Candidate hypothesis creation (generate hypotheses from rules whose conclusions match observation), explanation space exploration (search space of possible explanations), rule-based hypothesis construction (use rules to construct explanatory hypotheses)
     - Hypothesis Ranking: Simplicity scoring (prefer hypotheses with fewer conditions, inverse of condition count), plausibility assessment (confidence-based scoring, evidence-based plausibility), consistency checking (check hypothesis consistency with known facts), coverage calculation (measure how well hypothesis explains observation, fraction of observation explained)
@@ -50,7 +53,7 @@ Explanation Generation:
     - Visualization: Reasoning path visualization (visualize as directed graph), proof tree rendering (render proof as tree structure), evidence highlighting (highlight supporting evidence), interactive exploration (allow interactive path exploration)
 
 Key Features:
-    - Rule-based inference with forward/backward chaining
+    - Rule-based inference via Rete algorithm
     - SPARQL-based reasoning and query expansion
     - Rete algorithm implementation for efficient rule matching
     - Abductive reasoning for hypothesis generation
@@ -62,7 +65,6 @@ Key Features:
     - Configuration management with environment variables and config files
 
 Main Classes:
-    - InferenceEngine: Rule-based inference with forward/backward chaining
     - SPARQLReasoner: SPARQL-based reasoning and query expansion
     - ReteEngine: Rete algorithm implementation for efficient rule matching
     - AbductiveReasoner: Abductive reasoning for hypothesis generation
@@ -71,9 +73,6 @@ Main Classes:
     - ExplanationGenerator: Explanation generation for reasoning results
 
 Convenience Functions:
-    - infer: General inference wrapper with strategy selection
-    - forward_chain: Forward chaining inference wrapper
-    - backward_chain: Backward chaining inference wrapper
     - sparql_query: SPARQL query execution wrapper
     - rete_match: Rete algorithm matching wrapper
     - abduce: Abductive reasoning wrapper
@@ -83,22 +82,19 @@ Convenience Functions:
     - list_available_methods: List registered reasoning methods
 
 Example Usage:
-    >>> from semantica.reasoning import InferenceEngine, SPARQLReasoner, forward_chain
-    >>> # Using convenience functions
-    >>> results = forward_chain(facts, rules, method="default")
-    >>> # Using classes directly
-    >>> engine = InferenceEngine()
-    >>> result = engine.infer(facts, rules)
-    >>> reasoner = SPARQLReasoner()
-    >>> query_result = reasoner.query("SELECT ?s ?p ?o WHERE { ?s ?p ?o }")
+    >>> from semantica.reasoning import DeductiveReasoner, SPARQLReasoner
+    >>> # Using Deductive Reasoner
+    >>> reasoner = DeductiveReasoner()
+    >>> # results = reasoner.apply_logic(premises, rules)
+    >>> # Using SPARQL Reasoner
+    >>> sparql_reasoner = SPARQLReasoner()
+    >>> query_result = sparql_reasoner.query("SELECT ?s ?p ?o WHERE { ?s ?p ?o }")
 
 Author: Semantica Contributors
 License: MIT
 """
 
-from .abductive_reasoner import AbductiveReasoner
-from .abductive_reasoner import Explanation as AbductiveExplanation
-from .abductive_reasoner import Hypothesis, HypothesisRanking, Observation
+from .abductive_reasoner import AbductiveReasoner, Explanation as AbductiveExplanation, Hypothesis, HypothesisRanking, Observation
 from .deductive_reasoner import Argument, Conclusion, DeductiveReasoner, Premise, Proof
 from .reasoner import Reasoner
 from .graph_reasoner import GraphReasoner
@@ -109,7 +105,6 @@ from .explanation_generator import (
     ReasoningPath,
     ReasoningStep,
 )
-from .inference_engine import InferenceEngine, InferenceResult, InferenceStrategy
 from .rete_engine import (
     AlphaNode,
     BetaNode,
@@ -123,25 +118,7 @@ from .rule_manager import Rule, RuleExecution, RuleManager, RuleType
 from .sparql_reasoner import SPARQLQueryResult, SPARQLReasoner
 
 __all__ = [
-    # Inference
-    "InferenceEngine",
-    "InferenceResult",
-    "InferenceStrategy",
-    # SPARQL reasoning
-    "SPARQLReasoner",
-    "SPARQLQueryResult",
-    # Rete algorithm
-    "ReteEngine",
-    "Fact",
-    "Match",
-    "ReteNode",
-    "AlphaNode",
-    "BetaNode",
-    "TerminalNode",
-    # Abductive reasoning
     "AbductiveReasoner",
-    "Observation",
-    "Hypothesis",
     "AbductiveExplanation",
     "HypothesisRanking",
     # Deductive reasoning

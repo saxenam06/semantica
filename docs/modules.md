@@ -392,29 +392,26 @@ print(f"Generated {len(owl_content)} lines of OWL")
 
 **Components:**
 
-- `InferenceEngine` — Main inference orchestrator
 - `RuleManager` — Manage inference rules
 - `DeductiveReasoner` — Deductive reasoning
 - `AbductiveReasoner` — Abductive reasoning
 - `ExplanationGenerator` — Generate explanations for inferences
-- `RETEEngine` — RETE algorithm for rule matching
+- `ReteEngine` — Rete algorithm for rule matching
 
 **Quick Example:**
 
 ```python
-from semantica.reasoning import InferenceEngine, RuleManager
+from semantica.reasoning import DeductiveReasoner, Rule, Premise
 
-inference_engine = InferenceEngine()
-rule_manager = RuleManager()
+reasoner = DeductiveReasoner()
 
-rules = [
-    "IF Person worksFor Company AND Company locatedIn City THEN Person livesIn City",
-    "IF Person hasFriend Person2 AND Person2 hasFriend Person3 THEN Person knows Person3"
-]
-rule_manager.add_rules(rules)
+# Define rules and premises
+rules = [Rule(id="r1", head="livesIn(?p, ?c)", body=["worksFor(?p, ?co)", "locatedIn(?co, ?c)"])]
+premises = [Premise(id="p1", statement="worksFor(Alice, Google)"), Premise(id="p2", statement="locatedIn(Google, London)")]
 
-new_facts = inference_engine.forward_chain(kg, rule_manager)
-print(f"Inferred {len(new_facts)} new facts")
+conclusions = reasoner.apply_logic(premises, rules=rules)
+for c in conclusions:
+    print(f"Inferred: {c.statement}")
 ```
 
 **API Reference**: [Reasoning Module](reference/reasoning.md)
