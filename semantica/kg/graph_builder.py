@@ -323,12 +323,22 @@ class GraphBuilder:
                 
                 if entities_list or relationships_list:
                     total_items = len(entities_list) + len(relationships_list)
-                    print(f"Processing {len(entities_list)} entities, {len(relationships_list)} relationships ({total_items} total)...")
+                    self.progress_tracker.update_tracking(
+                        tracking_id,
+                        message=f"Processing {len(entities_list)} entities, {len(relationships_list)} relationships ({total_items} total)..."
+                    )
                 
                 # Process entities with progress and ETA
                 # Optimize: directly append dictionaries instead of processing each item
                 if entities_list:
-                    entity_start_time = time.time()
+                    # Track entity processing
+                    entity_tracking_id = self.progress_tracker.start_tracking(
+                        file=None,
+                        module="kg",
+                        submodule="GraphBuilder",
+                        message=f"Processing {len(entities_list)} entities",
+                    )
+                    
                     # Check if entities are already in dictionary format
                     sample_entity = entities_list[0] if entities_list else None
                     is_dict_format = isinstance(sample_entity, dict) and (
@@ -356,18 +366,14 @@ class GraphBuilder:
                                     self._process_item(item, all_entities, all_relationships, **options)
                             
                             processed = min(i + batch_size, len(entities_list))
-                            remaining = len(entities_list) - processed
                             
-                            # Calculate ETA
-                            elapsed = time.time() - entity_start_time
-                            if processed > 0 and elapsed > 0:
-                                rate = processed / elapsed
-                                eta_seconds = remaining / rate if rate > 0 else 0
-                                eta_str = f"{eta_seconds:.1f}s" if eta_seconds < 60 else f"{eta_seconds/60:.1f}m"
-                                progress_pct = (processed / len(entities_list)) * 100
-                                print(f"  Entities: {processed}/{len(entities_list)} ({progress_pct:.1f}%) | ETA: {eta_str} | Rate: {rate:.1f}/s")
-                            else:
-                                print(f"  Entities: {processed}/{len(entities_list)}")
+                            # Update progress with ETA
+                            self.progress_tracker.update_progress(
+                                entity_tracking_id,
+                                processed=processed,
+                                total=len(entities_list),
+                                message=f"Processing entities... {processed}/{len(entities_list)}"
+                            )
                     else:
                         # Slow path: use _process_item for complex objects
                         batch_size = max(100, len(entities_list) // 20)
@@ -376,22 +382,32 @@ class GraphBuilder:
                             for item in batch:
                                 self._process_item(item, all_entities, all_relationships, **options)
                             processed = min(i + batch_size, len(entities_list))
-                            remaining = len(entities_list) - processed
                             
-                            elapsed = time.time() - entity_start_time
-                            if processed > 0 and elapsed > 0:
-                                rate = processed / elapsed
-                                eta_seconds = remaining / rate if rate > 0 else 0
-                                eta_str = f"{eta_seconds:.1f}s" if eta_seconds < 60 else f"{eta_seconds/60:.1f}m"
-                                progress_pct = (processed / len(entities_list)) * 100
-                                print(f"  Entities: {processed}/{len(entities_list)} ({progress_pct:.1f}%) | ETA: {eta_str} | Rate: {rate:.1f}/s")
-                            else:
-                                print(f"  Entities: {processed}/{len(entities_list)}")
+                            # Update progress with ETA
+                            self.progress_tracker.update_progress(
+                                entity_tracking_id,
+                                processed=processed,
+                                total=len(entities_list),
+                                message=f"Processing entities... {processed}/{len(entities_list)}"
+                            )
+                    
+                    self.progress_tracker.stop_tracking(
+                        entity_tracking_id,
+                        status="completed",
+                        message=f"Processed {len(entities_list)} entities",
+                    )
                 
                 # Process relationships with progress and ETA
                 # Optimize: directly append dictionaries instead of processing each item
                 if relationships_list:
-                    rel_start_time = time.time()
+                    # Track relationship processing
+                    rel_tracking_id = self.progress_tracker.start_tracking(
+                        file=None,
+                        module="kg",
+                        submodule="GraphBuilder",
+                        message=f"Processing {len(relationships_list)} relationships",
+                    )
+                    
                     # Check if relationships are already in dictionary format
                     sample_rel = relationships_list[0] if relationships_list else None
                     is_dict_format = isinstance(sample_rel, dict) and (
@@ -411,18 +427,14 @@ class GraphBuilder:
                                     self._process_item(item, all_entities, all_relationships, **options)
                             
                             processed = min(i + batch_size, len(relationships_list))
-                            remaining = len(relationships_list) - processed
                             
-                            # Calculate ETA
-                            elapsed = time.time() - rel_start_time
-                            if processed > 0 and elapsed > 0:
-                                rate = processed / elapsed
-                                eta_seconds = remaining / rate if rate > 0 else 0
-                                eta_str = f"{eta_seconds:.1f}s" if eta_seconds < 60 else f"{eta_seconds/60:.1f}m"
-                                progress_pct = (processed / len(relationships_list)) * 100
-                                print(f"  Relationships: {processed}/{len(relationships_list)} ({progress_pct:.1f}%) | ETA: {eta_str} | Rate: {rate:.1f}/s")
-                            else:
-                                print(f"  Relationships: {processed}/{len(relationships_list)}")
+                            # Update progress with ETA
+                            self.progress_tracker.update_progress(
+                                rel_tracking_id,
+                                processed=processed,
+                                total=len(relationships_list),
+                                message=f"Processing relationships... {processed}/{len(relationships_list)}"
+                            )
                     else:
                         # Slow path: use _process_item for complex objects
                         batch_size = max(100, len(relationships_list) // 20)
@@ -431,17 +443,20 @@ class GraphBuilder:
                             for item in batch:
                                 self._process_item(item, all_entities, all_relationships, **options)
                             processed = min(i + batch_size, len(relationships_list))
-                            remaining = len(relationships_list) - processed
                             
-                            elapsed = time.time() - rel_start_time
-                            if processed > 0 and elapsed > 0:
-                                rate = processed / elapsed
-                                eta_seconds = remaining / rate if rate > 0 else 0
-                                eta_str = f"{eta_seconds:.1f}s" if eta_seconds < 60 else f"{eta_seconds/60:.1f}m"
-                                progress_pct = (processed / len(relationships_list)) * 100
-                                print(f"  Relationships: {processed}/{len(relationships_list)} ({progress_pct:.1f}%) | ETA: {eta_str} | Rate: {rate:.1f}/s")
-                            else:
-                                print(f"  Relationships: {processed}/{len(relationships_list)}")
+                            # Update progress with ETA
+                            self.progress_tracker.update_progress(
+                                rel_tracking_id,
+                                processed=processed,
+                                total=len(relationships_list),
+                                message=f"Processing relationships... {processed}/{len(relationships_list)}"
+                            )
+                    
+                    self.progress_tracker.stop_tracking(
+                        rel_tracking_id,
+                        status="completed",
+                        message=f"Processed {len(relationships_list)} relationships",
+                    )
             else:
                 # Process sources (which might be entities)
                 for source in sources:

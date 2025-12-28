@@ -204,13 +204,14 @@ class EntityMerger:
                 tracking_id, message=f"Merging {len(duplicate_groups)} groups..."
             )
             merge_operations = []
+            
+            # Filter groups with 2+ entities (actual duplicates)
+            mergeable_groups = [g for g in duplicate_groups if len(g.entities) >= 2]
+            total_groups = len(mergeable_groups)
+            update_interval = max(1, total_groups // 20)  # Update every 5%
 
             # Merge each duplicate group
-            for group in duplicate_groups:
-                # Skip groups with less than 2 entities (not duplicates)
-                if len(group.entities) < 2:
-                    continue
-
+            for i, group in enumerate(mergeable_groups):
                 self.logger.debug(
                     f"Merging group of {len(group.entities)} entities "
                     f"(confidence: {group.confidence:.2f})"
@@ -241,6 +242,15 @@ class EntityMerger:
 
                 merge_operations.append(operation)
                 self.merge_history.append(operation)
+                
+                # Update progress periodically
+                if (i + 1) % update_interval == 0 or (i + 1) == total_groups:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=i + 1,
+                        total=total_groups,
+                        message=f"Merging groups... {i + 1}/{total_groups}"
+                    )
 
             self.logger.info(
                 f"Completed merging: {len(merge_operations)} merge operation(s) performed"

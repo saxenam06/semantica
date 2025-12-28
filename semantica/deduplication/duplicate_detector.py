@@ -214,12 +214,24 @@ class DuplicateDetector:
             )
             # Create duplicate candidates from similar pairs
             candidates = []
-            for entity1, entity2, score in similarities:
+            total_similarities = len(similarities)
+            update_interval = max(1, total_similarities // 20)  # Update every 5%
+            
+            for i, (entity1, entity2, score) in enumerate(similarities):
                 candidate = self._create_duplicate_candidate(entity1, entity2, score)
 
                 # Filter by confidence threshold
                 if candidate.confidence >= self.confidence_threshold:
                     candidates.append(candidate)
+                
+                # Update progress periodically
+                if (i + 1) % update_interval == 0 or (i + 1) == total_similarities:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=i + 1,
+                        total=total_similarities,
+                        message=f"Creating duplicate candidates... {i + 1}/{total_similarities}"
+                    )
 
             # Sort by confidence (highest first)
             candidates.sort(key=lambda c: c.confidence, reverse=True)
@@ -311,9 +323,21 @@ class DuplicateDetector:
                 tracking_id, message="Calculating group metrics..."
             )
             # Calculate group metrics for each group
-            for group in groups:
+            total_groups = len(groups)
+            update_interval = max(1, total_groups // 20)  # Update every 5%
+            
+            for i, group in enumerate(groups):
                 group.confidence = self._calculate_group_confidence(group)
                 group.representative = self._select_representative(group)
+                
+                # Update progress periodically
+                if (i + 1) % update_interval == 0 or (i + 1) == total_groups:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=i + 1,
+                        total=total_groups,
+                        message=f"Calculating group metrics... {i + 1}/{total_groups}"
+                    )
 
             self.logger.info(
                 f"Detected {len(groups)} duplicate group(s) with "
@@ -393,39 +417,72 @@ class DuplicateDetector:
             threshold if threshold is not None else self.similarity_threshold
         )
 
-        self.logger.info(
-            f"Incremental detection: {len(new_entities)} new entities vs "
-            f"{len(existing_entities)} existing entities"
+        # Track incremental detection
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="deduplication",
+            submodule="DuplicateDetector",
+            message=f"Incremental detection: {len(new_entities)} new vs {len(existing_entities)} existing",
         )
 
-        candidates = []
+        try:
+            self.logger.info(
+                f"Incremental detection: {len(new_entities)} new entities vs "
+                f"{len(existing_entities)} existing entities"
+            )
 
-        # Compare each new entity with all existing entities
-        for new_entity in new_entities:
-            for existing_entity in existing_entities:
-                # Calculate similarity
-                similarity = self.similarity_calculator.calculate_similarity(
-                    new_entity, existing_entity
-                )
+            candidates = []
+            total_comparisons = len(new_entities) * len(existing_entities)
+            processed = 0
+            update_interval = max(1, total_comparisons // 20)  # Update every 5%
 
-                # Check if above threshold
-                if similarity.score >= detection_threshold:
-                    candidate = self._create_duplicate_candidate(
-                        new_entity, existing_entity, similarity.score
+            # Compare each new entity with all existing entities
+            for new_entity in new_entities:
+                for existing_entity in existing_entities:
+                    # Calculate similarity
+                    similarity = self.similarity_calculator.calculate_similarity(
+                        new_entity, existing_entity
                     )
 
-                    # Filter by confidence threshold
-                    if candidate.confidence >= self.confidence_threshold:
-                        candidates.append(candidate)
+                    # Check if above threshold
+                    if similarity.score >= detection_threshold:
+                        candidate = self._create_duplicate_candidate(
+                            new_entity, existing_entity, similarity.score
+                        )
 
-        # Sort by confidence (highest first)
-        candidates.sort(key=lambda c: c.confidence, reverse=True)
+                        # Filter by confidence threshold
+                        if candidate.confidence >= self.confidence_threshold:
+                            candidates.append(candidate)
+                    
+                    processed += 1
+                    # Update progress periodically
+                    if processed % update_interval == 0 or processed == total_comparisons:
+                        self.progress_tracker.update_progress(
+                            tracking_id,
+                            processed=processed,
+                            total=total_comparisons,
+                            message=f"Comparing entities... {processed}/{total_comparisons}"
+                        )
 
-        self.logger.info(
-            f"Incremental detection found {len(candidates)} duplicate candidate(s)"
-        )
+            # Sort by confidence (highest first)
+            candidates.sort(key=lambda c: c.confidence, reverse=True)
 
-        return candidates
+            self.logger.info(
+                f"Incremental detection found {len(candidates)} duplicate candidate(s)"
+            )
+
+            self.progress_tracker.stop_tracking(
+                tracking_id,
+                status="completed",
+                message=f"Found {len(candidates)} duplicate candidates",
+            )
+            return candidates
+
+        except Exception as e:
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message=str(e)
+            )
+            raise
 
     def _create_duplicate_candidate(
         self, entity1: Dict[str, Any], entity2: Dict[str, Any], similarity_score: float

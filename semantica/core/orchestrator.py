@@ -236,7 +236,10 @@ class Semantica:
 
             # Process sources
             results = []
-            for source in validated_sources:
+            total_sources = len(validated_sources)
+            update_interval = max(1, total_sources // 20)  # Update every 5%
+            
+            for idx, source in enumerate(validated_sources, 1):
                 try:
                     # Track file processing
                     file_str = str(source)
@@ -261,6 +264,15 @@ class Semantica:
                             raise ProcessingError(
                                 f"Failed to process source {source}: {e}"
                             )
+                    
+                    # Update overall progress
+                    if idx % update_interval == 0 or idx == total_sources:
+                        self.progress_tracker.update_progress(
+                            tracking_id,
+                            processed=idx,
+                            total=total_sources,
+                            message=f"Processing sources... {idx}/{total_sources}"
+                        )
                 except Exception as e:
                     self.logger.error(f"Failed to process source {source}: {e}")
                     if kwargs.get("fail_fast", False):

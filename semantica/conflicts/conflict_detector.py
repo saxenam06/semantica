@@ -213,7 +213,10 @@ class ConflictDetector:
                 tracking_id, message=f"Analyzing {len(entities)} entities..."
             )
 
-            for entity in entities:
+            total_entities = len(entities)
+            update_interval = max(1, total_entities // 20)  # Update every 5%
+            
+            for i, entity in enumerate(entities):
                 entity_id = entity.get("id") or entity.get("entity_id")
                 if not entity_id:
                     continue
@@ -224,9 +227,21 @@ class ConflictDetector:
                 if entity_id not in entity_groups:
                     entity_groups[entity_id] = []
                 entity_groups[entity_id].append(entity)
+                
+                # Update progress periodically
+                if (i + 1) % update_interval == 0 or (i + 1) == total_entities:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=i + 1,
+                        total=total_entities,
+                        message=f"Analyzing entities... {i + 1}/{total_entities}"
+                    )
 
             # Check each entity group for conflicts
-            for entity_id, entity_list in entity_groups.items():
+            total_groups = len(entity_groups)
+            group_update_interval = max(1, total_groups // 20)  # Update every 5%
+            
+            for j, (entity_id, entity_list) in enumerate(entity_groups.items()):
                 if len(entity_list) < 2:
                     continue  # Need at least 2 sources to have conflict
 
@@ -283,6 +298,15 @@ class ConflictDetector:
                         f"Value conflict detected: {entity_id}.{property_name} "
                         f"has conflicting values: {unique_values}"
                     )
+                
+                # Update progress periodically for group checking
+                if (j + 1) % group_update_interval == 0 or (j + 1) == total_groups:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=j + 1,
+                        total=total_groups,
+                        message=f"Checking entity groups for conflicts... {j + 1}/{total_groups}"
+                    )
 
             self.progress_tracker.stop_tracking(
                 tracking_id,
@@ -324,46 +348,89 @@ class ConflictDetector:
         Returns:
             List of detected conflicts
         """
-        conflicts = []
+        # Track relationship conflict detection
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="conflicts",
+            submodule="ConflictDetector",
+            message=f"Detecting relationship conflicts in {len(relationships)} relationships",
+        )
 
-        # Group relationships by ID
-        rel_groups: Dict[str, List[Dict[str, Any]]] = {}
+        try:
+            conflicts = []
 
-        for rel in relationships:
-            rel_id = (
-                rel.get("id")
-                or f"{rel.get('source_id')}_{rel.get('target_id')}_{rel.get('type')}"
-            )
+            # Group relationships by ID
+            rel_groups: Dict[str, List[Dict[str, Any]]] = {}
+            total_rels = len(relationships)
+            update_interval = max(1, total_rels // 20)  # Update every 5%
 
-            if rel_id not in rel_groups:
-                rel_groups[rel_id] = []
-            rel_groups[rel_id].append(rel)
+            for i, rel in enumerate(relationships):
+                rel_id = (
+                    rel.get("id")
+                    or f"{rel.get('source_id')}_{rel.get('target_id')}_{rel.get('type')}"
+                )
 
-        # Check for conflicts
-        for rel_id, rel_list in rel_groups.items():
-            if len(rel_list) < 2:
-                continue
-
-            # Check for conflicting properties
-            for prop_name in ["type", "properties", "confidence"]:
-                values = [r.get(prop_name) for r in rel_list if prop_name in r]
-                unique_values = list(set(str(v) for v in values if v is not None))
-
-                if len(unique_values) > 1:
-                    conflict = Conflict(
-                        conflict_id=f"{rel_id}_{prop_name}_conflict",
-                        conflict_type=ConflictType.RELATIONSHIP_CONFLICT,
-                        relationship_id=rel_id,
-                        property_name=prop_name,
-                        conflicting_values=values,
-                        confidence=0.8,
-                        severity="medium",
-                        recommended_action="Review relationship definition",
+                if rel_id not in rel_groups:
+                    rel_groups[rel_id] = []
+                rel_groups[rel_id].append(rel)
+                
+                # Update progress periodically
+                if (i + 1) % update_interval == 0 or (i + 1) == total_rels:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=i + 1,
+                        total=total_rels,
+                        message=f"Grouping relationships... {i + 1}/{total_rels}"
                     )
-                    conflicts.append(conflict)
-                    self.detected_conflicts[conflict.conflict_id] = conflict
 
-        return conflicts
+            # Check for conflicts
+            total_groups = len(rel_groups)
+            group_update_interval = max(1, total_groups // 20)  # Update every 5%
+            
+            for j, (rel_id, rel_list) in enumerate(rel_groups.items()):
+                if len(rel_list) < 2:
+                    continue
+
+                # Check for conflicting properties
+                for prop_name in ["type", "properties", "confidence"]:
+                    values = [r.get(prop_name) for r in rel_list if prop_name in r]
+                    unique_values = list(set(str(v) for v in values if v is not None))
+
+                    if len(unique_values) > 1:
+                        conflict = Conflict(
+                            conflict_id=f"{rel_id}_{prop_name}_conflict",
+                            conflict_type=ConflictType.RELATIONSHIP_CONFLICT,
+                            relationship_id=rel_id,
+                            property_name=prop_name,
+                            conflicting_values=values,
+                            confidence=0.8,
+                            severity="medium",
+                            recommended_action="Review relationship definition",
+                        )
+                        conflicts.append(conflict)
+                        self.detected_conflicts[conflict.conflict_id] = conflict
+                
+                # Update progress periodically
+                if (j + 1) % group_update_interval == 0 or (j + 1) == total_groups:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=j + 1,
+                        total=total_groups,
+                        message=f"Checking relationship groups... {j + 1}/{total_groups}"
+                    )
+
+            self.progress_tracker.stop_tracking(
+                tracking_id,
+                status="completed",
+                message=f"Detected {len(conflicts)} relationship conflicts",
+            )
+            return conflicts
+
+        except Exception as e:
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message=str(e)
+            )
+            raise
 
     def detect_entity_conflicts(
         self, entities: List[Dict[str, Any]], entity_type: Optional[str] = None
@@ -378,21 +445,58 @@ class ConflictDetector:
         Returns:
             List of detected conflicts
         """
-        all_conflicts = []
+        # Track entity conflict detection
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="conflicts",
+            submodule="ConflictDetector",
+            message=f"Detecting entity conflicts in {len(entities)} entities",
+        )
 
-        # Get fields to monitor
-        if entity_type and entity_type in self.conflict_fields:
-            fields_to_check = self.conflict_fields[entity_type]
-        else:
-            # Check all common properties
-            fields_to_check = set()
-            for entity in entities:
-                fields_to_check.update(entity.keys())
-            fields_to_check = list(
-                fields_to_check - {"id", "entity_id", "type", "source", "metadata"}
+        try:
+            all_conflicts = []
+
+            # Get fields to monitor
+            if entity_type and entity_type in self.conflict_fields:
+                fields_to_check = self.conflict_fields[entity_type]
+            else:
+                # Check all common properties
+                fields_to_check = set()
+                for entity in entities:
+                    fields_to_check.update(entity.keys())
+                fields_to_check = list(
+                    fields_to_check - {"id", "entity_id", "type", "source", "metadata"}
+                )
+
+            total_fields = len(fields_to_check)
+            update_interval = max(1, total_fields // 20)  # Update every 5%
+
+            # Check each field
+            for i, field_name in enumerate(fields_to_check):
+                conflicts = self.detect_value_conflicts(entities, field_name, entity_type)
+                all_conflicts.extend(conflicts)
+                
+                # Update progress periodically
+                if (i + 1) % update_interval == 0 or (i + 1) == total_fields:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=i + 1,
+                        total=total_fields,
+                        message=f"Checking fields for conflicts... {i + 1}/{total_fields}"
+                    )
+
+            self.progress_tracker.stop_tracking(
+                tracking_id,
+                status="completed",
+                message=f"Detected {len(all_conflicts)} entity conflicts",
             )
+            return all_conflicts
 
-        # Check each field
+        except Exception as e:
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message=str(e)
+            )
+            raise
         for field_name in fields_to_check:
             conflicts = self.detect_value_conflicts(entities, field_name, entity_type)
             all_conflicts.extend(conflicts)

@@ -487,7 +487,15 @@ class FileIngestor:
                     file_obj = self.ingest_file(file_info["path"], **file_info)
                     file_objects.append(file_obj)
 
-                    # Track progress
+                    # Track progress with ETA
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=idx,
+                        total=total_files,
+                        message=f"Processing file {idx}/{total_files}: {Path(file_info['path']).name}"
+                    )
+
+                    # Track progress via callback if provided
                     if self._progress_callback:
                         self._progress_callback(idx, total_files, file_obj)
 

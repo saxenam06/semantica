@@ -279,8 +279,12 @@ class EmbeddingGenerator:
 
             for idx, item in enumerate(data_items, 1):
                 try:
-                    self.progress_tracker.update_tracking(
-                        tracking_id, message=f"Processing item {idx}/{len(data_items)}"
+                    # Use update_progress for ETA display
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=idx,
+                        total=len(data_items),
+                        message=f"Processing item {idx}/{len(data_items)}"
                     )
                     embedding = self.generate_embeddings(item, **options)
                     results["embeddings"].append(embedding)

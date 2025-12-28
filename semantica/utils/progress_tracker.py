@@ -67,6 +67,10 @@ class ProgressItem:
     message: str = ""
     emoji: str = "⏳"
     metadata: Dict[str, Any] = field(default_factory=dict)
+    progress_percentage: Optional[float] = None  # Progress percentage (0-100)
+    total_items: Optional[int] = None  # Total items to process
+    processed_items: Optional[int] = None  # Items processed so far
+    estimated_remaining: Optional[float] = None  # Estimated remaining time in seconds
 
 
 class ProgressDisplay(ABC):
@@ -256,8 +260,36 @@ class ConsoleProgressDisplay(ProgressDisplay):
                 file_name = Path(item.file).name if item.file else ""
                 parts.append(f"📄 {file_name}")
 
-            # Time elapsed
-            if item.start_time:
+            # Progress information
+            progress_parts = []
+            if item.progress_percentage is not None:
+                progress_parts.append(f"{item.progress_percentage:.1f}%")
+            
+            if item.processed_items is not None and item.total_items is not None:
+                progress_parts.append(f"{item.processed_items}/{item.total_items}")
+            
+            if item.estimated_remaining is not None and item.estimated_remaining > 0:
+                # Format ETA in human-readable format
+                if item.estimated_remaining < 60:
+                    eta_str = f"ETA: {item.estimated_remaining:.1f}s"
+                elif item.estimated_remaining < 3600:
+                    eta_str = f"ETA: {item.estimated_remaining/60:.1f}m"
+                else:
+                    eta_str = f"ETA: {item.estimated_remaining/3600:.1f}h"
+                progress_parts.append(eta_str)
+            
+            # Calculate and show processing rate
+            if item.start_time and item.processed_items is not None and item.processed_items > 0:
+                elapsed = time.time() - item.start_time
+                if elapsed > 0:
+                    rate = item.processed_items / elapsed
+                    progress_parts.append(f"Rate: {rate:.1f}/s")
+            
+            if progress_parts:
+                parts.append(f"({' | '.join(progress_parts)})")
+            
+            # Time elapsed (if no progress info shown)
+            if item.start_time and item.progress_percentage is None:
                 elapsed = time.time() - item.start_time
                 parts.append(f"({elapsed:.1f}s)")
 
@@ -452,7 +484,7 @@ class JupyterProgressDisplay(ProgressDisplay):
         html_parts.append("<h4>🧠 Semantica - 📊 Current Progress</h4>")
         html_parts.append("<table style='width: 100%; border-collapse: collapse;'>")
         html_parts.append(
-            "<tr><th>Status</th><th>Action</th><th>Module</th><th>Submodule</th><th>File</th><th>Time</th></tr>"
+            "<tr><th>Status</th><th>Action</th><th>Module</th><th>Submodule</th><th>Progress</th><th>ETA</th><th>Rate</th><th>Time</th></tr>"
         )
 
         # Show last 10 items
@@ -460,6 +492,31 @@ class JupyterProgressDisplay(ProgressDisplay):
             status_emoji = self._get_status_emoji(item.status)
             module_emoji = self._get_emoji_for_module(item.module or "")
             action_msg = self._get_action_message(item.module, item.message)
+
+            # Progress information
+            progress_str = "-"
+            if item.progress_percentage is not None:
+                progress_str = f"{item.progress_percentage:.1f}%"
+                if item.processed_items is not None and item.total_items is not None:
+                    progress_str += f" ({item.processed_items}/{item.total_items})"
+            
+            # ETA information
+            eta_str = "-"
+            if item.estimated_remaining is not None and item.estimated_remaining > 0:
+                if item.estimated_remaining < 60:
+                    eta_str = f"{item.estimated_remaining:.1f}s"
+                elif item.estimated_remaining < 3600:
+                    eta_str = f"{item.estimated_remaining/60:.1f}m"
+                else:
+                    eta_str = f"{item.estimated_remaining/3600:.1f}h"
+            
+            # Processing rate
+            rate_str = "-"
+            if item.start_time and item.processed_items is not None and item.processed_items > 0:
+                elapsed = time.time() - item.start_time
+                if elapsed > 0:
+                    rate = item.processed_items / elapsed
+                    rate_str = f"{rate:.1f}/s"
 
             elapsed = ""
             if item.start_time:
@@ -476,7 +533,9 @@ class JupyterProgressDisplay(ProgressDisplay):
                 f"<td>{action_msg}</td>"
                 f"<td>{module_emoji} {item.module or 'N/A'}</td>"
                 f"<td>{item.submodule or 'N/A'}</td>"
-                f"<td>{file_name}</td>"
+                f"<td>{progress_str}</td>"
+                f"<td>{eta_str}</td>"
+                f"<td>{rate_str}</td>"
                 f"<td>{elapsed}</td>"
                 f"</tr>"
             )
@@ -886,8 +945,20 @@ class ProgressTracker:
                 item.status = status
                 item.message = message
 
+                # Calculate ETA if progress information is available
+                if item.processed_items is not None and item.total_items is not None:
+                    item.progress_percentage = (
+                        (item.processed_items / item.total_items * 100)
+                        if item.total_items > 0
+                        else 0.0
+                    )
+                    item.estimated_remaining = self._calculate_eta(item)
+
                 if status in ("completed", "failed"):
                     item.end_time = time.time()
+                    # Reset progress fields on completion
+                    item.progress_percentage = 100.0 if status == "completed" else None
+                    item.estimated_remaining = 0.0 if status == "completed" else None
                     # Move to completed items
                     self.items.append(item)
                     del self.active_items[tracking_id]
@@ -895,6 +966,77 @@ class ProgressTracker:
                 # Update displays
                 for display in self.displays:
                     display.update(item)
+
+    def update_progress(
+        self,
+        tracking_id: str,
+        processed: int,
+        total: int,
+        message: str = "",
+    ) -> None:
+        """
+        Update progress with item counts and calculate ETA.
+
+        Args:
+            tracking_id: Tracking ID from start_tracking
+            processed: Number of items processed so far
+            total: Total number of items to process
+            message: Optional progress message
+        """
+        if not self.enabled or not tracking_id:
+            return
+
+        with self.lock:
+            if tracking_id in self.active_items:
+                item = self.active_items[tracking_id]
+                item.processed_items = processed
+                item.total_items = total
+                item.progress_percentage = (
+                    (processed / total * 100) if total > 0 else 0.0
+                )
+                item.estimated_remaining = self._calculate_eta(item)
+                if message:
+                    item.message = message
+
+                # Update displays
+                for display in self.displays:
+                    display.update(item)
+
+    def _calculate_eta(self, item: ProgressItem) -> Optional[float]:
+        """
+        Calculate estimated time remaining based on progress.
+
+        Args:
+            item: ProgressItem with progress information
+
+        Returns:
+            Estimated remaining time in seconds, or None if cannot calculate
+        """
+        if (
+            item.start_time is None
+            or item.processed_items is None
+            or item.total_items is None
+            or item.processed_items <= 0
+        ):
+            return None
+
+        elapsed = time.time() - item.start_time
+        if elapsed <= 0:
+            return None
+
+        # Calculate processing rate (items per second)
+        rate = item.processed_items / elapsed
+        if rate <= 0:
+            return None
+
+        # Calculate remaining items
+        remaining_items = item.total_items - item.processed_items
+        if remaining_items <= 0:
+            return 0.0
+
+        # Calculate ETA
+        eta_seconds = remaining_items / rate
+        return max(0.0, eta_seconds)
 
     def stop_tracking(
         self, tracking_id: str, status: str = "completed", message: str = ""

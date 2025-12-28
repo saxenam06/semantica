@@ -543,14 +543,49 @@ class SimilarityCalculator:
         Returns:
             List of (entity1, entity2, similarity) tuples
         """
-        threshold = threshold or self.similarity_threshold
-        results = []
+        # Track batch similarity calculation
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="deduplication",
+            submodule="SimilarityCalculator",
+            message=f"Calculating similarity for {len(entities)} entities",
+        )
 
-        for i in range(len(entities)):
-            for j in range(i + 1, len(entities)):
-                similarity = self.calculate_similarity(entities[i], entities[j])
+        try:
+            threshold = threshold or self.similarity_threshold
+            results = []
 
-                if similarity.score >= threshold:
-                    results.append((entities[i], entities[j], similarity.score))
+            # Calculate total pairs: n*(n-1)/2
+            total_pairs = len(entities) * (len(entities) - 1) // 2
+            processed = 0
+            update_interval = max(1, total_pairs // 20)  # Update every 5%
 
-        return results
+            for i in range(len(entities)):
+                for j in range(i + 1, len(entities)):
+                    similarity = self.calculate_similarity(entities[i], entities[j])
+
+                    if similarity.score >= threshold:
+                        results.append((entities[i], entities[j], similarity.score))
+                    
+                    processed += 1
+                    # Update progress periodically
+                    if processed % update_interval == 0 or processed == total_pairs:
+                        self.progress_tracker.update_progress(
+                            tracking_id,
+                            processed=processed,
+                            total=total_pairs,
+                            message=f"Comparing entity pairs... {processed}/{total_pairs}"
+                        )
+
+            self.progress_tracker.stop_tracking(
+                tracking_id,
+                status="completed",
+                message=f"Found {len(results)} similar pairs",
+            )
+            return results
+
+        except Exception as e:
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message=str(e)
+            )
+            raise

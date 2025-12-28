@@ -290,13 +290,44 @@ class ConflictResolver:
             >>> resolver = ConflictResolver()
             >>> results = resolver.resolve_conflicts(conflicts, strategy="voting")
         """
-        results = []
+        # Track conflict resolution
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="conflicts",
+            submodule="ConflictResolver",
+            message=f"Resolving {len(conflicts)} conflicts",
+        )
 
-        for conflict in conflicts:
-            result = self.resolve_conflict(conflict, strategy)
-            results.append(result)
+        try:
+            results = []
+            total_conflicts = len(conflicts)
+            update_interval = max(1, total_conflicts // 20)  # Update every 5%
 
-        return results
+            for i, conflict in enumerate(conflicts):
+                result = self.resolve_conflict(conflict, strategy)
+                results.append(result)
+                
+                # Update progress periodically
+                if (i + 1) % update_interval == 0 or (i + 1) == total_conflicts:
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=i + 1,
+                        total=total_conflicts,
+                        message=f"Resolving conflicts... {i + 1}/{total_conflicts}"
+                    )
+
+            self.progress_tracker.stop_tracking(
+                tracking_id,
+                status="completed",
+                message=f"Resolved {len(results)} conflicts",
+            )
+            return results
+
+        except Exception as e:
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message=str(e)
+            )
+            raise
 
     def _resolve_by_voting(self, conflict: Conflict) -> ResolutionResult:
         """Resolve conflict by voting (most common value wins)."""

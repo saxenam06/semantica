@@ -160,48 +160,86 @@ class ClusterBuilder:
         Returns:
             ClusterResult with clusters and metrics
         """
-        threshold = options.get("threshold", self.similarity_threshold)
-
-        if self.use_hierarchical:
-            clusters = self._hierarchical_clustering(entities, threshold)
-        else:
-            clusters = self._graph_based_clustering(entities, threshold)
-
-        # Filter clusters by size
-        valid_clusters = [
-            c
-            for c in clusters
-            if self.min_cluster_size <= len(c.entities) <= self.max_cluster_size
-        ]
-
-        # Find unclustered entities
-        clustered_entity_ids = set()
-        for cluster in valid_clusters:
-            for entity in cluster.entities:
-                entity_id = entity.get("id") or id(entity)
-                clustered_entity_ids.add(entity_id)
-
-        unclustered = [
-            e for e in entities if (e.get("id") or id(e)) not in clustered_entity_ids
-        ]
-
-        # Calculate quality metrics
-        quality_metrics = self._calculate_cluster_quality(valid_clusters)
-
-        return ClusterResult(
-            clusters=valid_clusters,
-            unclustered=unclustered,
-            quality_metrics=quality_metrics,
+        # Track cluster building
+        tracking_id = self.progress_tracker.start_tracking(
+            file=None,
+            module="deduplication",
+            submodule="ClusterBuilder",
+            message=f"Building clusters from {len(entities)} entities",
         )
 
+        try:
+            threshold = options.get("threshold", self.similarity_threshold)
+
+            self.progress_tracker.update_tracking(
+                tracking_id, message=f"Clustering {len(entities)} entities..."
+            )
+
+            if self.use_hierarchical:
+                clusters = self._hierarchical_clustering(entities, threshold, tracking_id)
+            else:
+                clusters = self._graph_based_clustering(entities, threshold, tracking_id)
+
+            # Filter clusters by size
+            self.progress_tracker.update_tracking(
+                tracking_id, message="Filtering clusters by size..."
+            )
+            valid_clusters = [
+                c
+                for c in clusters
+                if self.min_cluster_size <= len(c.entities) <= self.max_cluster_size
+            ]
+
+            # Find unclustered entities
+            self.progress_tracker.update_tracking(
+                tracking_id, message="Finding unclustered entities..."
+            )
+            clustered_entity_ids = set()
+            for cluster in valid_clusters:
+                for entity in cluster.entities:
+                    entity_id = entity.get("id") or id(entity)
+                    clustered_entity_ids.add(entity_id)
+
+            unclustered = [
+                e for e in entities if (e.get("id") or id(e)) not in clustered_entity_ids
+            ]
+
+            # Calculate quality metrics
+            self.progress_tracker.update_tracking(
+                tracking_id, message="Calculating cluster quality metrics..."
+            )
+            quality_metrics = self._calculate_cluster_quality(valid_clusters)
+
+            self.progress_tracker.stop_tracking(
+                tracking_id,
+                status="completed",
+                message=f"Built {len(valid_clusters)} clusters",
+            )
+            return ClusterResult(
+                clusters=valid_clusters,
+                unclustered=unclustered,
+                quality_metrics=quality_metrics,
+            )
+
+        except Exception as e:
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message=str(e)
+            )
+            raise
+
     def _graph_based_clustering(
-        self, entities: List[Dict[str, Any]], threshold: float
+        self, entities: List[Dict[str, Any]], threshold: float, tracking_id: str = None
     ) -> List[Cluster]:
         """Build clusters using graph-based approach."""
         # Build similarity graph
         similarity_pairs = self.similarity_calculator.batch_calculate_similarity(
             entities, threshold=threshold
         )
+        
+        if tracking_id:
+            self.progress_tracker.update_tracking(
+                tracking_id, message=f"Building clusters from {len(similarity_pairs)} similarity pairs..."
+            )
 
         # Union-find to build clusters
         entity_to_cluster = {}
@@ -259,7 +297,7 @@ class ClusterBuilder:
         return list(clusters_dict.values())
 
     def _hierarchical_clustering(
-        self, entities: List[Dict[str, Any]], threshold: float
+        self, entities: List[Dict[str, Any]], threshold: float, tracking_id: str = None
     ) -> List[Cluster]:
         """Build clusters using hierarchical clustering."""
         # Simplified hierarchical clustering
@@ -271,10 +309,18 @@ class ClusterBuilder:
 
         # Merge clusters based on similarity
         merged = True
+        iteration = 0
+        total_iterations = len(entities)  # Maximum iterations
+        update_interval = max(1, total_iterations // 20)  # Update every 5%
+        
         while merged:
             merged = False
             best_merge = None
             best_similarity = threshold
+
+            total_comparisons = len(clusters) * (len(clusters) - 1) // 2
+            processed_comparisons = 0
+            comparison_update_interval = max(1, total_comparisons // 20) if total_comparisons > 0 else 1
 
             for i in range(len(clusters)):
                 for j in range(i + 1, len(clusters)):
@@ -284,6 +330,15 @@ class ClusterBuilder:
                     if similarity >= best_similarity:
                         best_similarity = similarity
                         best_merge = (i, j)
+                    
+                    processed_comparisons += 1
+                    if tracking_id and (processed_comparisons % comparison_update_interval == 0 or processed_comparisons == total_comparisons):
+                        self.progress_tracker.update_progress(
+                            tracking_id,
+                            processed=processed_comparisons,
+                            total=total_comparisons,
+                            message=f"Comparing clusters... {processed_comparisons}/{total_comparisons}"
+                        )
 
             if best_merge:
                 i, j = best_merge
@@ -296,6 +351,15 @@ class ClusterBuilder:
                 clusters[i] = merged_cluster
                 clusters.pop(j)
                 merged = True
+                
+                iteration += 1
+                if tracking_id and (iteration % update_interval == 0):
+                    self.progress_tracker.update_progress(
+                        tracking_id,
+                        processed=iteration,
+                        total=total_iterations,
+                        message=f"Hierarchical clustering iteration {iteration}... {len(clusters)} clusters remaining"
+                    )
 
         return clusters
 
