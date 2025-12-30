@@ -266,7 +266,7 @@ python -c "import semantica; print(semantica.__version__)"
 
 #### Finance
 - [**Financial Data Integration MCP**](cookbook/use_cases/finance/01_Financial_Data_Integration_MCP.ipynb) - Alpha Vantage API, MCP servers, seed data, real-time ingestion
-- [**Fraud Detection**](cookbook/use_cases/finance/02_Fraud_Detection.ipynb) - Transaction streams, temporal KGs, pattern detection, conflict resolution
+- [**Fraud Detection**](cookbook/use_cases/finance/02_Fraud_Detection.ipynb) - Transaction streams, temporal KGs, pattern detection, conflict resolution, **Context Graph**, **Context Retriever**, GraphRAG with Groq LLM
 
 #### Blockchain
 - [**DeFi Protocol Intelligence**](cookbook/use_cases/blockchain/01_DeFi_Protocol_Intelligence.ipynb) - CoinDesk RSS, ontology-aware chunking, conflict detection, ontology generation
@@ -324,7 +324,7 @@ pip install -e ".[dev]"
 |:--------------------:|:----------------------:|:----------------------:|:--------------:|
 | [Multiple Formats](#universal-data-ingestion) | [Entity & Relations](#semantic-intelligence-engine) | [Graph Analytics](#knowledge-graph-construction) | [Auto Generation](#ontology-generation--management) |
 | **Context** | **GraphRAG** | **LLM Providers** | **Pipeline** |
-| [Agent Memory](#context-engineering--memory-systems) | [Hybrid RAG](#knowledge-graph-powered-rag-graphrag) | [100+ LLMs](#llm-providers-module) | [Parallel Workers](#pipeline-orchestration--parallel-processing) |
+| [Agent Memory, Context Graph, Context Retriever](#context-engineering--memory-systems) | [Hybrid RAG](#knowledge-graph-powered-rag-graphrag) | [100+ LLMs](#llm-providers-module) | [Parallel Workers](#pipeline-orchestration--parallel-processing) |
 | **QA** | **Reasoning** | | |
 | [Conflict Resolution](#production-ready-quality-assurance) | [Rule-based Inference](#reasoning--inference-engine) | | |
 
@@ -431,10 +431,10 @@ print(f"Classes: {len(ontology.classes)}")
 
 ### Context Engineering & Memory Systems
 
-> **Persistent Memory** • **Hybrid Retrieval (Vector + Graph)** • **Production Graph Store (Neo4j)** • **Entity Linking** • **Multi-Hop Reasoning**
+> **Persistent Memory** • **Context Graph** • **Context Retriever** • **Hybrid Retrieval (Vector + Graph)** • **Production Graph Store (Neo4j)** • **Entity Linking** • **Multi-Hop Reasoning**
 
 ```python
-from semantica.context import AgentContext
+from semantica.context import AgentContext, ContextGraph, ContextRetriever
 from semantica.vector_store import VectorStore
 from semantica.graph_store import GraphStore
 from semantica.llms import Groq
@@ -446,10 +446,25 @@ context = AgentContext(
     hybrid_alpha=0.75  # 75% weight to Knowledge Graph, 25% to Vector
 )
 
+# Build Context Graph from entities and relationships
+graph_stats = context.build_graph(
+    entities=kg.get('entities', []),
+    relationships=kg.get('relationships', []),
+    link_entities=True
+)
+
 # Store memory with automatic entity linking
 context.store(
     "User is building a RAG system with Semantica",
     metadata={"priority": "high", "topic": "rag"}
+)
+
+# Use Context Retriever for hybrid retrieval
+retriever = context.retriever  # Access underlying ContextRetriever
+results = retriever.retrieve(
+    query="What is the user building?",
+    max_results=10,
+    use_graph_expansion=True
 )
 
 # Retrieve with context expansion
@@ -464,9 +479,15 @@ reasoned_result = context.query_with_reasoning(
 )
 ```
 
+**Core Components:**
+- **ContextGraph**: Builds and manages context graphs from entities and relationships for enhanced retrieval
+- **ContextRetriever**: Performs hybrid retrieval combining vector search, graph traversal, and memory for optimal context relevance
+- **AgentContext**: High-level interface integrating Context Graph and Context Retriever for GraphRAG applications
+
 **Core Notebooks:**
 - [**Context Module Introduction**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/19_Context_Module.ipynb) - Basic memory and storage.
 - [**Advanced Context Engineering**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/advanced/11_Advanced_Context_Engineering.ipynb) - Hybrid retrieval, graph builders, and custom memory policies.
+- [**Fraud Detection**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/use_cases/finance/02_Fraud_Detection.ipynb) - Demonstrates Context Graph and Context Retriever for fraud detection with GraphRAG.
 
 **Related Components:**
 [**Vector Store**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/13_Vector_Store.ipynb) • [**Embedding Generation**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/introduction/12_Embedding_Generation.ipynb) • [**Advanced Vector Store**](https://github.com/Hawksight-AI/semantica/tree/main/cookbook/advanced/Advanced_Vector_Store_and_Search.ipynb)
