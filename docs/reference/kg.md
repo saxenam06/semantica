@@ -6,6 +6,33 @@
 
 ## 🎯 Overview
 
+The **Knowledge Graph (KG) Module** is the core module for building, managing, and analyzing knowledge graphs. It transforms extracted entities and relationships into structured, queryable knowledge graphs.
+
+### What is a Knowledge Graph?
+
+A **knowledge graph** is a structured representation of information where:
+- **Nodes** represent entities (people, organizations, concepts, etc.)
+- **Edges** represent relationships between entities
+- **Properties** store additional information about nodes and edges
+
+Knowledge graphs enable semantic queries, relationship traversal, and complex reasoning that traditional databases cannot handle.
+
+### Why Use the KG Module?
+
+- **Structured Knowledge**: Transform unstructured data into structured, queryable graphs
+- **Entity Resolution**: Automatically merge duplicate entities using fuzzy matching
+- **Temporal Support**: Track how knowledge changes over time
+- **Graph Analytics**: Analyze graph structure, importance, and communities
+- **Provenance Tracking**: Know where every piece of information came from
+
+### How It Works
+
+1. **Input**: Entities and relationships from semantic extraction
+2. **Entity Resolution**: Merge similar entities to avoid duplicates
+3. **Graph Construction**: Build nodes and edges from entities and relationships
+4. **Enrichment**: Add temporal information, provenance, and metadata
+5. **Analysis**: Perform graph analytics (centrality, communities, etc.)
+
 <div class="grid cards" markdown>
 
 -   :material-graph-outline:{ .lg .middle } **KG Construction**
@@ -80,8 +107,8 @@ Constructs the KG from raw data.
 
 | Method | Description |
 |--------|-------------|
-| `build(sources)` | Build graph from inputs |
-| `merge_entities()` | Merge duplicate entities during building |
+| `` `build(sources)` `` | Build graph from inputs |
+| `` `merge_entities()` `` | Merge duplicate entities during building |
 
 **Example:**
 
@@ -100,8 +127,8 @@ Runs analytical algorithms.
 
 | Method | Description |
 |--------|-------------|
-| `centrality(method)` | Calculate importance |
-| `communities(method)` | Find clusters |
+| `` `centrality(method)` `` | Calculate importance |
+| `` `communities(method)` `` | Find clusters |
 
 ### TemporalGraphQuery
 
@@ -111,8 +138,8 @@ Queries time-aware graphs.
 
 | Method | Description |
 |--------|-------------|
-| `at_time(timestamp)` | Graph state at T |
-| `during(start, end)` | Graph state in interval |
+| `` `at_time(timestamp)` `` | Graph state at T |
+| `` `during(start, end)` `` | Graph state in interval |
 
 ---
 
@@ -200,9 +227,31 @@ print(f"New nodes since 2020: {len(diff.nodes)}")
 
 ## Cookbook
 
-- [Building Knowledge Graphs](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/07_Building_Knowledge_Graphs.ipynb)
-- [Your First Knowledge Graph](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)
-- [Graph Analytics](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/10_Graph_Analytics.ipynb)
-- [Advanced Graph Analytics](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/02_Advanced_Graph_Analytics.ipynb)
-- [Temporal Knowledge Graphs](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/10_Temporal_Knowledge_Graphs.ipynb)
-- [Deduplication Module](deduplication.md) - Advanced deduplication
+Interactive tutorials to learn knowledge graph construction and analysis:
+
+- **[Building Knowledge Graphs](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/07_Building_Knowledge_Graphs.ipynb)**: Learn the fundamentals of building knowledge graphs
+  - **Topics**: Graph construction, entity resolution, relationship mapping
+  - **Difficulty**: Beginner
+  - **Use Cases**: Understanding graph construction basics
+
+- **[Your First Knowledge Graph](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)**: Build your first knowledge graph from scratch
+  - **Topics**: Entity extraction, relationship extraction, graph construction, visualization
+  - **Difficulty**: Beginner
+  - **Use Cases**: First-time users, quick start
+
+- **[Graph Analytics](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/10_Graph_Analytics.ipynb)**: Analyze knowledge graphs with centrality and community detection
+  - **Topics**: Centrality measures, community detection, graph metrics
+  - **Difficulty**: Intermediate
+  - **Use Cases**: Understanding graph structure, finding important nodes
+
+- **[Advanced Graph Analytics](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/02_Advanced_Graph_Analytics.ipynb)**: Advanced graph analysis techniques
+  - **Topics**: PageRank, Louvain algorithm, shortest path, graph mining
+  - **Difficulty**: Advanced
+  - **Use Cases**: Complex graph analysis, research applications
+
+- **[Temporal Knowledge Graphs](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/10_Temporal_Knowledge_Graphs.ipynb)**: Model and query data that changes over time
+  - **Topics**: Time series, temporal logic, temporal queries, graph evolution
+  - **Difficulty**: Advanced
+  - **Use Cases**: Tracking changes over time, temporal reasoning
+
+- **[Deduplication Module](deduplication.md)**: Advanced deduplication techniques for entity resolution

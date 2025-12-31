@@ -59,87 +59,37 @@ graph LR
 ```
 
 
-**Practical Examples**:
+**Learn by Doing:**
 
-=== "Basic Usage"
-    Build a knowledge graph from a document with just a few lines:
-    
-    ```python
-    from semantica.core import Semantica
+Knowledge graphs are best understood through hands-on practice. The following cookbooks provide step-by-step tutorials:
 
-    # Initialize Semantica with default settings
-    semantica = Semantica()
+- **[Your First Knowledge Graph](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)**: Build a knowledge graph from a document
+  - **Topics**: Entity extraction, relationship extraction, graph construction, visualization
+  - **Difficulty**: Beginner
+  - **Time**: 20-30 minutes
+  - **Use Cases**: Learning the basics, understanding graph structure
 
-    # Build knowledge graph from a PDF document
-    result = semantica.build_knowledge_base(
-        sources=["company_report.pdf"],
-        embeddings=True,  # Generate vector embeddings
-        graph=True        # Build knowledge graph
-    )
+- **[Building Knowledge Graphs](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/07_Building_Knowledge_Graphs.ipynb)**: Advanced graph construction techniques
+  - **Topics**: Graph building, entity merging, conflict resolution, temporal graphs
+  - **Difficulty**: Intermediate
+  - **Time**: 30-45 minutes
+  - **Use Cases**: Production graph construction, multi-source integration
 
-    kg = result["knowledge_graph"]
+- **[Multi-Source Data Integration](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/06_Multi_Source_Data_Integration.ipynb)**: Merge knowledge from multiple sources
+  - **Topics**: Multi-source integration, entity resolution, conflict handling
+  - **Difficulty**: Intermediate
+  - **Time**: 30-45 minutes
+  - **Use Cases**: Building unified knowledge graphs from diverse sources
+            parsed = parser.parse_document(doc) if isinstance(doc, str) else doc
+            text = parsed.get("full_text", "") if isinstance(parsed, dict) else str(parsed)
+            entities = ner.extract_entities(text)
+            relationships = rel_extractor.extract_relations(text, entities=entities)
+            all_entities.extend(entities)
+            all_relationships.extend(relationships)
+        return builder.build_graph(entities=all_entities, relationships=all_relationships)
 
-    print(f"Extracted {len(kg['entities'])} entities")
-    print(f"Found {len(kg['relationships'])} relationships")
-
-    for entity in kg['entities'][:5]:
-        print(f"  {entity['text']} ({entity['type']})")
-    ```
-=== "Direct KG Module Usage"
-    Use the `kg` module directly for more control:
-    
-    ```python
-    from semantica.kg import GraphBuilder
-
-    # Option 1: Using the convenience function (semantica.kg.build)
-    kg = build(
-        sources=[
-            {
-                "entities": [
-                    {"id": "e1", "text": "Apple Inc.", "type": "Organization"},
-                    {"id": "e2", "text": "Tim Cook", "type": "Person"},
-                    {"id": "e3", "text": "Cupertino", "type": "Location"}
-                ],
-                "relationships": [
-                    {"source": "e2", "target": "e1", "type": "CEO_OF"},
-                    {"source": "e1", "target": "e3", "type": "LOCATED_IN"}
-                ]
-            }
-        ],
-        merge_entities=True,
-        resolve_conflicts=True
-    )
-
-    print(f"Graph built: {kg['metadata']['num_entities']} entities, "
-          f"{kg['metadata']['num_relationships']} relationships")
-
-    # Option 2: Using GraphBuilder for advanced configuration
-    builder = GraphBuilder(
-        merge_entities=True,
-        entity_resolution_strategy="fuzzy",  # "exact", "fuzzy", or "semantic"
-        resolve_conflicts=True,
-        enable_temporal=True,  # Enable time-aware edges
-        temporal_granularity="day"
-    )
-    kg = builder.build(sources)
-    ```
-=== "Multi-Source Integration"
-    Merge knowledge from multiple data sources:
-    
-    ```python
-    from semantica.core import Semantica
-
-    semantica = Semantica()
-
-    # Build graphs from different sources
-    kg_news = semantica.build_knowledge_base(
-        sources=["news_articles/"],
-        normalize=True
-    )["knowledge_graph"]
-
-    kg_reports = semantica.build_knowledge_base(
-        sources=["financial_reports/"],
-        normalize=True
+    kg_news = build_kg_from_source("news_articles/")
+    kg_reports = build_kg_from_source("financial_reports/")
     )["knowledge_graph"]
 
     # Merge into a unified knowledge graph
@@ -231,82 +181,27 @@ graph LR
 !!! tip "Custom Entities"
     Semantica allows you to define custom entity types via the [`Ontology`](reference/ontology.md) module. You aren't limited to the standard set!
 
-**Extraction Methods**:
+**Extraction Methods:**
 
+Semantica supports multiple extraction methods:
+- **Machine Learning Models**: spaCy, transformers (BERT, RoBERTa)
+- **Rule-Based**: Pattern matching for specific formats
+- **LLM-Based**: Zero-shot extraction using large language models
+- **Hybrid**: Combine multiple methods for better accuracy
 
-=== "Quick Start"
-    Extract entities from text using the convenience function:
+**Learn by Doing:**
 
-    
-    ```python
-    from semantica.semantic_extract import NamedEntityRecognizer
-    
+- **[Entity Extraction Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/05_Entity_Extraction.ipynb)**: Learn different NER methods and configurations
+  - **Topics**: Named entity recognition, entity types, confidence scores, extraction methods
+  - **Difficulty**: Beginner
+  - **Time**: 15-20 minutes
+  - **Use Cases**: Understanding entity extraction options, choosing the right method
 
-    text = """
-    Apple Inc. was founded by Steve Jobs, Steve Wozniak, and Ronald Wayne 
-    in Cupertino, California on April 1, 1976. The company is now worth 
-    over $3 trillion and employs more than 160,000 people worldwide.
-    """
-    
-    # Initialize the NER extractor
-    ner = NamedEntityRecognizer()
-    
-    # Extract entities
-    entities = ner.extract_entities(text)
-    
-    print(f"Extracted {len(entities)} entities:")
-    for entity in entities:
-        print(f"  {entity['text']:20} | Type: {entity['type']:15} | "
-              f"Confidence: {entity.get('confidence', 0.0):.2f}")
-    ```
-=== "Named Entity Recognizer"
-    Use the `NamedEntityRecognizer` class for advanced control:
-    
-    ```python
-    from semantica.semantic_extract import NamedEntityRecognizer
-    
-    # Initialize with custom configuration
-    ner = NamedEntityRecognizer(
-        methods=["spacy", "rule-based"],  # Use multiple methods
-        confidence_threshold=0.7,
-        merge_overlapping=True
-    )
-    
-    text = "Elon Musk announced that Tesla will invest $10B in Texas."
-    
-    # Extract entities with detailed output
-    entities = ner.extract_entities(text)
-    
-    for entity in entities:
-        print(f"""
-    Entity: {entity['text']}
-      Type: {entity['type']}
-      Start: {entity['start_char']}, End: {entity['end_char']}
-      Confidence: {entity['confidence']:.2f}
-      Method: {entity.get('extraction_method', 'N/A')}
-    """)
-    ```
-=== "Custom Entity Types"
-    Define and extract custom entity types for your domain:
-    
-    ```python
-    from semantica.semantic_extract import (
-        NamedEntityRecognizer, 
-        CustomEntityDetector
-    )
-    
-    # Define custom entity patterns for a medical domain
-    custom_detector = CustomEntityDetector(
-        patterns={
-            "Drug": [
-                r"\b(aspirin|ibuprofen|acetaminophen)\b",
-                r"\b\w+(?:mycin|cillin|phen)\b"  # Common drug suffixes
-            ],
-            "Dosage": [
-                r"\d+\s*(?:mg|ml|g|mcg)\b",
-                r"\b(?:once|twice|three times)\s+(?:daily|weekly)\b"
-            ],
-            "Condition": [
+- **[Advanced Extraction Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/01_Advanced_Extraction.ipynb)**: Advanced extraction patterns and custom entity types
+  - **Topics**: Custom entity types, domain-specific extraction, hybrid methods
+  - **Difficulty**: Intermediate
+  - **Time**: 30-45 minutes
+  - **Use Cases**: Domain-specific extraction, custom entity definitions
                 r"\b(?:diabetes|hypertension|arthritis)\b",
                 r"\b\w+itis\b"  # Inflammation conditions
             ]
@@ -339,80 +234,7 @@ graph LR
     # Dosage: 400mg, twice daily
     # Condition: arthritis
     ```
-=== "LLM-Enhanced Extraction"
-    Use LLMs for context-aware, high-accuracy extraction:
-    
-    ```python
-    from semantica.semantic_extract import (
-        NamedEntityRecognizer,
-        LLMExtraction,
-        create_provider
-    )
-    
-    # Create LLM provider (supports OpenAI, Anthropic, Groq, Ollama)
-    provider = create_provider(
-        provider_type="openai",
-        model="gpt-4o",
-        api_key="your-api-key"  # Or use OPENAI_API_KEY env var
-    )
-    
-    # Initialize LLM-enhanced NER
-    enhancer = LLMEnhancer(provider=provider)
-    ner = NamedEntityRecognizer(
-        llm_enhancer=enhancer,
-        use_llm_verification=True  # Verify with LLM
-    )
-    
-    # Extract with LLM enhancement for ambiguous cases
-    text = """
-    Apple reported record revenue. Tim said the new Apple Watch 
-    and the partnership with Goldman Sachs exceeded expectations.
-    """
-    
-    entities = ner.extract_entities(
-        text,
-        context="Financial earnings report"  # Provide context for better accuracy
-    )
-    
-    # LLM helps distinguish:
-    # - "Apple" (company) vs "apple" (fruit)
-    # - "Tim" (person - Tim Cook) from context
-    # - "Goldman Sachs" (organization)
-    # - "Apple Watch" (product vs organization)
-    ```
-=== "Batch Processing"
-    Process multiple documents efficiently:
-    
-    ```python
-    from semantica.semantic_extract import NamedEntityRecognizer
-    
-    ner = NamedEntityRecognizer(batch_size=32)
-    
-    documents = [
-        "Microsoft acquired Activision for $69 billion.",
-        "Google announced Gemini AI at their Mountain View headquarters.",
-        "Amazon's Andy Jassy unveiled new AWS services in Seattle.",
-        # ... hundreds more documents
-    ]
-    
-    # Process in batches for efficiency
-    all_entities = []
-    for i, doc in enumerate(documents):
-        entities = ner.extract_entities(doc)
-        all_entities.extend([
-            {**e, "doc_id": i} for e in entities
-        ])
-        
-        if (i + 1) % 100 == 0:
-            print(f"Processed {i + 1}/{len(documents)} documents")
-    
-    from collections import Counter
-    entity_types = Counter(e['type'] for e in all_entities)
-    print(f"Entity Distribution:")
-    for etype, count in entity_types.most_common():
-        print(f"  {etype}: {count}")
-
-    ```
+**For advanced extraction patterns including LLM-enhanced extraction and batch processing, see:**
 
 **Related Modules**:
 - [`semantic_extract` Module](reference/semantic_extract.md) - Entity and relationship extraction
@@ -486,177 +308,19 @@ graph LR
 
 **Practical Examples**:
 
-=== "Basic Relation Extraction"
-    Extract relationships between entities:
-    
-    ```python
-    from semantica.semantic_extract import RelationExtractor, NamedEntityRecognizer
-    
-    text = """
-    Tim Cook became CEO of Apple Inc. in 2011, succeeding Steve Jobs.
-    Apple is headquartered in Cupertino, California. The company
-    acquired Beats Electronics in 2014 for $3 billion.
-    """
-    
-    # First extract entities
-    ner = NamedEntityRecognizer()
-    entities = ner.extract_entities(text)
-    
-    # Then extract relationships
-    rel_extractor = RelationExtractor()
-    relations = rel_extractor.extract_relations(text, entities=entities)
-    
-    print("Extracted Relationships:")
-    for rel in relations:
-        print(f"  ({rel['source']}) --[{rel['type']}]--> ({rel['target']})")
-        print(f"     Confidence: {rel.get('confidence', 0.0):.2f}")
-    ```
-=== "RelationExtractor Class"
-    Use the `RelationExtractor` for advanced control:
-    
-    ```python
-    from semantica.semantic_extract import (
-        RelationExtractor,
-        NamedEntityRecognizer
-    )
-    
-    # First extract entities
-    ner = NamedEntityRecognizer()
-    text = """
-    Dr. Sarah Chen published her research on quantum computing at MIT.
-    Her work was funded by DARPA and received the ACM Award in 2023.
-    """
-    entities = ner.extract_entities(text)
-    
-    # Then extract relationships
-    rel_extractor = RelationExtractor(
-        relation_types=["works_at", "funded_by", "received", "published"],
-        bidirectional=False,
-        confidence_threshold=0.6
-    )
-    
-    relations = rel_extractor.extract_relations(text, entities=entities)
-    
-    print("Knowledge Graph Edges:")
-    for rel in relations:
-        arrow = "<->" if rel.get('bidirectional') else "->"
-        print(f"  {rel['source_text']} {arrow} {rel['target_text']}")
-        print(f"    Relation: {rel['type']}")
-    ```
-=== "Triplet Extraction (RDF)"
-    Extract subject-predicate-object triplets for RDF/semantic web:
-    
-    ```python
-    from semantica.semantic_extract import (
-        TripletExtractor,
-        RDFSerializer,
-        TripletValidator
-    )
-    
-    text = """
-    Albert Einstein was born in Ulm, Germany in 1879. He developed 
-    the theory of relativity and won the Nobel Prize in Physics in 1921.
-    Einstein worked at Princeton University until his death in 1955.
-    """
-    
-    # Extract RDF-style triplets
-    extractor = TripletExtractor(
-        include_temporal=True,  # Include time information
-        include_provenance=True  # Track source sentences
-    )
-    
-    triplets = extractor.extract_triplets(text)
-    
-    print("Extracted Triplets (Subject-Predicate-Object):")
-    for triplet in triplets:
-        print(f"  Subject:   {triplet['subject']}")
-        print(f"  Predicate: {triplet['predicate']}")
-        print(f"  Object:    {triplet['object']}")
-        if triplet.get('temporal'):
-            print(f"  When:      {triplet['temporal']}")
-        print()
-    
-    validator = TripletValidator()
-    validation = validator.validate(triplets)
-    print(f"Valid triplets: {validation['valid_count']}/{len(triplets)}")
-    
-    serializer = RDFSerializer(format="turtle")
-    turtle_output = serializer.serialize(
-        triplets,
-        base_uri="https://example.org/knowledge/"
-    )
-    print("Turtle Output:")
-    print(turtle_output)
-    ```
-=== "Event Detection"
-    Extract events with temporal information:
-    
-    ```python
-    from semantica.semantic_extract import (
-        EventDetector,
-        TemporalEventProcessor
-    )
-    
-    news_text = """
-    On March 15, 2024, SpaceX successfully launched Starship from 
-    Boca Chica, Texas. The rocket reached orbit before splashing down 
-    in the Indian Ocean. CEO Elon Musk announced plans for a Mars 
-    mission by 2026.
-    """
-    
-    # Detect events
-    detector = EventDetector(
-        event_types=["launch", "announcement", "achievement"],
-        extract_participants=True,
-        extract_location=True,
-        extract_time=True
-    )
-    
-    events = detector.detect_events(news_text)
-    
-    print("Detected Events:")
-    for event in events:
-        print(f"  Event: {event['description']}")
-        print(f"    Type: {event['type']}")
-        print(f"    When: {event.get('datetime', 'Unknown')}")
-        print(f"    Where: {event.get('location', 'Unknown')}")
-        print(f"    Who: {', '.join(event.get('participants', []))}")
-        print()
-    
-    # Process temporal relationships between events
-    temporal = TemporalEventProcessor()
-    timeline = temporal.build_timeline(events)
-    
-    print("Event Timeline:")
-    for i, evt in enumerate(timeline, 1):
-        print(f"  {i}. {evt['datetime']}: {evt['description']}")
-    ```
-=== "Coreference Resolution"
-    Resolve pronouns and entity references:
-    
-    ```python
-    from semantica.semantic_extract import CoreferenceResolver
-    
-    text = """
-    Apple Inc. announced their new iPhone. The company said it would 
-    be available in September. Tim Cook presented the device at their 
-    headquarters. He emphasized its improved camera capabilities.
-    """
-    
-    resolver = CoreferenceResolver()
-    result = resolver.resolve(text)
-    
-    print("Coreference Chains:")
-    for chain in result['chains']:
-        print(f"  Entity: {chain['canonical']}")
-        print(f"  Mentions: {', '.join(chain['mentions'])}")
-        print()
-    
-    resolved_text = resolver.get_resolved_text(text)
-    print("Resolved Text:")
-    print(resolved_text)
-    ```
+**Learn by Doing:**
 
+- **[Relation Extraction Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/06_Relation_Extraction.ipynb)**: Learn to extract relationships between entities
+  - **Topics**: Relationship extraction, dependency parsing, semantic role labeling, triplet extraction
+  - **Difficulty**: Beginner
+  - **Time**: 15-20 minutes
+  - **Use Cases**: Building rich knowledge graphs with relationships
+
+- **[Advanced Extraction Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/01_Advanced_Extraction.ipynb)**: Advanced extraction patterns including event detection and coreference resolution
+  - **Topics**: Event detection, coreference resolution, temporal relationships, RDF triplets
+  - **Difficulty**: Intermediate
+  - **Time**: 30-45 minutes
+  - **Use Cases**: Complex extraction scenarios, temporal analysis
 
 **Related Modules**:
 - [`semantic_extract` Module](reference/semantic_extract.md) - Relationship extraction
@@ -676,16 +340,9 @@ graph LR
 
 Embeddings convert text into numerical vectors that capture semantic meaning. Similar texts have similar vectors, enabling semantic search and similarity calculations.
 
-**Example**:
+**How It Works:**
 
-```python
-Text: "machine learning"
-Embedding: [0.123, -0.456, 0.789, ..., 0.234]  # (vector of 1536 dimensions)
-
-# Similar texts will have similar vectors
-"artificial intelligence" → [0.145, -0.432, 0.801, ..., 0.221]  # Close in vector space
-"cooking recipes" → [-0.234, 0.567, -0.123, ..., -0.456]  # Far in vector space
-```
+Embeddings convert text into numerical vectors that capture semantic meaning. Similar texts have similar vectors, enabling semantic search and similarity calculations. The vectors are typically 384-3072 dimensions depending on the model used.
 
 **Embedding Providers**:
 
@@ -915,6 +572,14 @@ Embedding: [0.123, -0.456, 0.789, ..., 0.234]  # (vector of 1536 dimensions)
     print(f"Document embedding shape: {doc_embedding.shape}")
     ```
 
+
+**Learn by Doing:**
+
+- **[Embeddings Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/09_Embeddings.ipynb)**: Learn to generate and use embeddings
+  - **Topics**: Embedding generation, similarity search, vector operations, pooling strategies
+  - **Difficulty**: Beginner
+  - **Time**: 20-30 minutes
+  - **Use Cases**: Understanding embeddings, semantic search setup
 
 **Related Modules**:
 - [`embeddings` Module](reference/embeddings.md) - Embedding generation
@@ -1216,56 +881,19 @@ flowchart TD
 
 **Practical Examples**:
 
-=== "Basic GraphRAG"
-    Build a knowledge base and query with GraphRAG:
-    
-    ```python
-    from semantica.core import Semantica
-    from semantica.vector_store import VectorStore, store_vectors, search_vectors
-    from semantica.semantic_extract import NamedEntityRecognizer
-    from semantica.embeddings import embed_text
-    
-    # Initialize Semantica
-    semantica = Semantica()
-    
-    # Build knowledge base from documents
-    result = semantica.build_knowledge_base(
-        sources=["company_docs/", "research_papers/"],
-        embeddings=True,
-        graph=True
-    )
-    
-    kg = result["knowledge_graph"]
-    embeddings_data = result["embeddings"]
-    
-    # Initialize vector store
-    vector_store = VectorStore(backend="faiss", dimension=768)
-    
-    # Store embeddings
-    vector_ids = vector_store.store_vectors(
-        vectors=embeddings_data["vectors"],
-        metadata=embeddings_data["metadata"]
-    )
-    
-    # Initialize NER for query processing
-    ner = NamedEntityRecognizer()
-    
-    # Process a query
-    query = "Who is the CEO of Apple?"
-    
-    # Get query embedding and search
-    query_embedding = embed_text(query, method="sentence_transformers")
-    vector_results = vector_store.search(query_embedding, k=5)
-    
-    # Extract entities from query
-    query_entities = ner.extract_entities(query)
-    
-    # Get graph context for query entities
-    graph_context = []
-    for entity in query_entities:
-        for rel in kg["relationships"]:
-            if entity["text"].lower() in rel.get("source_text", "").lower():
-                graph_context.append(rel)
+**Learn by Doing:**
+
+- **[GraphRAG Complete Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/use_cases/advanced_rag/01_GraphRAG_Complete.ipynb)**: Build a production-ready GraphRAG system
+  - **Topics**: GraphRAG, hybrid retrieval, graph traversal, LLM integration
+  - **Difficulty**: Advanced
+  - **Time**: 1-2 hours
+  - **Use Cases**: Production GraphRAG systems, enhanced RAG applications
+
+- **[RAG vs. GraphRAG Comparison](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/use_cases/advanced_rag/02_RAG_vs_GraphRAG_Comparison.ipynb)**: Side-by-side comparison
+  - **Topics**: RAG comparison, reasoning gap, inference engines
+  - **Difficulty**: Intermediate
+  - **Time**: 45-60 minutes
+  - **Use Cases**: Understanding GraphRAG advantages, choosing the right approach
     
     print(f"Vector results: {len(vector_results)}")
     print(f"Graph context: {len(graph_context)} relevant relationships")
@@ -1423,13 +1051,14 @@ flowchart TD
     Integrate with LLM providers for answer generation:
     
     ```python
-    from semantica.core import Semantica
-    from semantica.semantic_extract import create_provider, OpenAIProvider
+    from semantica.semantic_extract import NERExtractor
     from semantica.context import ContextRetriever
     from semantica.vector_store import VectorStore
+    from semantica.llms import LLMProvider
     
     # Initialize components
     vector_store = VectorStore(backend="faiss", dimension=768)
+    llm_provider = LLMProvider(provider="openai", model="gpt-4o")
     
     # Create LLM provider
     provider = create_provider(
@@ -2684,14 +2313,28 @@ semantica = Semantica(config=config)
 - Gracefully handle API failures
 
 ```python
-from semantica.core import Semantica
+from semantica.ingest import FileIngestor
+from semantica.parse import DocumentParser
+from semantica.semantic_extract import NERExtractor, RelationExtractor
+from semantica.kg import GraphBuilder
 import logging
 
 logging.basicConfig(level=logging.INFO)
-semantica = Semantica()
+
+# Use individual modules
+ingestor = FileIngestor()
+parser = DocumentParser()
+ner = NERExtractor()
+rel_extractor = RelationExtractor()
+builder = GraphBuilder()
 
 try:
-    result = semantica.build_knowledge_base(["doc.pdf"])
+    doc = ingestor.ingest_file("doc.pdf")
+    parsed = parser.parse_document("doc.pdf")
+    text = parsed.get("full_text", "")
+    entities = ner.extract_entities(text)
+    relationships = rel_extractor.extract_relations(text, entities=entities)
+    kg = builder.build_graph(entities=entities, relationships=relationships)
 except Exception as e:
     logging.error(f"Error building KG: {e}")
     # Handle error appropriately
@@ -2741,4 +2384,3 @@ Now that you understand the core concepts:
 !!! info "Contribute"
     Found an issue or want to improve this guide? [Contribute on GitHub](https://github.com/Hawksight-AI/semantica)
 
-**Last Updated**: 2024

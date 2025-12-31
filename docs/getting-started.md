@@ -77,40 +77,99 @@ print(semantica.__version__)
 
 ---
 
+## 🏗️ Understanding Semantica's Architecture
+
+Semantica uses a **modular architecture** where each module handles a specific aspect of semantic processing. This design gives you flexibility and control over your pipeline.
+
+### Primary Approach: Individual Modules
+
+The recommended approach is to use individual modules directly. Each module can be imported and used independently:
+
+- **`semantica.ingest`**: Data ingestion from files, web, databases
+- **`semantica.parse`**: Document parsing and text extraction
+- **`semantica.semantic_extract`**: Entity and relationship extraction
+- **`semantica.kg`**: Knowledge graph construction
+- **`semantica.embeddings`**: Vector embedding generation
+- **`semantica.vector_store`**: Vector database operations
+
+**Benefits of the modular approach:**
+- **Full control**: Customize each step of your pipeline
+- **Flexibility**: Mix and match modules as needed
+- **Transparency**: Clear understanding of what each step does
+- **Easy debugging**: Isolate issues to specific modules
+
+**Quick Example:**
+```python
+from semantica.ingest import FileIngestor
+from semantica.parse import DocumentParser
+from semantica.semantic_extract import NERExtractor, RelationExtractor
+from semantica.kg import GraphBuilder
+
+# Each module is used independently
+ingestor = FileIngestor()
+parser = DocumentParser()
+ner = NERExtractor()
+builder = GraphBuilder()
+```
+
+**For detailed examples, see:**
+- **[Welcome to Semantica Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/01_Welcome_to_Semantica.ipynb)**: Comprehensive introduction to all modules and architecture
+  - **Topics**: Framework overview, all modules, architecture, configuration
+  - **Difficulty**: Beginner
+  - **Time**: 30-45 minutes
+  - **Use Cases**: First-time users, understanding the framework structure
+
+### Alternative Approach: Orchestration Class
+
+For complex workflows, you can use the `` `Semantica` `` class for orchestration. This class coordinates multiple modules and provides lifecycle management.
+
+**When to use orchestration:**
+- Complex multi-step workflows spanning multiple modules
+- Need lifecycle management (initialization, shutdown)
+- Want centralized configuration
+- Building applications with multiple components
+
+!!! tip "Getting Started"
+    For beginners, start with individual modules to understand how each component works. As you build more complex applications, consider using the orchestration class for workflow management. See the [Core Module Reference](reference/core.md) for orchestration details.
+
 ## ⚙️ Configuration
 
-Semantica can be configured using environment variables or a configuration file.
+Semantica modules can be configured individually or through environment variables. Configuration options vary by module, allowing you to customize behavior for your specific needs.
 
 ### Environment Variables
 
+Common configuration via environment variables:
+
 ```bash
-export SEMANTICA_API_KEY=your_openai_key
-export SEMANTICA_EMBEDDING_PROVIDER=openai
-export SEMANTICA_MODEL_NAME=gpt-4
+export OPENAI_API_KEY=your_openai_key
+export EMBEDDING_MODEL=all-MiniLM-L6-v2
+export EMBEDDING_DEVICE=cuda
 ```
 
+### Module-Specific Configuration
+
+Each module accepts configuration parameters when instantiated. For example, the NER extractor can be configured with different methods, providers, and thresholds.
+
 ### Config File (`config.yaml`)
+
+For centralized configuration, you can use a YAML config file to manage settings across multiple modules:
 
 ```yaml
 api_keys:
   openai: your_key_here
-  anthropic: your_key_here
 
 embedding:
   provider: openai
   model: text-embedding-3-large
-  dimensions: 3072
 
 knowledge_graph:
-  backend: networkx # or neo4j, arangodb
+  backend: networkx
   temporal: true
-
-graph_store:
-  backend: neo4j # or falkordb
-  neo4j_uri: bolt://localhost:7687
-  neo4j_user: neo4j
-  neo4j_password: password
 ```
+
+**For detailed configuration examples, see:**
+- **[Welcome to Semantica Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/01_Welcome_to_Semantica.ipynb)**: Configuration examples for all modules
+- **[Core Module Reference](reference/core.md)**: Complete configuration documentation
 
 ---
 
@@ -118,7 +177,38 @@ graph_store:
 
 Now that you understand the basics, here are recommended next steps:
 
-1. **[Your First Knowledge Graph](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)**: Build your first knowledge graph from a document.
-2. **[Welcome to Semantica](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/01_Welcome_to_Semantica.ipynb)**: Learn the framework basics and configuration.
-3. **[Core Workflows](cookbook.md#core-tutorials)**: Learn common patterns and workflows.
-4. **[Use Cases](cookbook.md#industry-use-cases)**: Explore domain-specific applications.
+### 🍳 Interactive Tutorials (Cookbook)
+
+Get hands-on experience with these interactive Jupyter notebooks:
+
+1. **[Welcome to Semantica](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/01_Welcome_to_Semantica.ipynb)**: Comprehensive introduction to all Semantica modules
+   - **Topics**: Framework overview, all modules, architecture, configuration
+   - **Difficulty**: Beginner
+   - **Time**: 30-45 minutes
+   - **Use Cases**: First-time users, understanding the framework structure
+
+2. **[Your First Knowledge Graph](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)**: Build your first knowledge graph from a document
+   - **Topics**: Entity extraction, relationship extraction, graph construction, visualization
+   - **Difficulty**: Beginner
+   - **Time**: 20-30 minutes
+   - **Use Cases**: Learning the basics, quick start
+
+3. **[Data Ingestion](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/02_Data_Ingestion.ipynb)**: Learn to ingest from multiple sources
+   - **Topics**: File, web, feed, stream, database ingestion
+   - **Difficulty**: Beginner
+   - **Time**: 15-20 minutes
+   - **Use Cases**: Loading data from various sources
+
+4. **[Document Parsing](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/03_Document_Parsing.ipynb)**: Parse various document formats
+   - **Topics**: PDF, DOCX, HTML, JSON parsing
+   - **Difficulty**: Beginner
+   - **Time**: 15-20 minutes
+   - **Use Cases**: Extracting text from different file formats
+
+### 📚 Documentation
+
+- **[Quick Start Guide](quickstart.md)**: Step-by-step tutorial to build your first knowledge graph
+- **[Core Concepts](concepts.md)**: Deep dive into knowledge graphs, ontologies, and semantic reasoning
+- **[API Reference](reference/core.md)**: Complete technical documentation for all modules
+- **[Examples](examples.md)**: Real-world examples and use cases
+- **[Cookbook](cookbook.md)**: Full list of interactive Jupyter notebooks

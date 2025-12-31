@@ -6,6 +6,36 @@
 
 ## 🎯 Overview
 
+The **Ingest Module** is the entry point for loading data into Semantica. It provides universal data ingestion from files, web content, feeds, streams, repositories, emails, databases, and more.
+
+### What is Data Ingestion?
+
+**Data ingestion** is the process of loading data from various sources into Semantica for processing. The ingest module handles:
+- **File Systems**: Local files, cloud storage (S3, GCS, Azure)
+- **Web Content**: Websites, RSS feeds, APIs
+- **Streams**: Real-time data from Kafka, RabbitMQ, etc.
+- **Databases**: SQL and NoSQL databases
+- **Repositories**: Git repositories (GitHub, GitLab)
+- **Email**: IMAP, POP3 servers
+- **MCP**: Model Context Protocol servers
+
+### Why Use the Ingest Module?
+
+- **Universal Support**: Handle multiple data formats and sources
+- **Automatic Detection**: Automatically detect file types and content
+- **Streaming Support**: Process real-time data streams
+- **Cloud Integration**: Direct support for cloud storage
+- **Rate Limiting**: Built-in rate limiting for web crawling
+- **Error Handling**: Robust error handling and retry logic
+
+### How It Works
+
+1. **Source Detection**: Automatically detect the type of data source
+2. **Connection**: Establish connection to the source (file system, web, database, etc.)
+3. **Loading**: Load data from the source
+4. **Format Detection**: Detect the format of the loaded data
+5. **Output**: Return data in a standardized format for processing
+
 <div class="grid cards" markdown>
 
 -   :material-file-document-multiple:{ .lg .middle } **File Ingestion**
@@ -247,5 +277,14 @@ ingestor.monitor(
 
 ## Cookbook
 
-- [Data Ingestion](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/02_Data_Ingestion.ipynb)
-- [Multi-Source Data Integration](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/06_Multi_Source_Data_Integration.ipynb)
+Interactive tutorials to learn data ingestion:
+
+- **[Data Ingestion](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/02_Data_Ingestion.ipynb)**: Comprehensive guide to data ingestion from multiple sources
+  - **Topics**: File ingestion, web scraping, database integration, streams, feeds, repositories, email, MCP
+  - **Difficulty**: Beginner
+  - **Use Cases**: Loading data from various sources, understanding ingestion capabilities
+
+- **[Multi-Source Data Integration](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/06_Multi_Source_Data_Integration.ipynb)**: Merge data from disparate sources into a unified graph
+  - **Topics**: Entity resolution, merging, fusion, multi-source integration
+  - **Difficulty**: Advanced
+  - **Use Cases**: Combining data from multiple sources, data fusion

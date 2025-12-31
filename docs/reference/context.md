@@ -57,12 +57,13 @@ The **Context Module** provides agents with a persistent, searchable, and struct
 The high-level facade that unifies all context operations. It routes data to the appropriate subsystems (Memory, Graph, Vector Store) and manages the lifecycle of context.
 
 #### **Constructor Parameters**
-*   `vector_store` (Required): The backing vector database instance (e.g., FAISS, Weaviate).
-*   `knowledge_graph` (Optional): The graph store instance for structured knowledge.
-*   `token_limit` (Default: `2000`): The maximum number of tokens allowed in short-term memory before pruning occurs.
-*   `short_term_limit` (Default: `10`): The maximum number of distinct memory items in short-term memory.
-*   `hybrid_alpha` (Default: `0.5`): The weighting factor for retrieval (0.0 = Pure Vector, 1.0 = Pure Graph).
-*   `use_graph_expansion` (Default: `True`): Whether to fetch neighbors of retrieved nodes from the graph.
+
+- `` `vector_store` `` (Required): The backing vector database instance (e.g., FAISS, Weaviate)
+- `` `knowledge_graph` `` (Optional): The graph store instance for structured knowledge
+- `` `token_limit` `` (Default: `` `2000` ``): The maximum number of tokens allowed in short-term memory before pruning occurs
+- `` `short_term_limit` `` (Default: `` `10` ``): The maximum number of distinct memory items in short-term memory
+- `` `hybrid_alpha` `` (Default: `` `0.5` ``): The weighting factor for retrieval (`` `0.0` `` = Pure Vector, `` `1.0` `` = Pure Graph)
+- `` `use_graph_expansion` `` (Default: `` `True` ``): Whether to fetch neighbors of retrieved nodes from the graph
 
 #### **Core Methods**
 
@@ -507,5 +508,15 @@ context_config.set("retention_days", 60)
 - [Reasoning](reasoning.md) - Uses context for logic
 
 ## Cookbook
-- [Context Module](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/19_Context_Module.ipynb)
-- [Advanced Context Engineering](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/11_Advanced_Context_Engineering.ipynb)
+
+Interactive tutorials to learn context management and GraphRAG:
+
+- **[Context Module](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/19_Context_Module.ipynb)**: Practical guide to the context module for AI agents
+  - **Topics**: Agent memory, context graph, hybrid retrieval, entity linking
+  - **Difficulty**: Intermediate
+  - **Use Cases**: Building stateful AI agents, persistent memory systems
+
+- **[Advanced Context Engineering](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/11_Advanced_Context_Engineering.ipynb)**: Build a production-grade memory system for AI agents
+  - **Topics**: Agent memory, GraphRAG, entity injection, lifecycle management, persistent stores
+  - **Difficulty**: Advanced
+  - **Use Cases**: Production agent systems, advanced memory management

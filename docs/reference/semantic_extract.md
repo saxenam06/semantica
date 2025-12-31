@@ -6,6 +6,36 @@
 
 ## 🎯 Overview
 
+The **Semantic Extract Module** extracts structured information from unstructured text. It identifies entities, relationships, events, and semantic structures that form the foundation of knowledge graphs.
+
+### What is Semantic Extraction?
+
+**Semantic extraction** is the process of identifying meaningful information from text:
+- **Named Entities**: People, organizations, locations, dates, etc.
+- **Relationships**: Connections between entities (e.g., "founded_by", "located_in")
+- **Events**: Actions with temporal information and participants
+- **Triplets**: Subject-Predicate-Object structures for knowledge graphs
+- **Semantic Networks**: Structured networks of nodes and edges
+
+### Why Use the Semantic Extract Module?
+
+- **Multiple Methods**: Support for ML models, LLMs, and rule-based extraction
+- **High Accuracy**: LLM-based extraction for complex schemas
+- **Flexible Configuration**: Customize extraction for your domain
+- **Confidence Scores**: Get confidence scores for all extractions
+- **Batch Processing**: Efficient batch processing for large datasets
+- **Coreference Resolution**: Resolve pronouns to their entity references
+
+### How It Works
+
+1. **Text Input**: Receive parsed text from the parse module
+2. **Entity Extraction**: Identify named entities using NER
+3. **Coreference Resolution**: Resolve pronouns to entities (optional)
+4. **Relationship Extraction**: Identify relationships between entities
+5. **Event Detection**: Detect events with temporal information
+6. **Triplet Generation**: Generate RDF triplets for knowledge graphs
+7. **Output**: Return structured entities, relationships, and triplets
+
 <div class="grid cards" markdown>
 
 -   :material-account-search:{ .lg .middle } **NER**
@@ -39,7 +69,7 @@
     Extract Subject-Predicate-Object triplets for Knowledge Graphs
 
 -   :material-robot:{ .lg .middle } **LLM Extraction**
-    
+
     ---
 
     Use LLMs to improve extraction quality and handle complex schemas
@@ -63,23 +93,43 @@
 ## ⚙️ Algorithms Used
 
 ### Named Entity Recognition (NER)
-- **Transformer Models**: BERT/RoBERTa for token classification.
-- **Regex Patterns**: Pattern matching for specific formats (Emails, IDs).
-- **LLM Prompting**: Zero-shot extraction for custom entity types.
+
+**Purpose**: Identify and classify named entities in text.
+
+**How it works**:
+
+- **Transformer Models**: BERT/RoBERTa for token classification
+- **Regex Patterns**: Pattern matching for specific formats (Emails, IDs)
+- **LLM Prompting**: Zero-shot extraction for custom entity types
 
 ### Relation Extraction
-- **Dependency Parsing**: Analyzing grammatical structure to find subject-verb-object paths.
-- **Joint Extraction**: Extracting entities and relations simultaneously.
-- **Semantic Role Labeling**: Identifying "Who did What to Whom".
+
+**Purpose**: Identify relationships between entities.
+
+**How it works**:
+
+- **Dependency Parsing**: Analyzing grammatical structure to find subject-verb-object paths
+- **Joint Extraction**: Extracting entities and relations simultaneously
+- **Semantic Role Labeling**: Identifying "Who did What to Whom"
 
 ### Coreference Resolution
-- **Mention Detection**: Finding all potential references (nouns, pronouns).
-- **Clustering**: Grouping mentions that refer to the same real-world entity.
-- **Pronoun Resolution**: Mapping pronouns to the most likely antecedent.
+
+**Purpose**: Resolve pronouns and references to their entity references.
+
+**How it works**:
+
+- **Mention Detection**: Finding all potential references (nouns, pronouns)
+- **Clustering**: Grouping mentions that refer to the same real-world entity
+- **Pronoun Resolution**: Mapping pronouns to the most likely antecedent
 
 ### Triplet Extraction
-- **OpenIE**: Open Information Extraction for arbitrary relation strings.
-- **Schema-Based**: Mapping extracted relations to a predefined ontology.
+
+**Purpose**: Extract Subject-Predicate-Object triplets for Knowledge Graphs.
+
+**How it works**:
+
+- **OpenIE**: Open Information Extraction for arbitrary relation strings
+- **Schema-Based**: Mapping extracted relations to a predefined ontology
 - **Reification**: Handling complex relations (time, location) by creating event nodes.
 
 ---
@@ -487,6 +537,19 @@ kg = builder.build(sources)
 
 ## Cookbook
 
-- [Entity Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/05_Entity_Extraction.ipynb)
-- [Relation Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/06_Relation_Extraction.ipynb)
-- [Advanced Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/01_Advanced_Extraction.ipynb)
+Interactive tutorials to learn semantic extraction:
+
+- **[Entity Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/05_Entity_Extraction.ipynb)**: Extract named entities from text using NER
+  - **Topics**: NER, Spacy, LLM extraction, entity types, confidence scores
+  - **Difficulty**: Beginner
+  - **Use Cases**: Identifying entities in text, building entity lists
+
+- **[Relation Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/06_Relation_Extraction.ipynb)**: Discover and classify relationships between entities
+  - **Topics**: Relation classification, dependency parsing, relationship types
+  - **Difficulty**: Beginner
+  - **Use Cases**: Finding relationships, building knowledge graphs
+
+- **[Advanced Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/01_Advanced_Extraction.ipynb)**: Custom extractors, LLM-based extraction, and complex pattern matching
+  - **Topics**: Custom models, regex, LLMs, ensemble methods, domain-specific extraction
+  - **Difficulty**: Advanced
+  - **Use Cases**: Custom extraction schemas, domain-specific entities

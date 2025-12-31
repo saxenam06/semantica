@@ -44,16 +44,22 @@
 ## ⚙️ Algorithms Used
 
 ### 6-Stage Generation Pipeline
-1.  **Semantic Network Parsing**: Extract concepts and patterns from raw entity/relationship data.
-2.  **YAML-to-Definition**: Transform patterns into intermediate class definitions.
-3.  **Definition-to-Types**: Map definitions to OWL types (`owl:Class`, `owl:ObjectProperty`).
-4.  **Hierarchy Generation**: Build taxonomy trees using transitive closure and cycle detection.
-5.  **TTL Generation**: Serialize to Turtle format using `rdflib`.
+
+The ontology generation process follows these stages:
+
+1. **Semantic Network Parsing**: Extract concepts and patterns from raw entity/relationship data
+2. **YAML-to-Definition**: Transform patterns into intermediate class definitions
+3. **Definition-to-Types**: Map definitions to OWL types (`` `owl:Class` ``, `` `owl:ObjectProperty` ``)
+4. **Hierarchy Generation**: Build taxonomy trees using transitive closure and cycle detection
+5. **TTL Generation**: Serialize to Turtle format using `` `rdflib` ``
 
 ### Inference Algorithms
-- **Class Inference**: Clustering entities by type and attribute similarity.
-- **Property Inference**: Determining domain/range based on connected entity types.
-- **Hierarchy Inference**: `A is_a B` detection based on subset relationships.
+
+The module uses several inference algorithms:
+
+- **Class Inference**: Clustering entities by type and attribute similarity
+- **Property Inference**: Determining domain/range based on connected entity types
+- **Hierarchy Inference**: `` `A is_a B` `` detection based on subset relationships
 
 ---
 
@@ -248,5 +254,14 @@ kg.add_entities(full_dataset)  # Will raise error if violates schema
 
 ## Cookbook
 
-- [Ontology](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/14_Ontology.ipynb)
-- [Unstructured to Ontology](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/12_Unstructured_to_Ontology.ipynb)
+Interactive tutorials to learn ontology generation and management:
+
+- **[Ontology](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/14_Ontology.ipynb)**: Define domain schemas and ontologies to structure your data
+  - **Topics**: OWL, RDF, schema design, ontology generation
+  - **Difficulty**: Intermediate
+  - **Use Cases**: Structuring domain knowledge, schema definition
+
+- **[Unstructured to Ontology](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/12_Unstructured_to_Ontology.ipynb)**: Generate ontologies automatically from unstructured data
+  - **Topics**: Automatic ontology generation, 6-stage pipeline, OWL validation
+  - **Difficulty**: Advanced
+  - **Use Cases**: Domain modeling, automatic schema generation

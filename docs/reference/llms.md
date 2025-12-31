@@ -4,7 +4,34 @@ The `semantica.llms` module provides a unified interface for LLM providers, supp
 
 ## Overview
 
-The LLM Providers module abstracts away provider-specific details, providing a consistent interface for text generation across multiple LLM providers. This enables easy switching between providers and integration with GraphRAG reasoning features.
+The **LLM Providers Module** provides a unified interface for Large Language Model (LLM) providers. It abstracts away provider-specific details, enabling you to switch between different LLM providers without changing your code.
+
+### What is the LLM Providers Module?
+
+The LLM Providers module provides:
+
+- **Unified LLM APIs**: Single interface for Groq, OpenAI, HuggingFace, and LiteLLM (100+ models)
+- **Easy Provider Switching**: Change providers without code changes
+- **Multiple Model Support**: Access to 100+ LLMs through LiteLLM
+- **GraphRAG Integration**: Seamless integration with GraphRAG reasoning features
+- **Structured Output**: Generate structured data from LLM responses
+
+### Why Use the LLM Providers Module?
+
+- **Flexibility**: Switch between providers based on cost, speed, or capability
+- **Consistency**: Same API regardless of provider
+- **Local Models**: Support for local HuggingFace models
+- **Fast Inference**: Groq for ultra-fast inference
+- **Enterprise Models**: Access to OpenAI, Anthropic, and other enterprise providers
+
+### How It Works
+
+The LLM Providers module follows a simple workflow:
+
+1. **Provider Selection**: Choose a provider (Groq, OpenAI, HuggingFace, LiteLLM)
+2. **Model Configuration**: Configure model name, API keys, and parameters
+3. **Text Generation**: Generate text using a consistent API
+4. **Structured Output**: Optionally generate structured data (JSON, entities, etc.)
 
 ## Quick Start
 
@@ -268,6 +295,20 @@ pip install transformers torch
 # LiteLLM (supports 100+ providers)
 pip install litellm
 ```
+
+## Cookbook
+
+Interactive tutorials that use LLM providers:
+
+- **[Advanced Extraction](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/01_Advanced_Extraction.ipynb)**: Custom extractors and LLM-based extraction
+  - **Topics**: LLM extraction, custom models, complex pattern matching
+  - **Difficulty**: Advanced
+  - **Use Cases**: Domain-specific extraction, complex schemas
+
+- **[GraphRAG Complete](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/use_cases/advanced_rag/01_GraphRAG_Complete.ipynb)**: Production-ready GraphRAG system using LLMs
+  - **Topics**: GraphRAG, LLM integration, hybrid retrieval
+  - **Difficulty**: Advanced
+  - **Use Cases**: Building AI applications with knowledge graphs
 
 ## See Also
 

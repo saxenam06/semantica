@@ -54,19 +54,13 @@ These modules handle data ingestion, parsing, chunking, and preparation.
 - `RepoIngestor` — Git repository analysis
 - `MCPIngestor` — Connect to MCP servers for resource and tool-based ingestion
 
-**Quick Example:**
+**Try It:**
 
-```python
-from semantica.ingest import FileIngestor, WebIngestor
-
-# Ingest local files
-file_ingestor = FileIngestor()
-documents = file_ingestor.ingest("data/", recursive=True)
-
-# Ingest web content
-web_ingestor = WebIngestor()
-web_docs = web_ingestor.ingest("https://example.com")
-```
+- **[Data Ingestion Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/02_Data_Ingestion.ipynb)**: Learn to ingest from multiple sources
+  - **Topics**: File, web, feed, stream, database ingestion
+  - **Difficulty**: Beginner
+  - **Time**: 15-20 minutes
+  - **Use Cases**: Loading data from various sources
 
 **API Reference**: [Ingest Module](reference/ingest.md)
 
@@ -98,18 +92,13 @@ web_docs = web_ingestor.ingest("https://example.com")
 - `ImageParser` — OCR and image analysis
 - `CodeParser` — Parse source code files
 
-**Quick Example:**
+**Try It:**
 
-```python
-from semantica.parse import DocumentParser
-
-parser = DocumentParser(ocr_enabled=True)
-parsed_docs = parser.parse(documents)
-
-for doc in parsed_docs:
-    print(f"Content: {doc.content[:100]}...")
-    print(f"Tables found: {len(doc.tables)}")
-```
+- **[Document Parsing Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/03_Document_Parsing.ipynb)**: Learn to parse various document formats
+  - **Topics**: PDF, DOCX, HTML, JSON parsing, OCR, table extraction
+  - **Difficulty**: Beginner
+  - **Time**: 15-20 minutes
+  - **Use Cases**: Extracting text from different file formats
 
 **API Reference**: [Parse Module](reference/parse.md)
 
@@ -156,19 +145,13 @@ for doc in parsed_docs:
 | **Standard** | recursive, token, sentence, paragraph, character, word, semantic_transformer, llm |
 | **KG/Ontology** | entity_aware, relation_aware, graph_based, ontology_aware, hierarchical, community_detection, centrality_based |
 
-**Quick Example:**
+**Try It:**
 
-```python
-from semantica.split import TextSplitter
-
-# Standard recursive splitting
-splitter = TextSplitter(method="recursive", chunk_size=1000, chunk_overlap=200)
-chunks = splitter.split(text)
-
-# Entity-aware for GraphRAG
-splitter = TextSplitter(method="entity_aware", ner_method="llm", chunk_size=1000)
-chunks = splitter.split(text)
-```
+- **[Text Splitting Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/04_Data_Normalization.ipynb)**: Learn different splitting methods
+  - **Topics**: Recursive, token, sentence splitting, entity-aware chunking
+  - **Difficulty**: Beginner
+  - **Time**: 15-20 minutes
+  - **Use Cases**: Document chunking for processing
 
 ---
 
@@ -198,21 +181,13 @@ chunks = splitter.split(text)
 - `LanguageDetector` — Detect document language
 - `EncodingHandler` — Handle character encoding
 
-**Quick Example:**
+**Try It:**
 
-```python
-from semantica.normalize import TextNormalizer
-
-normalizer = TextNormalizer(
-    normalize_entities=True,
-    normalize_dates=True,
-    detect_language=True
-)
-normalized = normalizer.normalize(parsed_docs)
-
-for doc in normalized:
-    print(f"Language: {doc.language}")
-```
+- **[Data Normalization Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/04_Data_Normalization.ipynb)**: Learn text normalization
+  - **Topics**: Text cleaning, encoding normalization, entity standardization
+  - **Difficulty**: Beginner
+  - **Time**: 15-20 minutes
+  - **Use Cases**: Preparing text for processing
 
 **API Reference**: [Normalize Module](reference/normalize.md)
 
@@ -248,8 +223,21 @@ These modules form the intelligence core—extracting meaning, building relation
 - `EventExtractor` — Extract events from text
 - `CoreferenceResolver` — Resolve entity coreferences
 
-**Quick Example:**
+**Try It:**
 
+- **[Entity Extraction Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/05_Entity_Extraction.ipynb)**: Learn entity extraction
+  - **Topics**: Named entity recognition, entity types, extraction methods
+  - **Difficulty**: Beginner
+  - **Time**: 15-20 minutes
+  - **Use Cases**: Understanding entity extraction
+
+- **[Relation Extraction Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/06_Relation_Extraction.ipynb)**: Learn relationship extraction
+  - **Topics**: Relationship extraction, dependency parsing, semantic role labeling
+  - **Difficulty**: Beginner
+  - **Time**: 15-20 minutes
+  - **Use Cases**: Building rich knowledge graphs
+
+**Quick Example:**
 ```python
 from semantica.semantic_extract import NERExtractor, RelationExtractor
 
@@ -1099,92 +1087,47 @@ result = pipeline.execute(sources=["data/"], parallel=True)
 
 ### Pattern 1: Complete Knowledge Graph Pipeline
 
-```python
-from semantica.core import Semantica
+Build a complete knowledge graph from documents using the full pipeline.
 
-semantica = Semantica()
-result = semantica.build_knowledge_base(
-    sources=["documents/"],
-    embeddings=True,
-    graph=True,
-    normalize=True
-)
-```
+**For complete examples, see:**
+- **[Your First Knowledge Graph Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)**: Complete pipeline walkthrough
+  - **Topics**: Ingestion, parsing, extraction, graph building, embeddings
+  - **Difficulty**: Beginner
+  - **Time**: 20-30 minutes
+  - **Use Cases**: Learning the complete workflow
 
 ### Pattern 2: Custom Pipeline with Module Selection
 
-```python
-from semantica.ingest import FileIngestor
-from semantica.parse import DocumentParser
-from semantica.split import TextSplitter
-from semantica.normalize import TextNormalizer
-from semantica.semantic_extract import NERExtractor, RelationExtractor
-from semantica.kg import GraphBuilder
-from semantica.deduplication import DuplicateDetector, EntityMerger, MergeStrategy
+Build custom pipelines with specific module selections and quality assurance.
 
-# Ingest and parse
-documents = FileIngestor().ingest("data/")
-parsed = DocumentParser().parse(documents)
-
-# Split and normalize
-chunks = TextSplitter(method="entity_aware").split(parsed)
-normalized = TextNormalizer().normalize(chunks)
-
-# Extract and build
-entities = NERExtractor().extract(normalized)
-relationships = RelationExtractor().extract(normalized, entities)
-kg = GraphBuilder().build(entities, relationships)
-
-# Quality assurance - deduplicate entities
-detector = DuplicateDetector(similarity_threshold=0.8)
-duplicate_groups = detector.detect_duplicate_groups(entities)
-merger = EntityMerger()
-merge_operations = merger.merge_duplicates(entities, strategy=MergeStrategy.KEEP_MOST_COMPLETE)
-deduplicated = [op.merged_entity for op in merge_operations]
-```
+**For examples, see:**
+- **[Building Knowledge Graphs Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/07_Building_Knowledge_Graphs.ipynb)**: Advanced graph construction
+  - **Topics**: Custom pipelines, entity merging, conflict resolution
+  - **Difficulty**: Intermediate
+  - **Time**: 30-45 minutes
+  - **Use Cases**: Production graph construction
 
 ### Pattern 3: GraphRAG with Hybrid Search
 
-```python
-from semantica.core import Semantica
-from semantica.vector_store import VectorStore, HybridSearch
-from semantica.context import AgentMemory
+Build GraphRAG systems with hybrid search combining vector and graph retrieval.
 
-semantica = Semantica()
-result = semantica.build_knowledge_base(["documents/"])
-
-vector_store = VectorStore()
-vector_store.store(result["embeddings"], result["documents"])
-
-# Agent memory with RAG
-memory = AgentMemory(vector_store=vector_store, knowledge_graph=result["knowledge_graph"])
-memory.store("User query about AI", metadata={"type": "query"})
-
-# Hybrid search
-hybrid_search = HybridSearch(vector_store)
-results = hybrid_search.search(
-    query="What is the relationship between X and Y?",
-    graph=result["knowledge_graph"],
-    top_k=10
-)
-```
+**For complete examples, see:**
+- **[GraphRAG Complete Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/use_cases/advanced_rag/01_GraphRAG_Complete.ipynb)**: Production GraphRAG system
+  - **Topics**: GraphRAG, hybrid retrieval, graph traversal, LLM integration
+  - **Difficulty**: Advanced
+  - **Time**: 1-2 hours
+  - **Use Cases**: Production RAG applications
 
 ### Pattern 4: Temporal Graph with Reasoning
 
-```python
-from semantica.kg import GraphBuilder
-from semantica.reasoning import Reasoner
+Build temporal graphs with logical reasoning capabilities.
 
-# Build temporal graph
-builder = GraphBuilder(temporal=True)
-kg = builder.build(entities, relationships)
-
-# Add reasoning
-reasoner = Reasoner()
-reasoner.add_rule("IF A THEN B")
-
-new_facts = reasoner.infer_facts(kg)
-```
+**For examples, see:**
+- **[Temporal Graphs Cookbook](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/04_Temporal_Graphs.ipynb)**: Temporal graph construction
+  - **Topics**: Time-stamped entities, temporal relationships, historical queries
+  - **Difficulty**: Intermediate
+  - **Time**: 30-45 minutes
+  - **Use Cases**: Time-aware knowledge graphs
 
 ---
 
@@ -1220,11 +1163,25 @@ new_facts = reasoner.infer_facts(kg)
 - **[Core Concepts](concepts.md)** — Understand the fundamental concepts
 - **[Use Cases](use-cases.md)** — See real-world applications
 - **[Examples](examples.md)** — Practical code examples
+- **[Cookbook](cookbook.md)** — Interactive Jupyter notebook tutorials
 - **[API Reference](reference/core.md)** — Detailed API documentation
+
+### 🍳 Recommended Cookbooks
+
+- **[Welcome to Semantica](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/01_Welcome_to_Semantica.ipynb)**: Comprehensive introduction to all modules
+  - **Topics**: Framework overview, all modules, architecture
+  - **Difficulty**: Beginner
+  - **Time**: 30-45 minutes
+  - **Use Cases**: Understanding the complete framework
+
+- **[Your First Knowledge Graph](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)**: Build your first knowledge graph
+  - **Topics**: Complete pipeline from ingestion to graph construction
+  - **Difficulty**: Beginner
+  - **Time**: 20-30 minutes
+  - **Use Cases**: Hands-on practice with all modules
 
 ---
 
 !!! info "Contribute"
     Found an issue or want to improve this guide? [Contribute on GitHub](https://github.com/Hawksight-AI/semantica)
 
-**Last Updated**: 2024

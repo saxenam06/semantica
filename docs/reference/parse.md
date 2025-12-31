@@ -6,6 +6,35 @@
 
 ## 🎯 Overview
 
+The **Parse Module** extracts structured content from raw files and data sources. It converts various file formats (PDF, DOCX, HTML, JSON, etc.) into usable text and structured data for semantic processing.
+
+### What is Document Parsing?
+
+**Document parsing** is the process of extracting text, structure, and metadata from files. The parse module handles:
+- **Documents**: PDF, DOCX, PPTX, Excel, TXT, RTF
+- **Web Content**: HTML, XML, JavaScript-rendered pages
+- **Structured Data**: JSON, CSV, XML, YAML
+- **Email**: MIME messages with attachments
+- **Code**: Source code parsing into ASTs
+- **Media**: OCR for images, metadata for audio/video
+
+### Why Use the Parse Module?
+
+- **Universal Format Support**: Handle dozens of file formats
+- **Structure Preservation**: Maintain document structure (tables, headings, etc.)
+- **OCR Support**: Extract text from scanned documents and images
+- **Metadata Extraction**: Extract document metadata (author, date, etc.)
+- **Code Analysis**: Parse source code for structure and dependencies
+- **Error Handling**: Robust handling of corrupted or malformed files
+
+### How It Works
+
+1. **Format Detection**: Automatically detect file format
+2. **Parser Selection**: Choose appropriate parser for the format
+3. **Content Extraction**: Extract text, structure, and metadata
+4. **Normalization**: Normalize extracted content
+5. **Output**: Return structured data ready for semantic processing
+
 <div class="grid cards" markdown>
 
 -   :material-file-document:{ .lg .middle } **Document Parsing**
@@ -47,7 +76,7 @@
 </div>
 
 !!! tip "When to Use"
-    - **Ingestion**: The first step after loading raw files to convert them into usable text/data
+    - **After Ingestion**: The first step after loading raw files to convert them into usable text/data
     - **Data Extraction**: Pulling specific fields from structured files (JSON/CSV)
     - **Content Analysis**: Analyzing codebases or email archives
     - **OCR**: Extracting text from scanned documents or images
@@ -83,10 +112,10 @@ Unified interface for document formats.
 
 | Method | Description |
 |--------|-------------|
-| `parse_document(path)` | Auto-detect format and parse |
-| `extract_text(path)` | Extract text from PDF/DOCX/HTML/TXT |
-| `extract_metadata(path)` | Extract document metadata |
-| `parse_batch(paths)` | Parse multiple documents |
+| `` `parse_document(path)` `` | Auto-detect format and parse |
+| `` `extract_text(path)` `` | Extract text from PDF/DOCX/HTML/TXT |
+| `` `extract_metadata(path)` `` | Extract document metadata |
+| `` `parse_batch(paths)` `` | Parse multiple documents |
 
 **Example:**
 
@@ -107,10 +136,10 @@ Parses web content.
 
 | Method | Description |
 |--------|-------------|
-| `parse_web_content(content, content_type)` | Parse HTML/XML |
-| `extract_text(content)` | Clean text from HTML |
-| `extract_links(content)` | Extract hyperlinks |
-| `render_javascript(url)` | Render JS for dynamic pages |
+| `` `parse_web_content(content, content_type)` `` | Parse HTML/XML |
+| `` `extract_text(content)` `` | Clean text from HTML |
+| `` `extract_links(content)` `` | Extract hyperlinks |
+| `` `render_javascript(url)` `` | Render JS for dynamic pages |
 
 ### StructuredDataParser
 
@@ -120,7 +149,7 @@ Parses data files.
 
 | Method | Description |
 |--------|-------------|
-| `parse_data(path, data_format)` | Parse JSON/CSV/XML/YAML |
+| `` `parse_data(path, data_format)` `` | Parse JSON/CSV/XML/YAML |
 
 **Example:**
 
@@ -140,7 +169,7 @@ Parses source code.
 
 | Method | Description |
 |--------|-------------|
-| `parse_code(path)` | Parse code file; returns structure, comments, dependencies |
+| `` `parse_code(path)` `` | Parse code file; returns structure, comments, dependencies |
 
 **Example:**
 
@@ -161,10 +190,10 @@ Parses email messages.
 
 | Method | Description |
 |--------|-------------|
-| `parse_email(path)` | Parse full email (headers/body/attachments) |
-| `parse_headers(path)` | Extract headers only |
-| `extract_body(path)` | Extract text/HTML body |
-| `analyze_thread(path)` | Thread reconstruction |
+| `` `parse_email(path)` `` | Parse full email (headers/body/attachments) |
+| `` `parse_headers(path)` `` | Extract headers only |
+| `` `extract_body(path)` `` | Extract text/HTML body |
+| `` `analyze_thread(path)` `` | Thread reconstruction |
 
 **Example:**
 
@@ -185,7 +214,7 @@ Parses media files.
 
 | Method | Description |
 |--------|-------------|
-| `parse_media(path, media_type)` | Parse image/audio/video |
+| `` `parse_media(path, media_type)` `` | Parse image/audio/video |
 
 **Example:**
 
@@ -311,4 +340,9 @@ Use parser classes directly in pipelines and services. Avoid convenience functio
 
 ## Cookbook
 
-- [Document Parsing](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/03_Document_Parsing.ipynb)
+Interactive tutorials to learn document parsing:
+
+- **[Document Parsing](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/03_Document_Parsing.ipynb)**: Extract clean text from complex formats
+  - **Topics**: OCR, PDF parsing, text extraction, format detection
+  - **Difficulty**: Beginner
+  - **Use Cases**: Processing documents, extracting text from various formats

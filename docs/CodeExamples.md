@@ -26,12 +26,19 @@ pip install -e ".[dev]"
 ### ⚡ 30-Second Demo: From Any Format to Knowledge
 
 ```python
-from semantica.core import Semantica
+from semantica.ingest import FileIngestor
+from semantica.parse import DocumentParser
+from semantica.semantic_extract import NERExtractor, RelationExtractor
+from semantica.kg import GraphBuilder
+from semantica.embeddings import TextEmbedder
 
-# Initialize with preferred providers
-core = Semantica(
-    llm_provider="openai",
-    embedding_model="text-embedding-3-large",
+# Use individual modules with preferred providers
+ingestor = FileIngestor()
+parser = DocumentParser()
+ner = NERExtractor(method="llm", provider="openai")
+rel_extractor = RelationExtractor()
+builder = GraphBuilder()
+embedder = TextEmbedder(method="openai", model="text-embedding-3-large")
     vector_store="weaviate",
     graph_db="neo4j"
 )

@@ -374,23 +374,44 @@ Power GraphRAG applications with:
 
 ## 🚦 Quick Example
 
+Semantica uses a modular architecture. You can use individual modules directly for maximum flexibility:
+
 ```python
-from semantica.core import Semantica
+from semantica.ingest import FileIngestor
+from semantica.parse import DocumentParser
+from semantica.semantic_extract import NERExtractor, RelationExtractor
+from semantica.kg import GraphBuilder
 
-# Initialize
-core = Semantica()
+# 1. Ingest documents
+ingestor = FileIngestor()
+documents = ingestor.ingest_directory("documents/", recursive=True)
 
-# Ingest documents
-docs = core.ingest.load("documents/", recursive=True)
+# 2. Parse documents
+parser = DocumentParser()
+parsed_docs = [parser.parse_document(doc) for doc in documents]
 
-# Build knowledge graph
-kg = core.kg.build_graph(docs, merge_entities=True)
+# 3. Extract entities and relationships
+ner = NERExtractor()
+rel_extractor = RelationExtractor()
 
-# Query
-result = kg.query("Who founded Apple Inc.?")
-print(result.answer)  # Steve Jobs, Steve Wozniak, Ronald Wayne
-print(result.confidence)  # 0.98
+entities = []
+relationships = []
+for doc in parsed_docs:
+    text = doc.get("full_text", "")
+    doc_entities = ner.extract_entities(text)
+    doc_rels = rel_extractor.extract_relations(text, entities=doc_entities)
+    entities.extend(doc_entities)
+    relationships.extend(doc_rels)
+
+# 4. Build knowledge graph
+builder = GraphBuilder(merge_entities=True)
+kg = builder.build_graph(entities=entities, relationships=relationships)
+
+print(f"Created graph with {len(kg.nodes)} nodes and {len(kg.edges)} edges")
 ```
+
+!!! tip "Orchestration Option"
+    For complex workflows, you can also use the `Semantica` class for orchestration. See the [Core Module](reference/core.md) documentation for details.
 
 ---
 
@@ -445,6 +466,25 @@ print(result.confidence)  # 0.98
 - [Core Concepts](concepts.md) - Deep dive into knowledge graphs and ontologies
 - [Cookbook](cookbook.md) - Real-world examples and **14 domain-specific cookbooks**
 - [API Reference](reference/core.md) - Complete technical documentation
+
+### 🍳 Recommended Cookbook Tutorials
+
+Get hands-on with interactive Jupyter notebooks:
+
+- **[Welcome to Semantica](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/01_Welcome_to_Semantica.ipynb)**: Comprehensive introduction to all Semantica modules
+  - **Topics**: Framework overview, all modules, architecture
+  - **Difficulty**: Beginner
+  - **Use Cases**: First-time users, understanding the framework
+
+- **[Your First Knowledge Graph](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/08_Your_First_Knowledge_Graph.ipynb)**: Build your first knowledge graph from scratch
+  - **Topics**: Entity extraction, relationship extraction, graph construction
+  - **Difficulty**: Beginner
+  - **Use Cases**: Learning the basics, quick start
+
+- **[GraphRAG Complete](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/use_cases/advanced_rag/01_GraphRAG_Complete.ipynb)**: Production-ready Graph Retrieval Augmented Generation
+  - **Topics**: GraphRAG, hybrid retrieval, vector search, graph traversal
+  - **Difficulty**: Advanced
+  - **Use Cases**: Building AI applications with knowledge graphs
 
 ---
 

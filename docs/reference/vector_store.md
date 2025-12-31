@@ -6,6 +6,33 @@
 
 ## 🎯 Overview
 
+The **Vector Store Module** provides a unified interface for storing and searching vector embeddings. It supports multiple backends (FAISS, Weaviate, Qdrant, Milvus) and enables semantic search, RAG, and similarity matching.
+
+### What is a Vector Store?
+
+A **vector store** is a database optimized for storing and searching high-dimensional vectors (embeddings). It enables:
+- **Semantic Search**: Find documents similar to a query based on meaning
+- **Similarity Matching**: Compare vectors to find similar items
+- **Hybrid Search**: Combine vector search with keyword/metadata filtering
+- **Scalable Storage**: Handle millions of vectors efficiently
+
+### Why Use the Vector Store Module?
+
+- **Multiple Backends**: Switch between FAISS (local), Weaviate, Qdrant, and Milvus
+- **Unified Interface**: Same API regardless of backend
+- **Hybrid Search**: Combine vector similarity with metadata filtering
+- **Performance**: Optimized for high-throughput search operations
+- **Namespace Support**: Multi-tenant isolation via namespaces
+- **Metadata Filtering**: Rich filtering capabilities for precise queries
+
+### How It Works
+
+1. **Index Creation**: Create an index optimized for your vector dimensions
+2. **Vector Storage**: Store embeddings with associated metadata
+3. **Query Processing**: Convert query text to embedding and search
+4. **Hybrid Search**: Combine vector similarity with metadata filters
+5. **Result Ranking**: Rank results by relevance and return top-k
+
 <div class="grid cards" markdown>
 
 -   :material-database:{ .lg .middle } **Multi-Backend Support**
@@ -749,5 +776,15 @@ print(f"Context: {context}")
 - [Ingest Module](ingest.md) - Source of data
 
 ## Cookbook
-- [Vector Store](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/13_Vector_Store.ipynb)
-- [Advanced Vector Store and Search](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/Advanced_Vector_Store_and_Search.ipynb)
+
+Interactive tutorials to learn vector stores:
+
+- **[Vector Store](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/introduction/13_Vector_Store.ipynb)**: Set up and use vector stores for similarity search
+  - **Topics**: FAISS, Weaviate, Qdrant, hybrid search, metadata filtering
+  - **Difficulty**: Intermediate
+  - **Use Cases**: Storing and searching embeddings, building RAG systems
+
+- **[Advanced Vector Store and Search](https://github.com/Hawksight-AI/semantica/blob/main/cookbook/advanced/Advanced_Vector_Store_and_Search.ipynb)**: Advanced vector store operations and optimization
+  - **Topics**: Index optimization, hybrid search, performance tuning, namespace management
+  - **Difficulty**: Advanced
+  - **Use Cases**: Production deployments, performance optimization

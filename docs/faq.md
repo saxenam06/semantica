@@ -70,11 +70,26 @@ A structured representation where entities (nodes) are connected by relationship
 ### How do I build a knowledge graph?
 
 ```python
-from semantica.core import Semantica
+from semantica.ingest import FileIngestor
+from semantica.parse import DocumentParser
+from semantica.semantic_extract import NERExtractor, RelationExtractor
+from semantica.kg import GraphBuilder
 
-semantica = Semantica()
-result = semantica.build_knowledge_base(["document.pdf"])
-kg = result["knowledge_graph"]
+# Use individual modules
+ingestor = FileIngestor()
+parser = DocumentParser()
+ner = NERExtractor()
+rel_extractor = RelationExtractor()
+
+doc = ingestor.ingest_file("document.pdf")
+parsed = parser.parse_document("document.pdf")
+text = parsed.get("full_text", "")
+
+entities = ner.extract_entities(text)
+relationships = rel_extractor.extract_relations(text, entities=entities)
+
+builder = GraphBuilder()
+kg = builder.build_graph(entities=entities, relationships=relationships)
 ```
 
 ### Can I merge multiple knowledge graphs?
@@ -102,11 +117,11 @@ Yes! Semantica supports PDF, DOCX, HTML, JSON, CSV, and many other formats.
 ### How do I extract entities from text?
 
 ```python
-from semantica.core import Semantica
+from semantica.semantic_extract import NERExtractor
 
-semantica = Semantica()
-result = semantica.semantic_extract.extract_entities("Your text")
-entities = result["entities"]
+# Use NER extractor directly
+ner = NERExtractor()
+entities = ner.extract_entities("Your text")
 ```
 
 ### Can I use my own models?
