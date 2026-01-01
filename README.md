@@ -29,7 +29,7 @@
 
 **100% Open Source** • **MIT Licensed** • **Production Ready** • **Community Driven**
 
-[**Discord**](https://discord.gg/semantica) • [**GitHub**](https://github.com/Hawksight-AI/semantica)
+[**Discord**](https://discord.gg/semantica)
 
 </div>
 
