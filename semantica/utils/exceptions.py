@@ -39,9 +39,11 @@ Author: Semantica Contributors
 License: MIT
 """
 
+from __future__ import annotations
+
 import sys
 import traceback
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional
 
 
 class SemanticaError(Exception):

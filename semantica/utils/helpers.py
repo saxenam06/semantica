@@ -55,13 +55,15 @@ Author: Semantica Contributors
 License: MIT
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 def format_data(data: Any, format_type: str = "json") -> str:
@@ -470,7 +472,7 @@ def retry_on_error(
     max_retries: int = 3,
     delay: float = 1.0,
     backoff_factor: float = 2.0,
-    exceptions: Tuple[Type[Exception], ...] = (Exception,),
+    exceptions: Tuple[type[Exception], ...] = (Exception,),
 ):
     """
     Decorator for retrying function on error.
