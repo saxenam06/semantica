@@ -357,7 +357,7 @@ class ConsoleProgressDisplay(ProgressDisplay):
 
         line = " ".join(parts)
         self.current_lines[key] = line
-        sys.stdout.write(line)
+        self._safe_write(line)
 
     def show_summary(self, items: List[ProgressItem]) -> None:
         """Show final summary."""

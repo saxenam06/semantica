@@ -170,8 +170,7 @@ from .pptx_parser import PPTXData, PPTXParser, SlideContent
 
 # Try to import DoclingParser (optional dependency)
 try:
-    from .docling_parser import DoclingParser, DoclingMetadata
-    DOCLING_AVAILABLE = True
+    from .docling_parser import DoclingParser, DoclingMetadata, DOCLING_AVAILABLE
 except (ImportError, OSError):
     DOCLING_AVAILABLE = False
     DoclingParser = None
