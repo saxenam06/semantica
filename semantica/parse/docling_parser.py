@@ -48,9 +48,10 @@ DOCLING_IMPORT_ERROR = None
 DocumentConverter = None
 InputFormat = None
 PdfPipelineOptions = None
+PdfFormatOption = None
 
 try:
-    from docling.document_converter import DocumentConverter
+    from docling.document_converter import DocumentConverter, PdfFormatOption
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
     DOCLING_AVAILABLE = True
@@ -86,7 +87,7 @@ class DoclingParser:
             **config: Parser configuration:
                 - export_format: Export format ("markdown", "html", "json") (default: "markdown")
                 - enable_ocr: Enable OCR for scanned documents (default: False)
-                - table_extraction_mode: Table extraction mode (default: "auto")
+                  Note: OCR is handled via PdfPipelineOptions if needed
         """
         self.logger = get_logger("docling_parser")
         self.config = config
@@ -98,7 +99,6 @@ class DoclingParser:
         # Store config for lazy initialization
         self.export_format = config.get("export_format", "markdown")
         self.enable_ocr = config.get("enable_ocr", False)
-        self.table_extraction_mode = config.get("table_extraction_mode", "auto")
         self._converter = None
 
     def parse(self, file_path: Union[str, Path], **options) -> Dict[str, Any]:
@@ -152,11 +152,19 @@ class DoclingParser:
 
             # Lazy initialization of converter
             if self._converter is None:
-                self._converter = DocumentConverter(
-                    format_options={
-                        "markdown": {"table_format": self.table_extraction_mode},
-                    },
-                )
+                # Initialize with proper format_options if OCR is needed
+                if self.enable_ocr:
+                    # Configure PDF pipeline options for OCR
+                    pipeline_options = PdfPipelineOptions()
+                    # OCR will be automatically used when needed
+                    self._converter = DocumentConverter(
+                        format_options={
+                            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+                        }
+                    )
+                else:
+                    # Use default converter without special options
+                    self._converter = DocumentConverter()
 
             # Determine export format
             export_format = options.get("export_format", self.export_format)
@@ -375,129 +383,181 @@ class DoclingParser:
     def _extract_tables(
         self, result: Any, export_format: str
     ) -> List[Dict[str, Any]]:
-        """Extract tables from Docling result."""
+        """Extract tables from Docling result using direct API access."""
         tables = []
 
         try:
-            # Try to get tables from document structure
-            doc_dict = result.document.export_to_dict()
-
-            def find_tables(item: Dict[str, Any], page_num: int = 1):
-                if isinstance(item, dict):
-                    if item.get("type") == "table":
-                        table_data = self._convert_table_to_dict(item)
-                        table_data["page_number"] = page_num
-                        tables.append(table_data)
-                    elif "content" in item:
-                        # Check if this is a page
-                        if item.get("type") == "page":
-                            page_num = item.get("page", page_num)
-                        for content_item in item.get("content", []):
-                            find_tables(content_item, page_num)
-
-            if isinstance(doc_dict, dict) and "content" in doc_dict:
-                for item in doc_dict["content"]:
-                    find_tables(item)
+            # Use direct API access to tables
+            doc = result.document
+            
+            # Iterate through tables directly
+            for table in doc.tables:
+                try:
+                    # Get table data
+                    table_data_obj = table.data
+                    
+                    # Extract rows and columns
+                    rows = []
+                    
+                    # Try to get table as markdown to parse rows (most reliable method)
+                    try:
+                        table_md = table.export_to_markdown(doc=doc)
+                        
+                        # Parse markdown table into rows
+                        for line in table_md.strip().split('\n'):
+                            if '|' in line and not line.strip().startswith('|---'):
+                                # Parse markdown table row
+                                cells = [cell.strip() for cell in line.split('|')[1:-1]]
+                                if cells:
+                                    rows.append(cells)
+                    except Exception as e:
+                        self.logger.debug(f"Could not extract table via markdown: {e}")
+                    
+                    # If markdown parsing didn't work, try dataframe export (requires pandas)
+                    if not rows:
+                        try:
+                            import pandas as pd
+                            df = table.export_to_dataframe(doc=doc)
+                            rows = df.values.tolist()
+                            # Convert to strings
+                            rows = [[str(cell) for cell in row] for row in rows]
+                        except ImportError:
+                            self.logger.debug("Pandas not available for table extraction")
+                        except Exception as e:
+                            self.logger.debug(f"Could not extract table via dataframe: {e}")
+                    
+                    # If still no rows, create empty structure
+                    if not rows:
+                        rows = []
+                    
+                    # Determine page number from table provenance
+                    page_number = 1
+                    if hasattr(table, 'prov') and table.prov:
+                        if hasattr(table.prov, 'page_no'):
+                            page_number = table.prov.page_no
+                        elif isinstance(table.prov, dict) and 'page_no' in table.prov:
+                            page_number = table.prov['page_no']
+                    
+                    table_data = {
+                        "rows": rows,
+                        "row_count": len(rows),
+                        "col_count": max(len(row) for row in rows) if rows else 0,
+                        "data": rows,
+                        "page_number": page_number,
+                    }
+                    
+                    tables.append(table_data)
+                    
+                except Exception as e:
+                    self.logger.warning(f"Error extracting table: {e}")
+                    continue
 
         except Exception as e:
             self.logger.warning(f"Could not extract tables from Docling result: {e}")
 
         return tables
 
-    def _convert_table_to_dict(self, table_item: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert Docling table structure to Semantica format."""
-        table_data = {
-            "rows": [],
-            "row_count": 0,
-            "col_count": 0,
-            "data": [],
-        }
-
-        try:
-            # Extract table rows
-            if "content" in table_item:
-                for row_item in table_item["content"]:
-                    if row_item.get("type") == "table-row":
-                        row_data = []
-                        if "content" in row_item:
-                            for cell_item in row_item["content"]:
-                                if cell_item.get("type") == "table-cell":
-                                    cell_text = ""
-                                    if "content" in cell_item:
-                                        for cell_content in cell_item["content"]:
-                                            if isinstance(cell_content, dict):
-                                                cell_text += cell_content.get("text", "")
-                                            elif isinstance(cell_content, str):
-                                                cell_text += cell_content
-                                    row_data.append(cell_text.strip())
-                        if row_data:
-                            table_data["rows"].append(row_data)
-                            table_data["data"].append(row_data)
-
-            if table_data["rows"]:
-                table_data["row_count"] = len(table_data["rows"])
-                table_data["col_count"] = (
-                    max(len(row) for row in table_data["rows"]) if table_data["rows"] else 0
-                )
-
-        except Exception as e:
-            self.logger.warning(f"Error converting table: {e}")
-
-        return table_data
 
     def _extract_pages(self, result: Any, options: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Extract pages from Docling result."""
+        """Extract pages from Docling result using direct API access."""
         pages = []
 
         try:
-            doc_dict = result.document.export_to_dict()
-
-            def extract_page(page_item: Dict[str, Any], page_num: int):
-                page_text = ""
-                page_tables = []
-
-                if "content" in page_item:
-                    for content_item in page_item["content"]:
-                        if content_item.get("type") == "text":
-                            page_text += content_item.get("text", "") + "\n"
-                        elif content_item.get("type") == "table":
-                            table_data = self._convert_table_to_dict(content_item)
-                            table_data["page_number"] = page_num
-                            page_tables.append(table_data)
-
-                pages.append({
-                    "page_number": page_num,
-                    "text": page_text.strip(),
-                    "width": page_item.get("width", 0),
-                    "height": page_item.get("height", 0),
-                    "tables": [t for t in page_tables],
-                    "images": [],
-                })
-
-            # Find pages in document structure
-            if isinstance(doc_dict, dict) and "content" in doc_dict:
-                page_num = 1
-                for item in doc_dict["content"]:
-                    if item.get("type") == "page":
-                        extract_page(item, page_num)
-                        page_num += 1
-                    elif "pages" in item:
-                        # Handle paginated content
-                        for page_item in item.get("pages", []):
-                            extract_page(page_item, page_num)
-                            page_num += 1
-
-            # If no pages found, create a single page from full content
+            doc = result.document
+            
+            # Use direct API access to pages
+            # DoclingDocument.pages is a dict-like object
+            if hasattr(doc, 'pages') and doc.pages:
+                for page_no, page in doc.pages.items():
+                    try:
+                        # Extract text from page - iterate through items on this page
+                        page_text_parts = []
+                        page_tables = []
+                        
+                        # Iterate through document items to find those on this page
+                        for item, level in doc.iterate_items():
+                            # Check if item is on this page
+                            item_page = 1
+                            if hasattr(item, 'prov') and item.prov:
+                                if hasattr(item.prov, 'page_no'):
+                                    item_page = item.prov.page_no
+                                elif isinstance(item.prov, dict) and 'page_no' in item.prov:
+                                    item_page = item.prov['page_no']
+                            
+                            if item_page == page_no:
+                                # Extract text from text items
+                                if hasattr(item, 'text'):
+                                    page_text_parts.append(item.text)
+                                elif hasattr(item, 'export_to_markdown'):
+                                    try:
+                                        page_text_parts.append(item.export_to_markdown(doc=doc))
+                                    except:
+                                        pass
+                                
+                                # Extract tables on this page
+                                from docling_core.types.doc import TableItem
+                                if isinstance(item, TableItem):
+                                    # Get table data for this page
+                                    table_data = self._extract_single_table(item, doc, page_no)
+                                    if table_data:
+                                        page_tables.append(table_data)
+                        
+                        # Get page dimensions
+                        width = 0
+                        height = 0
+                        if hasattr(page, 'size'):
+                            if hasattr(page.size, 'width'):
+                                width = page.size.width
+                            if hasattr(page.size, 'height'):
+                                height = page.size.height
+                        
+                        pages.append({
+                            "page_number": page_no,
+                            "text": "\n".join(page_text_parts).strip(),
+                            "width": width,
+                            "height": height,
+                            "tables": page_tables,
+                            "images": [],
+                        })
+                    except Exception as e:
+                        self.logger.warning(f"Error extracting page {page_no}: {e}")
+                        continue
+            
+            # Fallback: if no pages found, use ConversionResult.pages or create single page
             if not pages:
-                full_text = result.document.export_to_markdown()
-                pages.append({
-                    "page_number": 1,
-                    "text": full_text,
-                    "width": 0,
-                    "height": 0,
-                    "tables": [],
-                    "images": [],
-                })
+                # Try to use result.pages (list of Page objects)
+                if hasattr(result, 'pages') and result.pages:
+                    for page_obj in result.pages:
+                        pages.append({
+                            "page_number": getattr(page_obj, 'page_no', len(pages) + 1),
+                            "text": "",
+                            "width": getattr(page_obj.size, 'width', 0) if hasattr(page_obj, 'size') else 0,
+                            "height": getattr(page_obj.size, 'height', 0) if hasattr(page_obj, 'size') else 0,
+                            "tables": [],
+                            "images": [],
+                        })
+                
+                # If still no pages, create a single page from full content
+                if not pages:
+                    try:
+                        full_text = doc.export_to_markdown()
+                        pages.append({
+                            "page_number": 1,
+                            "text": full_text,
+                            "width": 0,
+                            "height": 0,
+                            "tables": [],
+                            "images": [],
+                        })
+                    except:
+                        pages.append({
+                            "page_number": 1,
+                            "text": "",
+                            "width": 0,
+                            "height": 0,
+                            "tables": [],
+                            "images": [],
+                        })
 
         except Exception as e:
             self.logger.warning(f"Could not extract pages from Docling result: {e}")
@@ -513,39 +573,123 @@ class DoclingParser:
                     "images": [],
                 })
             except:
-                pass
+                pages.append({
+                    "page_number": 1,
+                    "text": "",
+                    "width": 0,
+                    "height": 0,
+                    "tables": [],
+                    "images": [],
+                })
 
         return pages
+    
+    def _extract_single_table(self, table_item: Any, doc: Any, page_no: int) -> Optional[Dict[str, Any]]:
+        """Extract a single table item to dict format."""
+        try:
+            # Get table data
+            table_data_obj = table_item.data
+            
+            # Extract rows
+            rows = []
+            try:
+                # Try markdown export first (most reliable)
+                table_md = table_item.export_to_markdown(doc=doc)
+                for line in table_md.strip().split('\n'):
+                    if '|' in line and not line.strip().startswith('|---'):
+                        cells = [cell.strip() for cell in line.split('|')[1:-1]]
+                        if cells:
+                            rows.append(cells)
+            except Exception as e:
+                self.logger.debug(f"Could not extract table via markdown: {e}")
+                # Fallback: try dataframe export (requires pandas)
+                try:
+                    import pandas as pd
+                    df = table_item.export_to_dataframe(doc=doc)
+                    rows = df.values.tolist()
+                    rows = [[str(cell) for cell in row] for row in rows]
+                except ImportError:
+                    self.logger.debug("Pandas not available for table extraction")
+                except Exception as e2:
+                    self.logger.debug(f"Could not extract table via dataframe: {e2}")
+            
+            if rows:
+                return {
+                    "rows": rows,
+                    "row_count": len(rows),
+                    "col_count": max(len(row) for row in rows) if rows else 0,
+                    "data": rows,
+                    "page_number": page_no,
+                }
+        except Exception as e:
+            self.logger.warning(f"Error extracting single table: {e}")
+        
+        return None
 
     def _extract_images(self, result: Any) -> List[Dict[str, Any]]:
-        """Extract images from Docling result."""
+        """Extract images/pictures from Docling result using direct API access."""
         images = []
 
         try:
-            doc_dict = result.document.export_to_dict()
-
-            def find_images(item: Dict[str, Any], page_num: int = 1):
-                if isinstance(item, dict):
-                    if item.get("type") == "image":
+            doc = result.document
+            
+            # Use direct API access to pictures
+            # DoclingDocument.pictures is iterable
+            if hasattr(doc, 'pictures') and doc.pictures:
+                for picture in doc.pictures:
+                    try:
+                        # Get page number from provenance
+                        page_number = 1
+                        if hasattr(picture, 'prov') and picture.prov:
+                            if hasattr(picture.prov, 'page_no'):
+                                page_number = picture.prov.page_no
+                            elif isinstance(picture.prov, dict) and 'page_no' in picture.prov:
+                                page_number = picture.prov['page_no']
+                        
+                        # Get bounding box
+                        x0, y0, x1, y1 = 0, 0, 0, 0
+                        width, height = 0, 0
+                        
+                        if hasattr(picture, 'bbox'):
+                            bbox = picture.bbox
+                            if hasattr(bbox, 'x0'):
+                                x0 = bbox.x0
+                            if hasattr(bbox, 'y0'):
+                                y0 = bbox.y0
+                            if hasattr(bbox, 'x1'):
+                                x1 = bbox.x1
+                            if hasattr(bbox, 'y1'):
+                                y1 = bbox.y1
+                        elif isinstance(picture.bbox, dict):
+                            x0 = picture.bbox.get('x0', 0)
+                            y0 = picture.bbox.get('y0', 0)
+                            x1 = picture.bbox.get('x1', 0)
+                            y1 = picture.bbox.get('y1', 0)
+                        
+                        # Get dimensions
+                        if hasattr(picture, 'size'):
+                            if hasattr(picture.size, 'width'):
+                                width = picture.size.width
+                            if hasattr(picture.size, 'height'):
+                                height = picture.size.height
+                        elif hasattr(picture, 'width'):
+                            width = picture.width
+                        elif hasattr(picture, 'height'):
+                            height = picture.height
+                        
                         img_data = {
-                            "page_number": page_num,
-                            "x0": item.get("bbox", {}).get("x0", 0) if "bbox" in item else 0,
-                            "y0": item.get("bbox", {}).get("y0", 0) if "bbox" in item else 0,
-                            "x1": item.get("bbox", {}).get("x1", 0) if "bbox" in item else 0,
-                            "y1": item.get("bbox", {}).get("y1", 0) if "bbox" in item else 0,
-                            "width": item.get("width", 0),
-                            "height": item.get("height", 0),
+                            "page_number": page_number,
+                            "x0": x0,
+                            "y0": y0,
+                            "x1": x1,
+                            "y1": y1,
+                            "width": width,
+                            "height": height,
                         }
                         images.append(img_data)
-                    elif "content" in item:
-                        if item.get("type") == "page":
-                            page_num = item.get("page", page_num)
-                        for content_item in item.get("content", []):
-                            find_images(content_item, page_num)
-
-            if isinstance(doc_dict, dict) and "content" in doc_dict:
-                for item in doc_dict["content"]:
-                    find_images(item)
+                    except Exception as e:
+                        self.logger.warning(f"Error extracting picture: {e}")
+                        continue
 
         except Exception as e:
             self.logger.warning(f"Could not extract images from Docling result: {e}")
@@ -553,31 +697,33 @@ class DoclingParser:
         return images
 
     def _extract_metadata(self, result: Any, file_path: Path) -> DoclingMetadata:
-        """Extract metadata from Docling result."""
+        """Extract metadata from Docling result using direct API access."""
         metadata = DoclingMetadata()
 
         try:
-            # Try to get metadata from document
-            doc_dict = result.document.export_to_dict()
-
+            doc = result.document
+            
             # Extract format
-            metadata.format = file_path.suffix.lower()
+            metadata.format = file_path.suffix.lower().lstrip('.')
 
-            # Try to extract page count
-            if isinstance(doc_dict, dict) and "content" in doc_dict:
-                page_count = 0
-                for item in doc_dict["content"]:
-                    if item.get("type") == "page":
-                        page_count += 1
-                metadata.page_count = page_count if page_count > 0 else 1
+            # Extract page count using direct API
+            if hasattr(doc, 'pages') and doc.pages:
+                metadata.page_count = len(doc.pages)
+            elif hasattr(result, 'pages') and result.pages:
+                metadata.page_count = len(result.pages)
+            else:
+                metadata.page_count = 1
 
+            # Try to extract other metadata if available
             # Docling may not provide all metadata fields directly
             # These would need to be extracted from the original document if available
+            if hasattr(doc, 'name'):
+                metadata.title = doc.name
 
         except Exception as e:
             self.logger.warning(f"Could not extract metadata from Docling result: {e}")
             metadata.page_count = 1
-            metadata.format = file_path.suffix.lower()
+            metadata.format = file_path.suffix.lower().lstrip('.')
 
         return metadata
 

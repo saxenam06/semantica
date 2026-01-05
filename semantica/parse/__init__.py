@@ -169,12 +169,66 @@ from .pdf_parser import PDFMetadata, PDFPage, PDFParser
 from .pptx_parser import PPTXData, PPTXParser, SlideContent
 
 # Try to import DoclingParser (optional dependency)
+# First check if docling_parser module can be imported and get DOCLING_AVAILABLE
+DOCLING_AVAILABLE = False
+DoclingParser = None
+DoclingMetadata = None
+DOCLING_IMPORT_ERROR = None
+
 try:
-    from .docling_parser import DoclingParser, DoclingMetadata, DOCLING_AVAILABLE
-except (ImportError, OSError):
+    # Import the module first to check DOCLING_AVAILABLE
+    from . import docling_parser
+    DOCLING_AVAILABLE = getattr(docling_parser, 'DOCLING_AVAILABLE', False)
+    DOCLING_IMPORT_ERROR = getattr(docling_parser, 'DOCLING_IMPORT_ERROR', None)
+    
+    # Only import classes if docling is available
+    if DOCLING_AVAILABLE:
+        from .docling_parser import DoclingParser, DoclingMetadata
+    else:
+        # Create placeholder classes that raise helpful errors
+        import_error_msg = DOCLING_IMPORT_ERROR
+        
+        class DoclingParser:
+            """Placeholder for DoclingParser when docling is not available."""
+            def __init__(self, **config):
+                error_msg = "DoclingParser requires the 'docling' package to be installed and working."
+                if import_error_msg:
+                    error_msg += f"\n\nError: {import_error_msg}"
+                error_msg += "\n\nInstall it with: pip install docling"
+                raise ImportError(error_msg)
+        
+        class DoclingMetadata:
+            """Placeholder for DoclingMetadata when docling is not available."""
+            def __init__(self, **kwargs):
+                error_msg = "DoclingMetadata requires the 'docling' package to be installed and working."
+                if import_error_msg:
+                    error_msg += f"\n\nError: {import_error_msg}"
+                error_msg += "\n\nInstall it with: pip install docling"
+                raise ImportError(error_msg)
+except (ImportError, OSError, AttributeError) as e:
+    # If import fails, docling is not available
     DOCLING_AVAILABLE = False
-    DoclingParser = None
-    DoclingMetadata = None
+    import_error_msg = str(e)
+    DOCLING_IMPORT_ERROR = import_error_msg
+    
+    # Create placeholder classes that raise helpful errors
+    class DoclingParser:
+        """Placeholder for DoclingParser when docling is not available."""
+        def __init__(self, **config):
+            error_msg = "DoclingParser requires the 'docling' package to be installed and working."
+            if import_error_msg:
+                error_msg += f"\n\nError: {import_error_msg}"
+            error_msg += "\n\nInstall it with: pip install docling"
+            raise ImportError(error_msg)
+    
+    class DoclingMetadata:
+        """Placeholder for DoclingMetadata when docling is not available."""
+        def __init__(self, **kwargs):
+            error_msg = "DoclingMetadata requires the 'docling' package to be installed and working."
+            if import_error_msg:
+                error_msg += f"\n\nError: {import_error_msg}"
+            error_msg += "\n\nInstall it with: pip install docling"
+            raise ImportError(error_msg)
 from .registry import MethodRegistry, method_registry
 from .structured_data_parser import StructuredDataParser
 from .web_parser import HTMLContentParser, JavaScriptRenderer, WebParser
@@ -251,5 +305,5 @@ __all__ = [
 ]
 
 # Conditionally add DoclingParser to exports if available
-if DOCLING_AVAILABLE:
-    __all__.extend(["DoclingParser", "DoclingMetadata"])
+# Always add to __all__ so import doesn't fail, but classes will be None if not available
+__all__.extend(["DoclingParser", "DoclingMetadata"])
