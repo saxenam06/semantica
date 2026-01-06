@@ -7,7 +7,8 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/semantica.svg)](https://pypi.org/project/semantica/)
-[![Downloads](https://pepy.tech/badge/semantica)](https://pepy.tech/project/semantica)
+[![Monthly Downloads](https://img.shields.io/pypi/dm/semantica)](https://pypi.org/project/semantica/)
+[![Total Downloads](https://static.pepy.tech/badge/semantica)](https://pepy.tech/project/semantica)
 [![Discord](https://img.shields.io/discord/semantica?color=7289da&label=discord)](https://discord.gg/pMHguUzG)
 [![CI](https://github.com/Hawksight-AI/semantica/workflows/CI/badge.svg)](https://github.com/Hawksight-AI/semantica/actions)
 
@@ -27,7 +28,7 @@
 
 *The missing fabric between raw data and AI engineering. A comprehensive open-source framework for building semantic layers and knowledge engineering systems that transform unstructured data into AI-ready knowledge — powering Knowledge Graph-Powered RAG (GraphRAG), AI Agents, Multi-Agent Systems, and AI applications with structured semantic knowledge.*
 
-**100% Open Source** • **MIT Licensed** • **Production Ready** • **Community Driven**
+**100% Open Source** • **MIT Licensed** • **Latest Version: 0.1.1** • **Production Ready** • **Community Driven**
 
 [**Discord**](https://discord.gg/pMHguUzG)
 

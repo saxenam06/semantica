@@ -6,9 +6,10 @@
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://badge.fury.io/py/semantica"><img src="https://badge.fury.io/py/semantica.svg" alt="PyPI version"></a>
-  <a href="https://pepy.tech/project/semantica"><img src="https://pepy.tech/badge/semantica" alt="Downloads"></a>
+  <a href="https://pypi.org/project/semantica/"><img src="https://img.shields.io/pypi/dm/semantica" alt="Monthly Downloads"></a>
+  <a href="https://pepy.tech/project/semantica"><img src="https://static.pepy.tech/badge/semantica" alt="Total Downloads"></a>
   <a href="https://semantica.readthedocs.io/"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
-  <a href="https://discord.gg/semantica"><img src="https://img.shields.io/discord/semantica?color=7289da&label=discord" alt="Discord"></a>
+  <a href="https://discord.gg/pMHguUzG"><img src="https://img.shields.io/discord/semantica?color=7289da&label=discord" alt="Discord"></a>
   
   <p><strong>Open Source Framework for Semantic Layer & Knowledge Engineering</strong></p>
   
@@ -16,7 +17,7 @@
   
   <p><em>The missing fabric between raw data and AI engineering. A comprehensive open-source framework for building semantic layers and knowledge engineering systems that transform unstructured data into AI-ready knowledge — powering Knowledge Graph-Powered RAG (GraphRAG), AI Agents, Multi-Agent Systems, and AI applications with structured semantic knowledge.</em></p>
   
-  <p>🆓 <strong>100% Open Source</strong> • 📜 <strong>MIT Licensed</strong> • 🚀 <strong>Production Ready</strong> • 🌍 <strong>Community Driven</strong></p>
+  <p>🆓 <strong>100% Open Source</strong> • 📜 <strong>MIT Licensed</strong> • 🚀 <strong>Latest Version: 0.1.1</strong> • 🚀 <strong>Production Ready</strong> • 🌍 <strong>Community Driven</strong></p>
   
   <p>
     <a href="getting-started/" class="md-button md-button--primary">Get Started</a>
