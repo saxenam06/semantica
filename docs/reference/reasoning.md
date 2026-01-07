@@ -190,8 +190,8 @@ if proof:
 ### Knowledge Graph Enrichment
 
 ```python
-from semantica.reasoning import Reasoner, Rule
-from semantica.kg import KnowledgeGraph
+from semantica.reasoning import Reasoner
+from semantica.kg import GraphBuilder
 
 # 1. Define Rules
 rules = [
@@ -199,14 +199,19 @@ rules = [
     "IF Ancestor(?x, ?y) AND Ancestor(?y, ?z) THEN Ancestor(?x, ?z)"
 ]
 
-# 2. Load Graph and Run Inference
-kg = KnowledgeGraph()
-reasoner = Reasoner()
-inferred = reasoner.infer_facts(kg.get_all_triplets(), rules)
+# 2. Build Graph and Run Inference
+builder = GraphBuilder()
+kg = builder.build(sources=data)
 
-# 3. Update Graph
+reasoner = Reasoner()
+# Infer new facts from entities and relationships
+inferred = reasoner.infer_facts(kg["entities"] + kg["relationships"], rules)
+
+# 3. Update Graph with Inferred Facts
 for fact_str in inferred:
-    kg.add_fact_from_string(fact_str)
+    # Add new inferred facts back to the graph
+    # For a production app, you'd parse these into entities/relationships
+    kg["entities"].append({"type": "InferredFact", "name": fact_str})
 ```
 
 ---

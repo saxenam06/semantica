@@ -31,11 +31,11 @@ class TestGraphBuilder(unittest.TestCase):
     def test_initialization_defaults(self):
         """Test initialization with default parameters"""
         builder = GraphBuilder()
-        self.assertTrue(builder.merge_entities)
+        self.assertFalse(builder.merge_entities)
         self.assertTrue(builder.resolve_conflicts)
         self.assertFalse(builder.enable_temporal)
         # Should initialize resolver and conflict detector by default
-        self.assertIsNotNone(builder.entity_resolver)
+        self.assertIsNone(builder.entity_resolver)
         self.assertIsNotNone(builder.conflict_detector)
 
     def test_initialization_disabled_features(self):

@@ -189,7 +189,6 @@ seed:
 ```python
 from semantica.seed import SeedDataManager
 from semantica.ingest import Ingestor
-from semantica.kg import KnowledgeGraph
 
 # 1. Load Foundation (Seed)
 seed_manager = SeedDataManager()

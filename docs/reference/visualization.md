@@ -253,12 +253,12 @@ visualization:
 ### Exploratory Data Analysis (EDA)
 
 ```python
-from semantica.ingest import Ingestor
-from semantica.kg import KnowledgeGraph
+from semantica.kg import GraphBuilder
 from semantica.visualization import KGVisualizer, AnalyticsVisualizer
 
-# 1. Load Data
-kg = KnowledgeGraph.load("my_graph")
+# 1. Build Knowledge Graph
+builder = GraphBuilder()
+kg = builder.build(sources=sample_data)
 
 # 2. Visualize Structure
 kg_viz = KGVisualizer()

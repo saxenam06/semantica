@@ -178,7 +178,7 @@ class AgentContext:
             vs_path = os.path.join(path, "vector_store")
             self.vector_store.save(vs_path)
 
-        # 3. Save KnowledgeGraph state
+        # 3. Save Knowledge Graph state
         if self.knowledge_graph:
             if hasattr(self.knowledge_graph, "save_to_file"):
                 # JSON export for ContextGraph
@@ -214,7 +214,7 @@ class AgentContext:
             if os.path.exists(vs_path):
                 self.vector_store.load(vs_path)
 
-        # 3. Load KnowledgeGraph state
+        # 3. Load Knowledge Graph state
         if self.knowledge_graph:
             kg_json_path = os.path.join(path, "knowledge_graph.json")
             kg_dir_path = os.path.join(path, "knowledge_graph")

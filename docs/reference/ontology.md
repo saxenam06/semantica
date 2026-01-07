@@ -222,17 +222,31 @@ ontology:
 
 ```python
 from semantica.ontology import OntologyEngine
-from semantica.kg import KnowledgeGraph
+from semantica.kg import GraphBuilder, GraphValidator
 
 # 1. Generate Ontology from Sample Data
 engine = OntologyEngine()
 ontology = engine.from_data(sample_data)
 
-# 2. Initialize KG with Ontology
-kg = KnowledgeGraph(schema=ontology)
+# 2. Extract schema for validation
+schema = {
+    "entity_types": [c["name"] for c in ontology["classes"]],
+    "relationship_types": [p["name"] for p in ontology["properties"]]
+}
 
-# 3. Add Data (Validated against Ontology)
-kg.add_entities(full_dataset)  # Will raise error if violates schema
+# 3. Initialize Validator and Builder
+validator = GraphValidator(schema=schema, strict=True)
+builder = GraphBuilder()
+
+# 4. Build Knowledge Graph
+kg = builder.build(full_dataset)
+
+# 5. Validate against Ontology Schema
+validation_result = validator.validate(kg)
+if validation_result.is_valid:
+    print("Knowledge Graph matches the ontology schema!")
+else:
+    print(f"Validation issues found: {validation_result.issues}")
 ```
 
 ---
