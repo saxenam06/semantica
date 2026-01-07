@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed orchestrator lazy property initialization and configuration normalization logic in `Orchestrator`.
+- Resolved `AssertionError` in orchestrator tests by aligning test mocks with production component usage.
+- Fixed dependency compatibility issues by pinning `protobuf==4.25.3` and `grpcio==1.67.1`.
+- Added missing dependencies `GitPython` and `chardet` to `pyproject.toml`.
+- Verified and aligned `FileObject.text` property usage in GraphRAG notebooks for consistent content decoding.
+
 ### Added
 - **Semantic Extract Improvements**:
     - Introduced `auto-chunking` for long text processing in LLM extraction methods (`extract_entities_llm`, `extract_relations_llm`, `extract_triplets_llm`).

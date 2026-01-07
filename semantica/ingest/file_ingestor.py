@@ -54,6 +54,30 @@ class FileObject:
     metadata: Dict[str, Any] = field(default_factory=dict)
     ingested_at: datetime = field(default_factory=datetime.now)
 
+    @property
+    def text(self) -> str:
+        """
+        Get the file content as text.
+
+        Returns:
+            str: Decoded file content or empty string if no content
+        """
+        if self.content is None:
+            return ""
+
+        if isinstance(self.content, str):
+            return self.content
+
+        try:
+            # Try to decode as UTF-8
+            return self.content.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                # Fallback to latin-1
+                return self.content.decode("latin-1")
+            except Exception:
+                return ""
+
 
 class FileTypeDetector:
     """

@@ -138,6 +138,82 @@ class Semantica:
                 raise ProcessingError(f"Reasoning module not available: {e}")
         return self._modules["reasoner"]
 
+    @property
+    def graph_builder(self) -> Any:
+        """
+        Get the framework's knowledge graph builder.
+
+        Returns:
+            GraphBuilder instance
+        """
+        if "graph_builder" not in self._modules:
+            try:
+                from ..kg import GraphBuilder
+                self._modules["graph_builder"] = GraphBuilder(
+                    config=self.config.get("kg", {})
+                )
+            except (ImportError, OSError) as e:
+                self.logger.warning(f"Could not import GraphBuilder: {e}")
+                raise ProcessingError(f"KG module not available: {e}")
+        return self._modules["graph_builder"]
+
+    @property
+    def document_parser(self) -> Any:
+        """
+        Get the framework's document parser.
+
+        Returns:
+            DocumentParser instance
+        """
+        if "document_parser" not in self._modules:
+            try:
+                from ..parse import DocumentParser
+                self._modules["document_parser"] = DocumentParser(
+                    config=self.config.get("parse", {})
+                )
+            except (ImportError, OSError) as e:
+                self.logger.warning(f"Could not import DocumentParser: {e}")
+                raise ProcessingError(f"Parse module not available: {e}")
+        return self._modules["document_parser"]
+
+    @property
+    def file_ingestor(self) -> Any:
+        """
+        Get the framework's file ingestor.
+
+        Returns:
+            FileIngestor instance
+        """
+        if "file_ingestor" not in self._modules:
+            try:
+                from ..ingest import FileIngestor
+                self._modules["file_ingestor"] = FileIngestor(
+                    config=self.config.get("ingest", {})
+                )
+            except (ImportError, OSError) as e:
+                self.logger.warning(f"Could not import FileIngestor: {e}")
+                raise ProcessingError(f"Ingest module not available: {e}")
+        return self._modules["file_ingestor"]
+
+    @property
+    def pipeline_builder(self) -> Any:
+        """
+        Get the framework's pipeline builder.
+
+        Returns:
+            PipelineBuilder instance
+        """
+        if "pipeline_builder" not in self._modules:
+            try:
+                from ..pipeline import PipelineBuilder
+                self._modules["pipeline_builder"] = PipelineBuilder(
+                    config=self.config.get("pipeline", {})
+                )
+            except (ImportError, OSError) as e:
+                self.logger.warning(f"Could not import PipelineBuilder: {e}")
+                raise ProcessingError(f"Pipeline module not available: {e}")
+        return self._modules["pipeline_builder"]
+
     @log_execution_time
     def initialize(self) -> None:
         """
@@ -298,7 +374,7 @@ class Semantica:
                     # Update overall progress
                     if idx % update_interval == 0 or idx == total_sources:
                         self.progress_tracker.update_progress(
-                            tracking_id,
+                            overall_tracking_id,
                             processed=idx,
                             total=total_sources,
                             message=f"Processing sources... {idx}/{total_sources}"
@@ -665,13 +741,12 @@ class Semantica:
             Pipeline object or configuration dict (if pipeline module not available)
         """
         try:
-            from ..pipeline import PipelineBuilder
-
-            pipeline_builder = PipelineBuilder()
+            # Use the lazy property
+            builder = self.pipeline_builder
 
             if not pipeline_config:
-                pipeline_builder.add_step("default_step", "default")
-                return pipeline_builder.build("default_pipeline")
+                builder.add_step("default_step", "default")
+                return builder.build("default_pipeline")
 
             steps_config = pipeline_config.get("steps")
 
@@ -688,14 +763,14 @@ class Semantica:
                 }
                 if "parallelism" in pipeline_config:
                     normalized_config["parallelism"] = pipeline_config["parallelism"]
-                return pipeline_builder.build_pipeline(normalized_config)
+                return builder.build_pipeline(normalized_config)
 
             if "steps" in pipeline_config:
-                return pipeline_builder.build_pipeline(pipeline_config)
+                return builder.build_pipeline(pipeline_config)
 
-            pipeline_builder.add_step("default_step", "default")
-            return pipeline_builder.build("default_pipeline")
-        except (ImportError, OSError):
+            builder.add_step("default_step", "default")
+            return builder.build("default_pipeline")
+        except (ImportError, OSError, ProcessingError):
             self.logger.debug("Pipeline module not available, using config directly")
             return pipeline_config
 
@@ -725,8 +800,6 @@ class Semantica:
             Dictionary containing knowledge graph structure
         """
         try:
-            from ..kg import GraphBuilder
-
             # Extract entities and relationships from results
             graph_sources = []
             for result in results:
@@ -751,11 +824,8 @@ class Semantica:
             )
 
             try:
-                # Build knowledge graph
-                graph_builder = GraphBuilder(
-                    merge_entities=True, resolve_conflicts=True
-                )
-                knowledge_graph = graph_builder.build(graph_sources)
+                # Build knowledge graph using the lazy property
+                knowledge_graph = self.graph_builder.build(graph_sources)
                 self.progress_tracker.stop_tracking(kg_tracking_id, status="completed")
                 return knowledge_graph
             except Exception as e:
@@ -764,7 +834,7 @@ class Semantica:
                 )
                 raise
 
-        except (ImportError, OSError):
+        except (ImportError, OSError, ProcessingError):
             self.logger.warning("KG module not available, returning placeholder")
             return {"status": "placeholder", "results": results}
 
@@ -782,8 +852,6 @@ class Semantica:
             Dictionary containing generated embeddings
         """
         try:
-            from ..embeddings import EmbeddingGenerator
-
             # Extract text content from results
             texts_to_embed = []
             for result in results:
@@ -811,9 +879,8 @@ class Semantica:
             )
 
             try:
-                # Generate embeddings
-                embedding_generator = EmbeddingGenerator()
-                embeddings_result = embedding_generator.process_batch(texts_to_embed)
+                # Generate embeddings using the lazy property
+                embeddings_result = self.embedding_generator.process_batch(texts_to_embed)
                 self.progress_tracker.stop_tracking(
                     embed_tracking_id,
                     status="completed",
@@ -834,7 +901,7 @@ class Semantica:
                 )
                 raise
 
-        except (ImportError, OSError):
+        except (ImportError, OSError, ProcessingError):
             self.logger.warning(
                 "Embeddings module not available, returning placeholder"
             )
