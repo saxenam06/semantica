@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Fixed `TypeError: unhashable type: 'Entity'` in `GraphAnalyzer` when processing graphs with raw `Entity` objects or dictionaries in relationships (#159).
+- Robustified ID extraction across `CentralityCalculator`, `CommunityDetector`, and `ConnectivityAnalyzer` to handle various entity formats.
+- Improved `Entity` class hashability and equality logic in `utils/types.py`.
+- Added end-to-end integration test suite for Knowledge Graph pipeline validation (GraphBuilder -> EntityResolver -> GraphAnalyzer).
 - Fixed orchestrator lazy property initialization and configuration normalization logic in `Orchestrator`.
 - Resolved `AssertionError` in orchestrator tests by aligning test mocks with production component usage.
 - Fixed dependency compatibility issues by pinning `protobuf==4.25.3` and `grpcio==1.67.1`.
