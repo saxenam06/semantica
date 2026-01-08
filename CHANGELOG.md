@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Fixed model switching bug in `TextEmbedder` where internal state was not cleared, preventing dynamic updates between `fastembed` and `sentence_transformers` (#160).
+- Implemented model-intrinsic embedding dimension detection in `TextEmbedder` to ensure consistency between models and vector databases.
+- Updated `set_model` to properly refresh configuration and dimensions during model switches.
+
+### Added
+- Added comprehensive unit test suite `tests/embeddings/test_model_switching.py` for verifying dynamic model transitions and dimension updates.
 - Fixed `TypeError: unhashable type: 'Entity'` in `GraphAnalyzer` when processing graphs with raw `Entity` objects or dictionaries in relationships (#159).
 - Robustified ID extraction across `CentralityCalculator`, `CommunityDetector`, and `ConnectivityAnalyzer` to handle various entity formats.
 - Improved `Entity` class hashability and equality logic in `utils/types.py`.
