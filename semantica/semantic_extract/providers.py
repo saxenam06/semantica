@@ -1183,28 +1183,88 @@ class HuggingFaceModelLoader:
         return [{"triplet": decoded}]
 
 
-def create_provider(name: str, **kwargs) -> BaseProvider:
-    """Create provider - checks registry for custom providers."""
-    # Check registry first
-    custom_provider = provider_registry.get(name)
-    if custom_provider:
-        return custom_provider(**kwargs)
+class ProviderPool:
+    """Pool for reusing provider instances."""
+    
+    def __init__(self):
+        self._providers: Dict[str, BaseProvider] = {}
+        self.logger = get_logger("provider_pool")
 
-    # Built-in providers
-    builtin = {
-        "openai": OpenAIProvider,
-        "gemini": GeminiProvider,
-        "groq": GroqProvider,
-        "anthropic": AnthropicProvider,
-        "ollama": OllamaProvider,
-        "huggingface_llm": HuggingFaceLLMProvider,
-        "deepseek": DeepSeekProvider,
-    }
+    def get(self, name: str, **kwargs) -> BaseProvider:
+        """Get or create a provider instance."""
+        # Create a cache key from name and kwargs
+        # Filter out non-hashable items or volatile args if any
+        # For now, we assume kwargs are configuration options that should match
+        
+        # Helper to make dict hashable
+        def make_hashable(value):
+            if isinstance(value, dict):
+                return tuple(sorted((k, make_hashable(v)) for k, v in value.items()))
+            elif isinstance(value, list):
+                return tuple(make_hashable(v) for v in value)
+            return value
 
-    provider_class = builtin.get(name.lower())
-    if not provider_class:
-        raise ValueError(
-            f"Unknown provider: {name}. Register custom provider or use built-in: {list(builtin.keys())}"
-        )
+        key_parts = [name]
+        for k, v in sorted(kwargs.items()):
+            # Skip some keys if they shouldn't affect pooling? 
+            # For now, all init args matter for the instance identity.
+            key_parts.append((k, make_hashable(v)))
+            
+        key = str(tuple(key_parts))
+        
+        if key in self._providers:
+            return self._providers[key]
+            
+        self.logger.debug(f"Creating new provider instance for {name}")
+        provider = self._create_provider(name, **kwargs)
+        self._providers[key] = provider
+        return provider
+    
+    def _create_provider(self, name: str, **kwargs) -> BaseProvider:
+        """Internal creation logic."""
+        # Check registry first
+        custom_provider = provider_registry.get(name)
+        if custom_provider:
+            return custom_provider(**kwargs)
 
-    return provider_class(**kwargs)
+        # Built-in providers
+        builtin = {
+            "openai": OpenAIProvider,
+            "gemini": GeminiProvider,
+            "groq": GroqProvider,
+            "anthropic": AnthropicProvider,
+            "ollama": OllamaProvider,
+            "huggingface_llm": HuggingFaceLLMProvider,
+            "deepseek": DeepSeekProvider,
+        }
+
+        provider_class = builtin.get(name.lower())
+        if not provider_class:
+            raise ValueError(
+                f"Unknown provider: {name}. Register custom provider or use built-in: {list(builtin.keys())}"
+            )
+
+        return provider_class(**kwargs)
+
+    def clear(self):
+        """Clear the provider pool."""
+        self._providers.clear()
+
+
+# Global provider pool
+_provider_pool = ProviderPool()
+
+
+def create_provider(name: str, use_pool: bool = True, **kwargs) -> BaseProvider:
+    """
+    Create provider - checks registry for custom providers.
+    
+    Args:
+        name: Provider name
+        use_pool: Whether to use the provider pool (default: True)
+        **kwargs: Provider arguments
+    """
+    if use_pool:
+        return _provider_pool.get(name, **kwargs)
+        
+    return _provider_pool._create_provider(name, **kwargs)

@@ -178,9 +178,11 @@ class NERExtractor:
             )
             
             try:
-                results = []
+                results = [None] * len(text)
                 total_items = len(text)
                 total_entities_count = 0
+                processed_count = 0
+                
                 # Update more frequently: every 1% or at least every 10 items, but always update for small datasets
                 if total_items <= 10:
                     update_interval = 1  # Update every item for small datasets
@@ -188,15 +190,18 @@ class NERExtractor:
                     update_interval = max(1, min(10, total_items // 100))
                 
                 # Initial progress update - ALWAYS show this
-                remaining = total_items
                 self.progress_tracker.update_progress(
                     tracking_id,
                     processed=0,
                     total=total_items,
-                    message=f"Starting batch extraction... 0/{total_items} (remaining: {remaining})"
+                    message=f"Starting batch extraction... 0/{total_items}"
                 )
                 
-                for idx, item in enumerate(text, 1):
+                # Determine max_workers
+                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
+                
+                # Helper function for single item processing
+                def process_item(idx, item):
                     try:
                         current_entities = []
                         if isinstance(item, dict) and "content" in item:
@@ -214,30 +219,69 @@ class NERExtractor:
                         for ent in current_entities:
                             if ent.metadata is None:
                                 ent.metadata = {}
-                            ent.metadata["batch_index"] = idx - 1
+                            ent.metadata["batch_index"] = idx
                             if isinstance(item, dict) and "id" in item:
                                 ent.metadata["document_id"] = item["id"]
                         
-                        results.append(current_entities)
-                        total_entities_count += len(current_entities)
-                    except Exception:
-                        results.append([])
+                        return idx, current_entities
+                    except Exception as e:
+                        self.logger.warning(f"Failed to process item {idx}: {e}")
+                        return idx, []
+
+                if max_workers > 1:
+                    import concurrent.futures
                     
-                    remaining = total_items - idx
-                    # Update progress: always update for small datasets, or at intervals for large ones
-                    should_update = (
-                        idx % update_interval == 0 or 
-                        idx == total_items or 
-                        idx == 1 or
-                        total_items <= 10  # Always update for small datasets
-                    )
-                    if should_update:
-                        self.progress_tracker.update_progress(
-                            tracking_id,
-                            processed=idx,
-                            total=total_items,
-                            message=f"Processing documents... {idx}/{total_items} (remaining: {remaining}) - Extracted {total_entities_count} entities so far"
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        # Submit all tasks
+                        future_to_idx = {
+                            executor.submit(process_item, idx, item): idx 
+                            for idx, item in enumerate(text)
+                        }
+                        
+                        for future in concurrent.futures.as_completed(future_to_idx):
+                            idx, entities = future.result()
+                            results[idx] = entities
+                            total_entities_count += len(entities)
+                            processed_count += 1
+                            
+                            # Update progress
+                            should_update = (
+                                processed_count % update_interval == 0 or 
+                                processed_count == total_items or 
+                                processed_count == 1 or
+                                total_items <= 10
+                            )
+                            if should_update:
+                                remaining = total_items - processed_count
+                                self.progress_tracker.update_progress(
+                                    tracking_id,
+                                    processed=processed_count,
+                                    total=total_items,
+                                    message=f"Processing documents... {processed_count}/{total_items} (remaining: {remaining}) - Extracted {total_entities_count} entities so far"
+                                )
+                else:
+                    # Sequential processing
+                    for idx, item in enumerate(text):
+                        _, entities = process_item(idx, item)
+                        results[idx] = entities
+                        total_entities_count += len(entities)
+                        processed_count += 1
+                        
+                        # Update progress
+                        should_update = (
+                            processed_count % update_interval == 0 or 
+                            processed_count == total_items or 
+                            processed_count == 1 or
+                            total_items <= 10
                         )
+                        if should_update:
+                            remaining = total_items - processed_count
+                            self.progress_tracker.update_progress(
+                                tracking_id,
+                                processed=processed_count,
+                                total=total_items,
+                                message=f"Processing documents... {processed_count}/{total_items} (remaining: {remaining}) - Extracted {total_entities_count} entities so far"
+                            )
                 
                 self.progress_tracker.stop_tracking(
                     tracking_id,

@@ -201,10 +201,12 @@ class RelationExtractor:
             )
             
             try:
-                results = []
                 # Ensure lists are same length
                 min_len = min(len(text), len(entities))
+                results = [None] * min_len
                 total_relations_count = 0
+                processed_count = 0
+                
                 # Update more frequently: every 1% or at least every 10 items, but always update for small datasets
                 if min_len <= 10:
                     update_interval = 1  # Update every item for small datasets
@@ -212,58 +214,97 @@ class RelationExtractor:
                     update_interval = max(1, min(10, min_len // 100))
                 
                 # Initial progress update - ALWAYS show this
-                remaining = min_len
                 self.progress_tracker.update_progress(
                     tracking_id,
                     processed=0,
                     total=min_len,
-                    message=f"Starting batch extraction... 0/{min_len} (remaining: {remaining})"
+                    message=f"Starting batch extraction... 0/{min_len}"
                 )
                 
-                for i in range(min_len):
-                    doc_item = text[i]
-                    ent_item = entities[i]
-                    
-                    doc_text = ""
-                    if isinstance(doc_item, dict) and "content" in doc_item:
-                        doc_text = doc_item["content"]
-                    elif isinstance(doc_item, str):
-                        doc_text = doc_item
-                    else:
-                        doc_text = str(doc_item)
-                    
-                    # Ensure ent_item is a list of entities
-                    if not isinstance(ent_item, list):
-                        ent_item = [] # Should not happen if entities is List[List[Entity]]
-                    
-                    current_relations = self.extract_relations(doc_text, ent_item, **kwargs)
-                    
-                    # Add provenance metadata
-                    for rel in current_relations:
-                        if rel.metadata is None:
-                            rel.metadata = {}
-                        rel.metadata["batch_index"] = i
-                        if isinstance(doc_item, dict) and "id" in doc_item:
-                            rel.metadata["document_id"] = doc_item["id"]
+                # Determine max_workers
+                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
 
-                    results.append(current_relations)
-                    total_relations_count += len(current_relations)
+                def process_item(i, doc_item, ent_item):
+                    try:
+                        doc_text = ""
+                        if isinstance(doc_item, dict) and "content" in doc_item:
+                            doc_text = doc_item["content"]
+                        elif isinstance(doc_item, str):
+                            doc_text = doc_item
+                        else:
+                            doc_text = str(doc_item)
+                        
+                        # Ensure ent_item is a list of entities
+                        if not isinstance(ent_item, list):
+                            ent_item = [] # Should not happen if entities is List[List[Entity]]
+                        
+                        current_relations = self.extract_relations(doc_text, ent_item, **kwargs)
+                        
+                        # Add provenance metadata
+                        for rel in current_relations:
+                            if rel.metadata is None:
+                                rel.metadata = {}
+                            rel.metadata["batch_index"] = i
+                            if isinstance(doc_item, dict) and "id" in doc_item:
+                                rel.metadata["document_id"] = doc_item["id"]
+                        
+                        return i, current_relations
+                    except Exception as e:
+                        self.logger.warning(f"Failed to process item {i}: {e}")
+                        return i, []
+
+                if max_workers > 1:
+                    import concurrent.futures
                     
-                    remaining = min_len - (i + 1)
-                    # Update progress: always update for small datasets, or at intervals for large ones
-                    should_update = (
-                        (i + 1) % update_interval == 0 or 
-                        (i + 1) == min_len or 
-                        i == 0 or
-                        min_len <= 10  # Always update for small datasets
-                    )
-                    if should_update:
-                        self.progress_tracker.update_progress(
-                            tracking_id,
-                            processed=i + 1,
-                            total=min_len,
-                            message=f"Processing documents... {i + 1}/{min_len} (remaining: {remaining}) - Extracted {total_relations_count} relations so far"
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        # Submit tasks
+                        future_to_idx = {
+                            executor.submit(process_item, i, text[i], entities[i]): i
+                            for i in range(min_len)
+                        }
+                        
+                        for future in concurrent.futures.as_completed(future_to_idx):
+                            i, relations = future.result()
+                            results[i] = relations
+                            total_relations_count += len(relations)
+                            processed_count += 1
+                            
+                            should_update = (
+                                processed_count % update_interval == 0 or 
+                                processed_count == min_len or 
+                                processed_count == 1 or
+                                min_len <= 10
+                            )
+                            if should_update:
+                                remaining = min_len - processed_count
+                                self.progress_tracker.update_progress(
+                                    tracking_id,
+                                    processed=processed_count,
+                                    total=min_len,
+                                    message=f"Processing documents... {processed_count}/{min_len} (remaining: {remaining}) - Extracted {total_relations_count} relations so far"
+                                )
+                else:
+                    # Sequential processing
+                    for i in range(min_len):
+                        _, relations = process_item(i, text[i], entities[i])
+                        results[i] = relations
+                        total_relations_count += len(relations)
+                        processed_count += 1
+                        
+                        should_update = (
+                            processed_count % update_interval == 0 or 
+                            processed_count == min_len or 
+                            processed_count == 1 or
+                            min_len <= 10
                         )
+                        if should_update:
+                            remaining = min_len - processed_count
+                            self.progress_tracker.update_progress(
+                                tracking_id,
+                                processed=processed_count,
+                                total=min_len,
+                                message=f"Processing documents... {processed_count}/{min_len} (remaining: {remaining}) - Extracted {total_relations_count} relations so far"
+                            )
                 
                 self.progress_tracker.stop_tracking(
                     tracking_id,
@@ -300,7 +341,7 @@ class RelationExtractor:
         Returns:
             list: List of extracted relations
         """
-        from .methods import get_relation_method
+        from .methods import get_relation_method, match_entity
 
         tracking_id = self.progress_tracker.start_tracking(
             module="semantic_extract",
@@ -487,10 +528,8 @@ class RelationExtractor:
         self, text: str, entities: List[Entity]
     ) -> List[Relation]:
         """Extract relations using pattern matching."""
+        from .methods import match_entity
         relations = []
-
-        # Create entity lookup by text
-        entity_map = {e.text.lower(): e for e in entities}
 
         # Check each relation pattern
         for relation_type, patterns in self.relation_patterns.items():
@@ -499,8 +538,8 @@ class RelationExtractor:
                     subject_text = match.group("subject").strip()
                     object_text = match.group("object").strip()
 
-                    subject_entity = entity_map.get(subject_text.lower())
-                    object_entity = entity_map.get(object_text.lower())
+                    subject_entity = match_entity(subject_text, entities)
+                    object_entity = match_entity(object_text, entities)
 
                     if subject_entity and object_entity:
                         # Get context around the match

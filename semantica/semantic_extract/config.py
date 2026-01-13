@@ -41,7 +41,7 @@ License: MIT
 
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 from ..utils.logging import get_logger
 
@@ -53,8 +53,22 @@ class Config:
         """Initialize configuration manager."""
         self.logger = get_logger("config")
         self._configs: Dict[str, Dict] = {}
+        # Default optimization settings
+        self._configs["optimization"] = {
+            "enable_cache": True,
+            "cache_size": 1000,
+            "max_workers": 5,
+            "enable_batching": True,
+            "batch_size": 10,
+            "max_tokens_per_batch": 2000
+        }
         self._load_config_file(config_file)
         self._load_env_vars()
+
+    def get_optimization_config(self) -> Dict:
+        """Get optimization configuration."""
+        return self._configs.get("optimization", {})
+
 
     def _load_config_file(self, config_file: Optional[str]):
         """Load configuration from file."""
@@ -113,6 +127,26 @@ class Config:
         if provider in self._configs:
             return self._configs[provider].get("api_key")
         return os.getenv(f"{provider.upper()}_API_KEY")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Get configuration value by key.
+        Searches in top-level configs and optimization settings.
+        """
+        # 1. Check top-level keys
+        if key in self._configs:
+            return self._configs[key]
+            
+        # 2. Check optimization settings (common keys)
+        if "optimization" in self._configs and key in self._configs["optimization"]:
+            return self._configs["optimization"][key]
+            
+        # 3. Handle specific mapping for optimization keys
+        # Map cache_enabled -> enable_cache if needed
+        if key == "cache_enabled":
+            return self._configs.get("optimization", {}).get("enable_cache", default)
+            
+        return default
 
 
 # Global config instance

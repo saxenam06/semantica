@@ -191,9 +191,10 @@ class TripletExtractor:
             )
 
             try:
-                results = []
+                results = [None] * len(text)
                 total_items = len(text)
                 total_triplets_count = 0
+                processed_count = 0
                 
                 # Determine update interval
                 if total_items <= 10:
@@ -206,49 +207,86 @@ class TripletExtractor:
                     tracking_id,
                     processed=0,
                     total=total_items,
-                    message=f"Starting batch extraction... 0/{total_items} (remaining: {total_items})"
+                    message=f"Starting batch extraction... 0/{total_items}"
                 )
 
-                for idx, item in enumerate(text):
-                    # Prepare arguments for single item
-                    doc_text = item["content"] if isinstance(item, dict) and "content" in item else str(item)
-                    
-                    doc_entities = None
-                    if entities and isinstance(entities, list) and idx < len(entities):
-                        doc_entities = entities[idx]
-                    
-                    doc_relations = None
-                    if relations and isinstance(relations, list) and idx < len(relations):
-                        doc_relations = relations[idx]
+                # Determine max_workers
+                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
 
-                    # Extract
-                    current_triplets = self.extract_triplets(
-                        doc_text, 
-                        entities=doc_entities, 
-                        relations=doc_relations, 
-                        **kwargs
-                    )
+                def process_item(idx, item):
+                    try:
+                        # Prepare arguments for single item
+                        doc_text = item["content"] if isinstance(item, dict) and "content" in item else str(item)
+                        
+                        doc_entities = None
+                        if entities and isinstance(entities, list) and idx < len(entities):
+                            doc_entities = entities[idx]
+                        
+                        doc_relations = None
+                        if relations and isinstance(relations, list) and idx < len(relations):
+                            doc_relations = relations[idx]
 
-                    # Add provenance metadata
-                    for triplet in current_triplets:
-                        if triplet.metadata is None:
-                            triplet.metadata = {}
-                        triplet.metadata["batch_index"] = idx
-                        if isinstance(item, dict) and "id" in item:
-                            triplet.metadata["document_id"] = item["id"]
-
-                    results.append(current_triplets)
-                    total_triplets_count += len(current_triplets)
-
-                    # Update progress
-                    if (idx + 1) % update_interval == 0 or (idx + 1) == total_items:
-                        remaining = total_items - (idx + 1)
-                        self.progress_tracker.update_progress(
-                            tracking_id,
-                            processed=idx + 1,
-                            total=total_items,
-                            message=f"Processing... {idx + 1}/{total_items} (remaining: {remaining}) - Extracted {total_triplets_count} triplets"
+                        # Extract
+                        current_triplets = self.extract_triplets(
+                            doc_text, 
+                            entities=doc_entities, 
+                            relations=doc_relations, 
+                            **kwargs
                         )
+
+                        # Add provenance metadata
+                        for triplet in current_triplets:
+                            if triplet.metadata is None:
+                                triplet.metadata = {}
+                            triplet.metadata["batch_index"] = idx
+                            if isinstance(item, dict) and "id" in item:
+                                triplet.metadata["document_id"] = item["id"]
+                        
+                        return idx, current_triplets
+                    except Exception as e:
+                        self.logger.warning(f"Failed to process item {idx}: {e}")
+                        return idx, []
+
+                if max_workers > 1:
+                    import concurrent.futures
+                    
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        # Submit tasks
+                        future_to_idx = {
+                            executor.submit(process_item, idx, item): idx 
+                            for idx, item in enumerate(text)
+                        }
+                        
+                        for future in concurrent.futures.as_completed(future_to_idx):
+                            idx, triplets = future.result()
+                            results[idx] = triplets
+                            total_triplets_count += len(triplets)
+                            processed_count += 1
+                            
+                            if processed_count % update_interval == 0 or processed_count == total_items:
+                                remaining = total_items - processed_count
+                                self.progress_tracker.update_progress(
+                                    tracking_id,
+                                    processed=processed_count,
+                                    total=total_items,
+                                    message=f"Processing... {processed_count}/{total_items} (remaining: {remaining}) - Extracted {total_triplets_count} triplets"
+                                )
+                else:
+                    # Sequential processing
+                    for idx, item in enumerate(text):
+                        _, triplets = process_item(idx, item)
+                        results[idx] = triplets
+                        total_triplets_count += len(triplets)
+                        processed_count += 1
+                        
+                        if processed_count % update_interval == 0 or processed_count == total_items:
+                            remaining = total_items - processed_count
+                            self.progress_tracker.update_progress(
+                                tracking_id,
+                                processed=processed_count,
+                                total=total_items,
+                                message=f"Processing... {processed_count}/{total_items} (remaining: {remaining}) - Extracted {total_triplets_count} triplets"
+                            )
 
                 self.progress_tracker.stop_tracking(
                     tracking_id,

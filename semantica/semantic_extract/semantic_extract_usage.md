@@ -41,6 +41,7 @@ print(f"Extracted {len(entities)} entities and {len(relations)} relations")
 All extractors support batch processing for high-throughput extraction. You can pass a list of strings or a list of dictionaries (with `content` and `id` keys).
 
 **Features:**
+- **Parallel Processing**: Multi-threaded extraction for high throughput (control via `max_workers`).
 - **Progress Tracking**: Automatically shows a progress bar for large batches.
 - **Provenance Metadata**: Each extracted item includes `batch_index` and `document_id` in its `metadata`.
 
@@ -52,8 +53,12 @@ documents = [
     {"id": "doc_2", "content": "Microsoft Corporation was founded by Bill Gates."}
 ]
 
-extractor = NERExtractor()
+# Initialize with parallel processing enabled
+extractor = NERExtractor(max_workers=4)
 batch_results = extractor.extract(documents)
+
+# OR override during extraction call
+# batch_results = extractor.extract(documents, max_workers=8)
 
 for i, doc_entities in enumerate(batch_results):
     print(f"Document {i} entities:")

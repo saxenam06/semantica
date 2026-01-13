@@ -85,67 +85,58 @@ class Event:
 class EventDetector:
     """Event detection and extraction handler."""
 
-    def __init__(
-        self,
-        event_types: Optional[List[str]] = None,
-        extract_participants: bool = True,
-        extract_location: bool = True,
-        extract_time: bool = True,
-        method: Union[str, List[str]] = None,
-        config=None,
-        **kwargs
-    ):
+    def __init__(self, method: str = "llm", **config):
         """
         Initialize event detector.
 
         Args:
-            event_types: Specific event types to detect (e.g., ["launch", "acquisition"])
-            extract_participants: Whether to extract event participants
-            extract_location: Whether to extract event locations
-            extract_time: Whether to extract temporal information
-            method: Extraction method(s) for underlying NER/relation extractors.
-                   Can be passed to ner_method and relation_method in config.
-            config: Legacy config dict (deprecated, use kwargs)
-            **kwargs: Configuration options:
-                - ner_method: Method for NER extraction (if entities need to be extracted)
-                - relation_method: Method for relation extraction (if relations need to be extracted)
-                - Other options passed to sub-components
+            method: Extraction method ("llm", "pattern")
+            **config: Configuration options
         """
         self.logger = get_logger("event_detector")
-        self.config = config or {}
-        self.config.update(kwargs)
+        self.config = config
+        self.method = method
         self.progress_tracker = get_progress_tracker()
+        
         # Ensure progress tracker is enabled
         if not self.progress_tracker.enabled:
             self.progress_tracker.enabled = True
 
-        # Store parameters
-        self.event_types_filter = event_types
-        self.extract_participants = extract_participants
-        self.extract_location = extract_location
-        self.extract_time = extract_time
+        # Initialize components
+        self.event_classifier = EventClassifier(**config)
+        self.temporal_processor = TemporalEventProcessor(**config)
 
-        # Store method for passing to extractors if needed
+        # Configure extraction options
+        self.extract_participants = config.get("extract_participants", True)
+        self.extract_location = config.get("extract_location", True)
+        self.extract_time = config.get("extract_time", True)
+        self.event_types_filter = config.get("event_types", [])
+
+        # Define event patterns
+        self.event_patterns = {
+            "acquisition": r"\b(acquired|acquisition|buying|bought|merger|merged)\b",
+            "partnership": r"\b(partnered|partnership|collaborate|collaboration)\b",
+            "launch": r"\b(launch|launched|releasing|released|unveil|unveiled)\b",
+            "investment": r"\b(invest|invested|investment|funding|raised)\b",
+            "legal": r"\b(sue|sued|lawsuit|litigation|legal action)\b",
+        }
+        
+        # Pre-compile location patterns
+        self.location_patterns = [
+            re.compile(r"in\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)"),
+            re.compile(r"at\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)"),
+        ]
+        
+        # Pre-compile time patterns
+        self.time_patterns = [
+            re.compile(r"on\s+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})"),
+            re.compile(r"in\s+(\d{4})"),
+            re.compile(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"),
+        ]
+
         if method is not None:
             self.config["ner_method"] = method
             self.config["relation_method"] = method
-
-        self.event_classifier = EventClassifier(**self.config.get("classifier", {}))
-        self.temporal_processor = TemporalEventProcessor(
-            **self.config.get("temporal", {})
-        )
-        self.relationship_extractor = EventRelationshipExtractor(
-            **self.config.get("relationship", {})
-        )
-
-        # Event patterns
-        self.event_patterns = {
-            "founded": r"founded|created|established",
-            "acquired": r"acquired|bought|purchased",
-            "launched": r"launched|released|introduced",
-            "announced": r"announced|declared|stated",
-            "meeting": r"met|meeting|conference|summit",
-        }
 
     def extract(
         self,
@@ -175,9 +166,10 @@ class EventDetector:
             )
 
             try:
-                results = []
+                results = [None] * len(text)  # Pre-allocate to maintain order
                 total_items = len(text)
                 total_events_count = 0
+                processed_count = 0
                 
                 # Determine update interval
                 if total_items <= 10:
@@ -193,33 +185,72 @@ class EventDetector:
                     message=f"Starting batch detection... 0/{total_items} (remaining: {total_items})"
                 )
 
-                for idx, item in enumerate(text):
-                    # Prepare arguments for single item
-                    doc_text = item["content"] if isinstance(item, dict) and "content" in item else str(item)
+                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
+
+                def process_item(idx, item):
+                    try:
+                        # Prepare arguments for single item
+                        doc_text = item["content"] if isinstance(item, dict) and "content" in item else str(item)
+                        
+                        # Detect
+                        events = self.detect_events(doc_text, **kwargs)
+
+                        # Add provenance metadata
+                        for event in events:
+                            if event.metadata is None:
+                                event.metadata = {}
+                            event.metadata["batch_index"] = idx
+                            if isinstance(item, dict) and "id" in item:
+                                event.metadata["document_id"] = item["id"]
+                        
+                        return idx, events
+                    except Exception as e:
+                        self.logger.error(f"Error processing item {idx}: {e}")
+                        # Return empty list on failure to continue processing
+                        return idx, []
+
+                if max_workers > 1:
+                    import concurrent.futures
                     
-                    # Detect
-                    events = self.detect_events(doc_text, **kwargs)
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        # Submit tasks
+                        future_to_idx = {}
+                        for idx, item in enumerate(text):
+                            future = executor.submit(process_item, idx, item)
+                            future_to_idx[future] = idx
+                        
+                        for future in concurrent.futures.as_completed(future_to_idx):
+                            idx, events = future.result()
+                            results[idx] = events
+                            total_events_count += len(events)
+                            processed_count += 1
+                            
+                            # Update progress
+                            if processed_count % update_interval == 0 or processed_count == total_items:
+                                remaining = total_items - processed_count
+                                self.progress_tracker.update_progress(
+                                    tracking_id,
+                                    processed=processed_count,
+                                    total=total_items,
+                                    message=f"Processing... {processed_count}/{total_items} (remaining: {remaining}) - Detected {total_events_count} events"
+                                )
+                else:
+                    # Sequential processing
+                    for idx, item in enumerate(text):
+                        _, events = process_item(idx, item)
+                        results[idx] = events
+                        total_events_count += len(events)
+                        processed_count += 1
 
-                    # Add provenance metadata
-                    for event in events:
-                        if event.metadata is None:
-                            event.metadata = {}
-                        event.metadata["batch_index"] = idx
-                        if isinstance(item, dict) and "id" in item:
-                            event.metadata["document_id"] = item["id"]
-
-                    results.append(events)
-                    total_events_count += len(events)
-
-                    # Update progress
-                    if (idx + 1) % update_interval == 0 or (idx + 1) == total_items:
-                        remaining = total_items - (idx + 1)
-                        self.progress_tracker.update_progress(
-                            tracking_id,
-                            processed=idx + 1,
-                            total=total_items,
-                            message=f"Processing... {idx + 1}/{total_items} (remaining: {remaining}) - Detected {total_events_count} events"
-                        )
+                        # Update progress
+                        if processed_count % update_interval == 0 or processed_count == total_items:
+                            remaining = total_items - processed_count
+                            self.progress_tracker.update_progress(
+                                tracking_id,
+                                processed=processed_count,
+                                total=total_items,
+                                message=f"Processing... {processed_count}/{total_items} (remaining: {remaining}) - Detected {total_events_count} events"
+                            )
 
                 self.progress_tracker.stop_tracking(
                     tracking_id,

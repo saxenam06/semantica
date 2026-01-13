@@ -23,7 +23,7 @@ The **Semantic Extract Module** extracts structured information from unstructure
 - **High Accuracy**: LLM-based extraction for complex schemas
 - **Flexible Configuration**: Customize extraction for your domain
 - **Confidence Scores**: Get confidence scores for all extractions
-- **Batch Processing**: Efficient batch processing for large datasets
+- **Batch Processing**: Efficient parallel batch processing for large datasets
 - **Coreference Resolution**: Resolve pronouns to their entity references
 
 ### How It Works
@@ -187,6 +187,7 @@ Core entity extraction implementation used by notebooks and lower-level integrat
 | `silent_fail` | bool | `False` | Return empty list on error instead of raising (LLM only) |
 | `max_text_length` | int | `64000` | Max text length for auto-chunking (LLM only) |
 | `max_tokens` | int | `None` | Max output tokens for LLM generation |
+| `max_workers` | int | `1` | Threads for parallel batch processing |
 | `**config` | dict | `{}` | Method-specific config (e.g., `model`, `provider`) |
 
 **Methods:**
@@ -234,6 +235,7 @@ Extracts relationships between entities.
 | `bidirectional` | bool | `False` | Extract bidirectional relations |
 | `confidence_threshold` | float | `0.6` | Minimum confidence score |
 | `max_distance` | int | `50` | Max token distance between entities |
+| `max_workers` | int | `1` | Threads for parallel batch processing |
 
 **Methods:**
 
@@ -310,6 +312,7 @@ Identifies events with temporal information and participants.
 | `extract_participants` | bool | `True` | Extract event participants |
 | `extract_location` | bool | `True` | Extract event locations |
 | `extract_time` | bool | `True` | Extract temporal information |
+| `max_workers` | int | `1` | Threads for parallel batch processing |
 
 **Methods:**
 
@@ -344,6 +347,7 @@ Extracts RDF triplets (Subject-Predicate-Object).
 | `silent_fail` | bool | `False` | Return empty list on error instead of raising (LLM only) |
 | `max_text_length` | int | `64000` | Max text length for auto-chunking (LLM only) |
 | `max_tokens` | int | `None` | Max output tokens for LLM generation |
+| `max_workers` | int | `1` | Threads for parallel batch processing |
 
 **Methods:**
 
@@ -374,6 +378,7 @@ Extracts structured semantic networks with nodes and edges.
 |-----------|------|---------|-------------|
 | `ner_method` | str | `None` | Method for node extraction |
 | `relation_method` | str | `None` | Method for edge extraction |
+| `max_workers` | int | `1` | Threads for parallel batch processing |
 | `**config` | dict | `{}` | Configuration for underlying extractors |
 
 **Methods:**

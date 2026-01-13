@@ -181,8 +181,9 @@ class SemanticNetworkExtractor:
             )
 
             try:
-                results = []
+                results = [None] * len(text)
                 total_items = len(text)
+                processed_count = 0
                 
                 # Determine update interval
                 if total_items <= 10:
@@ -198,53 +199,105 @@ class SemanticNetworkExtractor:
                     message=f"Starting batch extraction... 0/{total_items} (remaining: {total_items})"
                 )
 
-                for idx, item in enumerate(text):
-                    # Prepare arguments for single item
-                    doc_text = item["content"] if isinstance(item, dict) and "content" in item else str(item)
-                    
-                    doc_entities = None
-                    if entities and isinstance(entities, list) and idx < len(entities):
-                        doc_entities = entities[idx]
-                    
-                    doc_relations = None
-                    if relations and isinstance(relations, list) and idx < len(relations):
-                        doc_relations = relations[idx]
+                # Determine max_workers
+                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
 
-                    # Extract
-                    network = self.extract_network(
-                        doc_text, 
-                        entities=doc_entities, 
-                        relations=doc_relations, 
-                        **kwargs
-                    )
-
-                    # Add provenance metadata to nodes and edges
-                    batch_meta = {"batch_index": idx}
-                    if isinstance(item, dict) and "id" in item:
-                        batch_meta["document_id"] = item["id"]
-                    
-                    # Update network metadata
-                    network.metadata.update(batch_meta)
-                    
-                    # Update nodes metadata
-                    for node in network.nodes:
-                        node.metadata.update(batch_meta)
+                def process_item(idx, item, doc_entities, doc_relations):
+                    try:
+                        doc_text = item["content"] if isinstance(item, dict) and "content" in item else str(item)
                         
-                    # Update edges metadata
-                    for edge in network.edges:
-                        edge.metadata.update(batch_meta)
-
-                    results.append(network)
-
-                    # Update progress
-                    if (idx + 1) % update_interval == 0 or (idx + 1) == total_items:
-                        remaining = total_items - (idx + 1)
-                        self.progress_tracker.update_progress(
-                            tracking_id,
-                            processed=idx + 1,
-                            total=total_items,
-                            message=f"Processing... {idx + 1}/{total_items} (remaining: {remaining})"
+                        # Extract
+                        network = self.extract_network(
+                            doc_text, 
+                            entities=doc_entities, 
+                            relations=doc_relations, 
+                            **kwargs
                         )
+
+                        # Add provenance metadata to nodes and edges
+                        batch_meta = {"batch_index": idx}
+                        if isinstance(item, dict) and "id" in item:
+                            batch_meta["document_id"] = item["id"]
+                        
+                        # Update network metadata
+                        network.metadata.update(batch_meta)
+                        
+                        # Update nodes metadata
+                        for node in network.nodes:
+                            node.metadata.update(batch_meta)
+                            
+                        # Update edges metadata
+                        for edge in network.edges:
+                            edge.metadata.update(batch_meta)
+                            
+                        return idx, network
+                    except Exception as e:
+                        self.logger.warning(f"Failed to process item {idx}: {e}")
+                        return idx, None
+
+                if max_workers > 1:
+                    import concurrent.futures
+                    
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        # Submit tasks
+                        future_to_idx = {}
+                        for idx, item in enumerate(text):
+                            doc_entities = None
+                            if entities and isinstance(entities, list) and idx < len(entities):
+                                doc_entities = entities[idx]
+                            
+                            doc_relations = None
+                            if relations and isinstance(relations, list) and idx < len(relations):
+                                doc_relations = relations[idx]
+                                
+                            future = executor.submit(process_item, idx, item, doc_entities, doc_relations)
+                            future_to_idx[future] = idx
+                        
+                        for future in concurrent.futures.as_completed(future_to_idx):
+                            idx, network = future.result()
+                            if network:
+                                results[idx] = network
+                            
+                            processed_count += 1
+                            
+                            # Update progress
+                            if (processed_count) % update_interval == 0 or (processed_count) == total_items:
+                                remaining = total_items - processed_count
+                                self.progress_tracker.update_progress(
+                                    tracking_id,
+                                    processed=processed_count,
+                                    total=total_items,
+                                    message=f"Processing... {processed_count}/{total_items} (remaining: {remaining})"
+                                )
+                else:
+                    # Sequential processing
+                    for idx, item in enumerate(text):
+                        doc_entities = None
+                        if entities and isinstance(entities, list) and idx < len(entities):
+                            doc_entities = entities[idx]
+                        
+                        doc_relations = None
+                        if relations and isinstance(relations, list) and idx < len(relations):
+                            doc_relations = relations[idx]
+
+                        _, network = process_item(idx, item, doc_entities, doc_relations)
+                        if network:
+                            results[idx] = network
+
+                        processed_count += 1
+                        
+                        # Update progress
+                        if (processed_count) % update_interval == 0 or (processed_count) == total_items:
+                            remaining = total_items - processed_count
+                            self.progress_tracker.update_progress(
+                                tracking_id,
+                                processed=processed_count,
+                                total=total_items,
+                                message=f"Processing... {processed_count}/{total_items} (remaining: {remaining})"
+                            )
+
+                # Filter out None results if any failed
+                results = [r for r in results if r is not None]
 
                 self.progress_tracker.stop_tracking(
                     tracking_id,

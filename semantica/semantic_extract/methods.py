@@ -107,7 +107,8 @@ License: MIT
 
 import re
 import difflib
-from typing import Any, Dict, List, Optional, Union
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ..utils.exceptions import ProcessingError
 from ..utils.logging import get_logger
@@ -116,6 +117,8 @@ from .providers import HuggingFaceModelLoader, create_provider
 from .registry import method_registry
 from .relation_extractor import Relation
 from .triplet_extractor import Triplet
+from .cache import ExtractionCache
+from .config import config
 
 try:
     from .schemas import EntitiesResponse, RelationsResponse, TripletsResponse
@@ -124,6 +127,13 @@ except ImportError:
     SCHEMAS_AVAILABLE = False
 
 logger = get_logger("methods")
+
+# Initialize global result cache
+_result_cache = ExtractionCache(
+    ttl=config.get("cache_ttl", 3600)
+)
+if not config.get("cache_enabled", True):
+    _result_cache.enabled = False
 
 # Try to import spaCy
 from ..utils.helpers import safe_import
@@ -196,159 +206,216 @@ def get_nlp_model():
         pass
     return None
 
-def calculate_similarity(text: str, candidates: List[str]) -> float:
+# Common synonyms for entity matching optimization
+_ENTITY_SYNONYMS = {
+    # Entity Types
+    "person": ["people", "human", "name", "individual", "artist", "actor", "author", "politician"],
+    "org": ["company", "organization", "business", "institution", "agency", "brand", "corporation"],
+    "organization": ["company", "business", "institution", "agency", "brand", "corporation"],
+    "gpe": ["location", "place", "city", "country", "state", "nation", "region"],
+    "loc": ["location", "place", "region", "area"],
+    "date": ["time", "year", "day", "month", "period", "duration"],
+    "money": ["cost", "price", "value", "currency", "amount"],
+    "product": ["item", "object", "commodity", "goods", "device", "tool", "vehicle", "software", "app"],
+    "event": ["incident", "occasion", "activity", "happening", "ceremony"],
+    "drug": ["medication", "medicine", "pharmaceutical", "chemical", "treatment", "therapy"],
+    "chemical": ["drug", "substance", "compound", "element"],
+    "disease": ["condition", "illness", "sickness", "disorder", "syndrome", "ailment"],
+    
+    # Relation Types
+    "founded_by": ["founder", "creator", "established_by", "started_by", "originator"],
+    "acquired": ["bought", "purchased", "acquisition", "takeover", "ownership", "merged_with"],
+    "subsidiary_of": ["owned_by", "parent_company", "part_of", "division_of", "unit_of"],
+    "works_for": ["employee_of", "employed_by", "staff_of", "team_member", "employs", "hired_by"],
+    "located_in": ["based_in", "headquartered_in", "situated_in", "found_in", "operates_in"],
+    "ceo_of": ["leader_of", "head_of", "director_of", "president_of", "chief_executive", "managed_by"],
+    "invested_in": ["funded", "financed", "backed", "shareholder_of", "venture_capital"],
+    "partner_with": ["collaborate_with", "joint_venture", "alliance", "deal_with", "partnership"],
+    "competitor_of": ["rival", "competes_with", "opponent", "nemesis"],
+    "manufacturer_of": ["producer_of", "maker_of", "creator_of", "builder_of"],
+    "treats": ["cures", "heals", "remedy_for", "used_for", "prescribed_for"],
+    "causes": ["leads_to", "results_in", "triggers", "produces", "creates"],
+    "diagnosed_with": ["suffers_from", "has_condition", "patient_of", "victim_of"],
+}
+
+def find_best_match_index(text: str, candidates: List[str]) -> Tuple[int, float]:
     """
-    Calculate the maximum similarity between text and a list of candidates.
-    Uses a hybrid approach: Exact -> Substring -> Vectors -> Fuzzy.
+    Find the best matching candidate index and score.
+    Uses hybrid similarity approach: Exact -> Synonym -> Substring -> Embeddings -> Vector -> Fuzzy.
+    Optimized for batch processing to avoid redundant embedding calculations.
+    
+    Returns:
+        Tuple[int, float]: (best_candidate_index, best_score). Index is -1 if no candidates.
     """
     if not candidates:
-        return 0.0
+        return -1, 0.0
     
     if not text:
-        return 0.0
+        return -1, 0.0
         
     text_lower = text.lower().strip()
     if not text_lower:
-        return 0.0
+        return -1, 0.0
         
+    candidates_lower = [c.lower().strip() for c in candidates]
+    best_idx = -1
     best_score = 0.0
     
     # 1. Exact Match (Fastest)
-    candidates_lower = [c.lower().strip() for c in candidates if c]
-    if text_lower in candidates_lower:
-        return 1.0
-        
+    try:
+        idx = candidates_lower.index(text_lower)
+        return idx, 1.0
+    except ValueError:
+        pass
+
     # 1b. Common Synonyms (Fast Heuristic)
-    # Map common NER labels and Relations to user-friendly types
-    synonyms = {
-        # Entity Types
-        "person": ["people", "human", "name", "individual", "artist", "actor", "author", "politician"],
-        "org": ["company", "organization", "business", "institution", "agency", "brand", "corporation"],
-        "organization": ["company", "business", "institution", "agency", "brand", "corporation"],
-        "gpe": ["location", "place", "city", "country", "state", "nation", "region"],
-        "loc": ["location", "place", "region", "area"],
-        "date": ["time", "year", "day", "month", "period", "duration"],
-        "money": ["cost", "price", "value", "currency", "amount"],
-        "product": ["item", "object", "commodity", "goods", "device", "tool", "vehicle", "software", "app"],
-        "event": ["incident", "occasion", "activity", "happening", "ceremony"],
-        "drug": ["medication", "medicine", "pharmaceutical", "chemical", "treatment", "therapy"],
-        "chemical": ["drug", "substance", "compound", "element"],
-        "disease": ["condition", "illness", "sickness", "disorder", "syndrome", "ailment"],
-        
-        # Relation Types
-        "founded_by": ["founder", "creator", "established_by", "started_by", "originator"],
-        "acquired": ["bought", "purchased", "acquisition", "takeover", "ownership", "merged_with"],
-        "subsidiary_of": ["owned_by", "parent_company", "part_of", "division_of", "unit_of"],
-        "works_for": ["employee_of", "employed_by", "staff_of", "team_member", "employs", "hired_by"],
-        "located_in": ["based_in", "headquartered_in", "situated_in", "found_in", "operates_in"],
-        "ceo_of": ["leader_of", "head_of", "director_of", "president_of", "chief_executive", "managed_by"],
-        "invested_in": ["funded", "financed", "backed", "shareholder_of", "venture_capital"],
-        "partner_with": ["collaborate_with", "joint_venture", "alliance", "deal_with", "partnership"],
-        "competitor_of": ["rival", "competes_with", "opponent", "nemesis"],
-        "manufacturer_of": ["producer_of", "maker_of", "creator_of", "builder_of"],
-        "treats": ["cures", "heals", "remedy_for", "used_for", "prescribed_for"],
-        "causes": ["leads_to", "results_in", "triggers", "produces", "creates"],
-        "diagnosed_with": ["suffers_from", "has_condition", "patient_of", "victim_of"],
-    }
+    # Use global _ENTITY_SYNONYMS dictionary
+    synonyms = _ENTITY_SYNONYMS
     
+    # Check text synonyms
     if text_lower in synonyms:
         for syn in synonyms[text_lower]:
             if syn in candidates_lower:
-                return 0.95
-            # Also check reverse: if candidate is in synonyms of text
-            
-    # Check if any candidate is a synonym of the text
-    for cand in candidates_lower:
+                return candidates_lower.index(syn), 0.95
+    
+    # Check if any candidate is a synonym of text
+    for i, cand in enumerate(candidates_lower):
         if cand in synonyms:
             if text_lower in synonyms[cand]:
-                return 0.95
-
+                if 0.95 > best_score:
+                    best_score = 0.95
+                    best_idx = i
+    
     # 2. Substring Match (Fast)
-    # Give a boost if one is contained in the other, but penalize by length difference
-    for cand in candidates_lower:
-        if text_lower == cand:
-            return 1.0
+    for i, cand in enumerate(candidates_lower):
+        if not cand: continue
+        score = 0.0
         if text_lower in cand or cand in text_lower:
             # Calculate length ratio
             ratio = min(len(text_lower), len(cand)) / max(len(text_lower), len(cand))
-            # Base score 0.85 for containment, adjusted by ratio
-            # e.g. "Apple" in "Apple Inc" -> 0.85 * (5/9) ~= 0.47 (too low?)
-            # Let's be more generous for containment
-            score = 0.9 * ratio + 0.1 # Boost slightly
-            if score > best_score:
-                best_score = score
+            score = 0.9 * ratio + 0.1
+        
+        if score > best_score:
+            best_score = score
+            best_idx = i
 
-    # 3. Text Embeddings (High Accuracy Semantic)
-    # This is the most accurate method for diverse/unknown domains
+    # 3. Text Embeddings (High Accuracy Semantic) - Batch Optimized
     embedder = get_text_embedder()
+    embedding_idx = -1
     embedding_score = 0.0
     
     if embedder:
         try:
-            # Embed text and candidates
-            # Batch embedding is faster and scalable without caching
-            all_texts = [text] + candidates
-            embeddings = list(embedder.embed_batch(all_texts))
+            # Batch embedding: [text, cand1, cand2, ...]
+            # We filter out empty candidates to save compute, but need to map back to original indices
+            valid_cands_with_idx = [(c, i) for i, c in enumerate(candidates) if c and c.strip()]
             
-            if embeddings and len(embeddings) > 1:
-                text_emb = embeddings[0]
-                cand_embs = embeddings[1:]
+            if valid_cands_with_idx:
+                texts_to_embed = [text] + [c for c, i in valid_cands_with_idx]
+                embeddings = list(embedder.embed_batch(texts_to_embed))
                 
-                # Calculate cosine similarity manually or via numpy
-                import numpy as np
-                text_norm = np.linalg.norm(text_emb)
-                
-                if text_norm > 0:
-                    for cand_emb in cand_embs:
-                        cand_norm = np.linalg.norm(cand_emb)
-                        if cand_norm > 0:
-                            sim = np.dot(text_emb, cand_emb) / (text_norm * cand_norm)
-                            if sim > embedding_score:
-                                embedding_score = sim
+                if embeddings and len(embeddings) > 1:
+                    text_emb = embeddings[0]
+                    cand_embs = embeddings[1:]
+                    
+                    import numpy as np
+                    text_norm = np.linalg.norm(text_emb)
+                    
+                    if text_norm > 0:
+                        # Vectorized cosine similarity
+                        cand_matrix = np.array(cand_embs)
+                        cand_norms = np.linalg.norm(cand_matrix, axis=1)
+                        
+                        # Avoid division by zero
+                        cand_norms[cand_norms == 0] = 1e-10
+                        
+                        dot_products = np.dot(cand_matrix, text_emb)
+                        sims = dot_products / (cand_norms * text_norm)
+                        
+                        max_sim_idx = np.argmax(sims)
+                        max_sim = float(sims[max_sim_idx])
+                        
+                        if max_sim > embedding_score:
+                            embedding_score = max_sim
+                            # Map back to original index
+                            embedding_idx = valid_cands_with_idx[max_sim_idx][1]
         except Exception as e:
             logger.debug(f"Embedding calculation failed: {e}")
             pass
             
     if embedding_score > best_score:
         best_score = embedding_score
+        best_idx = embedding_idx
 
     # 4. Vector Similarity (Legacy/Fallback)
-    # Only use if we haven't found a good match yet and embeddings failed/unavailable
     if best_score < 0.9:
         nlp = get_nlp_model()
-    vector_score = 0.0
-    if nlp and nlp.vocab.vectors.shape[0] > 0:
-        try:
-            # Only use vectors if the word is in vocab or we have a good model
-            doc = nlp(text)
-            if doc.vector_norm:
-                for candidate in candidates:
-                    cand_doc = nlp(candidate)
-                    if cand_doc.vector_norm:
-                        score = doc.similarity(cand_doc)
-                        if score > vector_score:
-                            vector_score = score
-        except Exception:
-            pass
-            
-    if vector_score > best_score:
-        best_score = vector_score
+        vector_score = 0.0
+        vector_idx = -1
         
-    # 4. Fuzzy Match (Fallback/Refinement)
-    # If vector score is low (e.g. OOV words), fuzzy match might be better
-    # But difflib is slow for many candidates.
-    # Only run if we don't have a very high score yet
+        if nlp and nlp.vocab.vectors.shape[0] > 0:
+            try:
+                doc = nlp(text)
+                if doc.vector_norm:
+                    for i, candidate in enumerate(candidates):
+                        if not candidate: continue
+                        cand_doc = nlp(candidate)
+                        if cand_doc.vector_norm:
+                            score = doc.similarity(cand_doc)
+                            if score > vector_score:
+                                vector_score = score
+                                vector_idx = i
+            except Exception:
+                pass
+        
+        if vector_score > best_score:
+            best_score = vector_score
+            best_idx = vector_idx
+
+    # 5. Fuzzy Match (Fallback)
     if best_score < 0.9:
-        for cand in candidates_lower:
-            # Quick check for common characters
+        for i, cand in enumerate(candidates_lower):
             if not cand: continue
-            
-            # SequenceMatcher
             score = difflib.SequenceMatcher(None, text_lower, cand).ratio()
             if score > best_score:
                 best_score = score
+                best_idx = i
                 
-    return float(best_score)
+    return best_idx, float(best_score)
+
+
+def calculate_similarity(text: str, candidates: List[str]) -> float:
+    """
+    Calculate the maximum similarity between text and a list of candidates.
+    Wrapper around find_best_match_index.
+    """
+    _, score = find_best_match_index(text, candidates)
+    return score
+
+
+def match_entity(text: str, entities: List[Entity], threshold: float = 0.8) -> Optional[Entity]:
+    """
+    Find the best matching entity for the given text.
+    Uses optimized batch similarity matching.
+    """
+    if not text or not entities:
+        return None
+        
+    # Optimization: Check exact match first (case-insensitive)
+    text_lower = text.lower().strip()
+    for entity in entities:
+        if entity.text.lower().strip() == text_lower:
+            return entity
+
+    # Use batch matcher
+    candidates = [e.text for e in entities]
+    best_idx, best_score = find_best_match_index(text, candidates)
+    
+    if best_idx >= 0 and best_score >= threshold:
+        return entities[best_idx]
+        
+    return None
+
 
 def calculate_weighted_confidence(
     item_type: str, 
@@ -604,6 +671,19 @@ def extract_entities_llm(
     if "llm_model" in kwargs:
         model = kwargs.pop("llm_model")
     
+    # Check cache
+    cache_params = {
+        "provider": provider,
+        "model": model,
+        "max_text_length": max_text_length,
+        "structured_output_mode": structured_output_mode,
+        "entity_types": kwargs.get("entity_types"),
+    }
+    cached_result = _result_cache.get("entities", text, **cache_params)
+    if cached_result:
+        logger.debug(f"Cache hit for entity extraction ({len(cached_result)} entities)")
+        return cached_result
+    
     # 1. PRE-EXTRACTION VALIDATION
     if not text or not text.strip():
         error_msg = "Text is empty or whitespace only"
@@ -668,8 +748,21 @@ def extract_entities_llm(
 You may also use related or similar entity types if they better match the context (e.g., variations, synonyms, or domain-specific types).
 If an entity doesn't fit any of the preferred types, use the most appropriate type from the preferred list or a closely related type."""
     else:
-        entity_types_instruction = """Entity types should be one of: PERSON, ORG, GPE, DATE, EVENT, PRODUCT, CONCEPT, or related types.
-Use the most appropriate type for each entity, including variations or synonyms if they better match the context."""
+        entity_types_instruction = """Entity types should be one of: 
+- PERSON (People, names, roles)
+- ORG (Companies, organizations, institutions, brands)
+- GPE (Countries, cities, states, locations)
+- DATE (Dates, years, time periods)
+- EVENT (Named events, conferences)
+- PRODUCT (Software, hardware, vehicles)
+- CONCEPT (Abstract ideas, technologies)
+
+Use the most appropriate type for each entity.
+Examples:
+- 'Microsoft' is an ORG
+- 'Satya Nadella' is a PERSON
+- Job titles/roles like 'CEO', 'CTO', 'President', 'Engineer' are CONCEPT unless part of a person's name
+- 'Python' is a PRODUCT or CONCEPT depending on context."""
 
     if not SCHEMAS_AVAILABLE:
         raise ImportError("Pydantic schemas not available. Install pydantic/instructor to use LLM extraction.")
@@ -720,6 +813,7 @@ Text to extract from:
             ))
         
         logger.info(f"Successfully extracted {len(entities)} entities using {provider}/{model} (typed)")
+        _result_cache.set("entities", text, entities, **cache_params)
         return entities
         
     except Exception as e:
@@ -812,27 +906,45 @@ def _extract_entities_chunked(
     chunks = splitter.split(text)
     
     all_entities = []
-    for i, chunk in enumerate(chunks):
-        logger.debug(f"Extracting entities from chunk {i+1}/{len(chunks)}")
-        # We recursively call extract_entities_llm with the chunk
-        # but ensure we don't trigger re-chunking by setting max_text_length large
-        chunk_entities = extract_entities_llm(
-            chunk.text,
-            provider=provider,
-            model=model,
-            silent_fail=False, # We want to know if a chunk fails
-            max_text_length=len(chunk.text) + 1,
-            structured_output_mode=structured_output_mode,
-            **kwargs
-        )
-        
-        # Adjust entity positions to account for chunk offset
-        for entity in chunk_entities:
-            entity.start_char += chunk.start_index
-            entity.end_char += chunk.start_index
+    
+    # Process chunks in parallel
+    max_workers = kwargs.get("max_workers", 5)
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_chunk = {}
+        for i, chunk in enumerate(chunks):
+            logger.debug(f"Scheduling entity extraction for chunk {i+1}/{len(chunks)}")
+            # We recursively call extract_entities_llm with the chunk
+            # but ensure we don't trigger re-chunking by setting max_text_length large
+            future = executor.submit(
+                extract_entities_llm,
+                chunk.text,
+                provider=provider,
+                model=model,
+                silent_fail=False, # We want to know if a chunk fails
+                max_text_length=len(chunk.text) + 1,
+                structured_output_mode=structured_output_mode,
+                **kwargs
+            )
+            future_to_chunk[future] = (i, chunk)
             
-        all_entities.extend(chunk_entities)
-        
+        for future in as_completed(future_to_chunk):
+            i, chunk = future_to_chunk[future]
+            try:
+                chunk_entities = future.result()
+                
+                # Adjust entity positions to account for chunk offset
+                for entity in chunk_entities:
+                    entity.start_char += chunk.start_index
+                    entity.end_char += chunk.start_index
+                    all_entities.append(entity)
+                    
+            except Exception as e:
+                if not silent_fail:
+                    logger.error(f"Chunk {i+1} failed: {e}")
+                    raise
+                logger.warning(f"Chunk {i+1} failed (silent): {e}")
+
     return all_entities
 
 
@@ -1327,6 +1439,21 @@ def extract_relations_llm(
     if "llm_model" in kwargs:
         model = kwargs.pop("llm_model")
     
+    # Check cache
+    cache_params = {
+        "provider": provider,
+        "model": model,
+        "max_text_length": max_text_length,
+        "structured_output_mode": structured_output_mode,
+        "relation_types": kwargs.get("relation_types"),
+        # Include entities hash/str in cache key implicitly via **cache_params
+        "entities_hash": hash(tuple(sorted([e.text for e in entities]))) if entities else 0
+    }
+    cached_result = _result_cache.get("relations", text, **cache_params)
+    if cached_result:
+        logger.debug(f"Cache hit for relation extraction ({len(cached_result)} relations)")
+        return cached_result
+    
     # 1. PRE-EXTRACTION VALIDATION
     if not text or not text.strip():
         error_msg = "Text is empty or whitespace only"
@@ -1434,15 +1561,9 @@ Entities found in text: {entities_str}"""
         # Convert back to internal Relation format
         relations = []
         for r_out in result_obj.relations:
-            # Find matching entities
-            subject_entity = next(
-                (e for e in entities if e.text.lower() == r_out.subject.lower()),
-                None,
-            )
-            object_entity = next(
-                (e for e in entities if e.text.lower() == r_out.object.lower()), 
-                None
-            )
+            # Find matching entities using hybrid similarity
+            subject_entity = match_entity(r_out.subject, entities)
+            object_entity = match_entity(r_out.object, entities)
             
             if subject_entity and object_entity:
                 relations.append(Relation(
@@ -1459,6 +1580,7 @@ Entities found in text: {entities_str}"""
                 ))
         
         logger.info(f"Successfully extracted {len(relations)} relations using {provider}/{model} (typed)")
+        _result_cache.set("relations", text, relations, **cache_params)
         return relations
         
     except Exception as e:
@@ -1523,14 +1645,9 @@ def _parse_relation_result(
         subject_text = str(subject_text)
         object_text = str(object_text)
 
-        # Find matching entities
-        subject_entity = next(
-            (e for e in entities if e.text.lower() == subject_text.lower()),
-            None,
-        )
-        object_entity = next(
-            (e for e in entities if e.text.lower() == object_text.lower()), None
-        )
+        # Find matching entities using hybrid similarity
+        subject_entity = match_entity(subject_text, entities)
+        object_entity = match_entity(object_text, entities)
 
         if subject_entity and object_entity:
             relations.append(
@@ -1571,29 +1688,47 @@ def _extract_relations_chunked(
     chunks = splitter.split(text)
     
     all_relations = []
-    for i, chunk in enumerate(chunks):
-        # Only include entities that appear in this chunk (or close to it)
-        chunk_entities = [
-            e for e in entities 
-            if e.start_char >= chunk.start_index - 100 and e.end_char <= chunk.end_index + 100
-        ]
-        
-        if not chunk_entities:
-            continue
+    
+    # Process chunks in parallel
+    max_workers = kwargs.get("max_workers", 5)
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_chunk = {}
+        for i, chunk in enumerate(chunks):
+            # Only include entities that appear in this chunk (or close to it)
+            chunk_entities = [
+                e for e in entities 
+                if e.start_char >= chunk.start_index - 100 and e.end_char <= chunk.end_index + 100
+            ]
             
-        logger.debug(f"Extracting relations from chunk {i+1}/{len(chunks)} with {len(chunk_entities)} entities")
-        
-        chunk_rels = extract_relations_llm(
-            chunk.text,
-            entities=chunk_entities,
-            provider=provider,
-            model=model,
-            silent_fail=False,
-            max_text_length=len(chunk.text) + 1,
-            structured_output_mode=structured_output_mode,
-            **kwargs
-        )
-        all_relations.extend(chunk_rels)
+            if not chunk_entities:
+                continue
+                
+            logger.debug(f"Scheduling relation extraction for chunk {i+1}/{len(chunks)} with {len(chunk_entities)} entities")
+            
+            future = executor.submit(
+                extract_relations_llm,
+                chunk.text,
+                entities=chunk_entities,
+                provider=provider,
+                model=model,
+                silent_fail=False,
+                max_text_length=len(chunk.text) + 1,
+                structured_output_mode=structured_output_mode,
+                **kwargs
+            )
+            future_to_chunk[future] = i
+            
+        for future in as_completed(future_to_chunk):
+            i = future_to_chunk[future]
+            try:
+                chunk_rels = future.result()
+                all_relations.extend(chunk_rels)
+            except Exception as e:
+                if not silent_fail:
+                    logger.error(f"Chunk {i+1} failed: {e}")
+                    raise
+                logger.warning(f"Chunk {i+1} failed (silent): {e}")
         
     return all_relations
 
@@ -1636,12 +1771,8 @@ def extract_triplets_pattern(
             predicate_text = match.group("predicate")
             object_text = match.group("object")
 
-            subject_entity = next(
-                (e for e in entities if e.text.lower() == subject_text.lower()), None
-            )
-            object_entity = next(
-                (e for e in entities if e.text.lower() == object_text.lower()), None
-            )
+            subject_entity = match_entity(subject_text, entities)
+            object_entity = match_entity(object_text, entities)
 
             if subject_entity and object_entity:
                 triplets.append(
@@ -1744,6 +1875,22 @@ def extract_triplets_llm(
     # Support llm_model parameter to disambiguate from ML model
     if "llm_model" in kwargs:
         model = kwargs.pop("llm_model")
+    
+    # Check cache
+    cache_params = {
+        "provider": provider,
+        "model": model,
+        "max_text_length": max_text_length,
+        "structured_output_mode": structured_output_mode,
+        "triplet_types": kwargs.get("triplet_types"),
+        # Include entities/relations hash in cache key implicitly via **cache_params
+        "entities_hash": hash(tuple(sorted([e.text for e in entities]))) if entities else 0,
+        "relations_hash": hash(tuple(sorted([str(r) for r in relations]))) if relations else 0
+    }
+    cached_result = _result_cache.get("triplets", text, **cache_params)
+    if cached_result:
+        logger.debug(f"Cache hit for triplet extraction ({len(cached_result)} triplets)")
+        return cached_result
     
     # 1. PRE-EXTRACTION VALIDATION
     if not text or not text.strip():
@@ -1854,6 +2001,7 @@ Text to extract from:
             ))
         
         logger.info(f"Successfully extracted {len(triplets)} triplets using {provider}/{model} (typed)")
+        _result_cache.set("triplets", text, triplets, **cache_params)
         return triplets
         
     except Exception as e:
@@ -1944,20 +2092,37 @@ def _extract_triplets_chunked(
     chunks = splitter.split(text)
     
     all_triplets = []
-    for i, chunk in enumerate(chunks):
-        logger.debug(f"Extracting triplets from chunk {i+1}/{len(chunks)}")
+    
+    # Process chunks in parallel
+    max_workers = kwargs.get("max_workers", 5)
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_chunk = {}
+        for i, chunk in enumerate(chunks):
+            logger.debug(f"Scheduling triplet extraction for chunk {i+1}/{len(chunks)}")
+            future = executor.submit(
+                extract_triplets_llm,
+                chunk.text,
+                provider=provider,
+                model=model,
+                silent_fail=False,
+                max_text_length=len(chunk.text) + 1,
+                structured_output_mode=structured_output_mode,
+                **kwargs
+            )
+            future_to_chunk[future] = i
         
-        chunk_triplets = extract_triplets_llm(
-            chunk.text,
-            provider=provider,
-            model=model,
-            silent_fail=False,
-            max_text_length=len(chunk.text) + 1,
-            structured_output_mode=structured_output_mode,
-            **kwargs
-        )
-        all_triplets.extend(chunk_triplets)
-        
+        for future in as_completed(future_to_chunk):
+            i = future_to_chunk[future]
+            try:
+                chunk_triplets = future.result()
+                all_triplets.extend(chunk_triplets)
+            except Exception as e:
+                if not silent_fail:
+                    logger.error(f"Chunk {i+1} failed: {e}")
+                    raise
+                logger.warning(f"Chunk {i+1} failed (silent): {e}")
+                
     return all_triplets
 
 
