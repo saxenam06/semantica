@@ -98,6 +98,31 @@ class TestSemanticExtractImprovements(unittest.TestCase):
             self.assertEqual(mock_provider.generate_typed.call_count, 1)
             
             print("  Cache hit verified for entities.")
+
+    def test_secure_caching(self):
+        """Test that sensitive parameters are excluded from cache keys."""
+        print("\nTesting Secure Caching...")
+        
+        text = "Security test."
+        
+        # Mock provider
+        mock_provider = MagicMock()
+        mock_provider.is_available.return_value = True
+        mock_entities_response = MagicMock()
+        mock_entities_response.entities = [MagicMock(text="Test", label="TEST", confidence=1.0)]
+        mock_provider.generate_typed.return_value = mock_entities_response
+        
+        with patch('semantica.semantic_extract.methods.create_provider', return_value=mock_provider):
+            # First call with one API key
+            extract_entities_llm(text, provider="openai", model="gpt-4", api_key="secret_key_1")
+            
+            # Second call with DIFFERENT API key
+            # If secure caching is working, this should be a CACHE HIT because api_key is ignored
+            extract_entities_llm(text, provider="openai", model="gpt-4", api_key="secret_key_2")
+            
+            # Provider should have been called ONLY ONCE
+            self.assertEqual(mock_provider.generate_typed.call_count, 1)
+            print("  Secure caching verified: Changing API key did not trigger new extraction.")
             
             # Verify cache content
             self.assertIn("entities", _result_cache._caches)

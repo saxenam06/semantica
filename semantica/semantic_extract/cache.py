@@ -72,16 +72,23 @@ class ExtractionCache:
     def _generate_key(self, text: str, **params) -> str:
         """
         Generate a stable cache key based on text and parameters.
+        
+        Note: Sensitive parameters like 'api_key' are excluded from the cache key
+        to prevent security risks and ensure cache sharing where appropriate.
         """
+        # Filter out sensitive keys
+        sensitive_keys = {'api_key', 'token', 'password', 'secret', 'auth', 'authorization'}
+        filtered_params = {k: v for k, v in params.items() if k.lower() not in sensitive_keys}
+
         # Create a stable string representation of params
         # Sort keys to ensure consistent ordering
-        param_str = json.dumps(params, sort_keys=True, default=str)
+        param_str = json.dumps(filtered_params, sort_keys=True, default=str)
         
         # Combine text and params
         content = f"{text}|{param_str}"
         
-        # Return hash
-        return hashlib.md5(content.encode('utf-8')).hexdigest()
+        # Return hash (SHA-256 for better security than MD5)
+        return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
     def get(self, namespace: str, text: str, **params) -> Optional[Any]:
         """
