@@ -15,9 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **Thread-Safe Progress Tracking**: Enhanced `ProgressTracker` to handle concurrent updates from multiple threads without race conditions during batch processing.
 
 ### Security
+- **Credential Sanitization**:
+    - Removed hardcoded API keys from 8 cookbook notebooks to prevent secret leakage.
+    - Enforced environment variable usage for `GROQ_API_KEY` across all examples.
 - **Secure Caching**:
     - Updated `ExtractionCache` to exclude sensitive parameters (e.g., `api_key`, `token`, `password`) from cache key generation, preventing secret leakage and enabling safe cache sharing.
     - Upgraded cache key hashing algorithm from MD5 to **SHA-256** for enhanced collision resistance and security.
+
+### Changed
+- **Gemini SDK Migration**:
+    - Migrated `GeminiProvider` to use the new `google-genai` SDK (v0.1.0+) to address deprecation warnings.
+    - Implemented graceful fallback to `google.generativeai` for backward compatibility.
+- **Dependency Resolution**:
+    - Pinned `opentelemetry-api` and `opentelemetry-sdk` to `1.37.0` to resolve pip conflicts.
+    - Updated `protobuf` and `grpcio` constraints for better stability.
 
 ### Performance
 - **Bottleneck Optimization (GitHub Issue #186)**:
