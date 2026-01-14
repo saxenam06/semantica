@@ -168,12 +168,11 @@ class TestSemanticExtractImprovements(unittest.TestCase):
         texts = ["Text 1", "Text 2", "Text 3", "Text 4"]
         
         start_time = time.time()
-        # Run with 2 workers
-        results = extractor.extract(texts, max_workers=2)
+        results = extractor.extract(texts)
         end_time = time.time()
         
         duration = end_time - start_time
-        print(f"  Parallel NER (2 workers) took {duration:.4f}s")
+        print(f"  Parallel NER (default workers) took {duration:.4f}s")
         
         self.assertEqual(len(results), 4)
         
@@ -206,11 +205,11 @@ class TestSemanticExtractImprovements(unittest.TestCase):
         entities = [[], [], [], []]
         
         start_time = time.time()
-        results = extractor.extract(texts, entities, max_workers=2)
+        results = extractor.extract(texts, entities)
         end_time = time.time()
         
         duration = end_time - start_time
-        print(f"  Parallel RE (2 workers) took {duration:.4f}s")
+        print(f"  Parallel RE (default workers) took {duration:.4f}s")
         
         self.assertEqual(len(results), 4)
         
@@ -264,11 +263,11 @@ class TestSemanticExtractImprovements(unittest.TestCase):
         texts = ["Text 1", "Text 2", "Text 3", "Text 4"]
         
         start_time = time.time()
-        results = extractor.extract(texts, max_workers=2)
+        results = extractor.extract(texts)
         end_time = time.time()
         
         duration = end_time - start_time
-        print(f"  Parallel TE (2 workers) took {duration:.4f}s")
+        print(f"  Parallel TE (default workers) took {duration:.4f}s")
         
         self.assertEqual(len(results), 4)
         

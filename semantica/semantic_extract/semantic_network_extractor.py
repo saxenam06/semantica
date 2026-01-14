@@ -149,6 +149,9 @@ class SemanticNetworkExtractor:
             self.config["ner_method"] = method
             self.config["relation_method"] = method
 
+        self._ner_extractor = None
+        self._relation_extractor = None
+
     def extract(
         self,
         text: Union[str, List[str], List[Dict[str, Any]]],
@@ -199,8 +202,11 @@ class SemanticNetworkExtractor:
                     message=f"Starting batch extraction... 0/{total_items} (remaining: {total_items})"
                 )
 
-                # Determine max_workers
-                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
+                from .config import resolve_max_workers
+                max_workers = resolve_max_workers(
+                    explicit=kwargs.get("max_workers"),
+                    local_config=self.config,
+                )
 
                 def process_item(idx, item, doc_entities, doc_relations):
                     try:
@@ -318,11 +324,12 @@ class SemanticNetworkExtractor:
 
     def extract_network(
         self,
-        text: str,
-        entities: Optional[List[Entity]] = None,
-        relations: Optional[List[Relation]] = None,
+        text: Union[str, List[str], List[Dict[str, Any]]],
+        entities: Optional[Union[List[Entity], List[List[Entity]]]] = None,
+        relations: Optional[Union[List[Relation], List[List[Relation]]]] = None,
+        pipeline_id: Optional[str] = None,
         **options,
-    ) -> SemanticNetwork:
+    ) -> Union[SemanticNetwork, List[SemanticNetwork]]:
         """
         Extract semantic network from text.
 
@@ -335,6 +342,23 @@ class SemanticNetworkExtractor:
         Returns:
             SemanticNetwork: Extracted semantic network
         """
+        if isinstance(text, list):
+            entities_batch = entities
+            if entities is not None and isinstance(entities, list) and (not entities or all(isinstance(e, Entity) for e in entities)):
+                entities_batch = [entities for _ in range(len(text))] if entities else [[] for _ in range(len(text))]
+
+            relations_batch = relations
+            if relations is not None and isinstance(relations, list) and (not relations or all(isinstance(r, Relation) for r in relations)):
+                relations_batch = [relations for _ in range(len(text))] if relations else [[] for _ in range(len(text))]
+
+            return self.extract(
+                text,
+                entities=entities_batch,
+                relations=relations_batch,
+                pipeline_id=pipeline_id,
+                **options,
+            )
+
         tracking_id = self.progress_tracker.start_tracking(
             module="semantic_extract",
             submodule="SemanticNetworkExtractor",
@@ -354,15 +378,16 @@ class SemanticNetworkExtractor:
                 # Pass method if specified
                 if "ner_method" in self.config:
                     ner_config["method"] = self.config["ner_method"]
-                ner = NERExtractor(
-                    **ner_config,
-                    **{
-                        k: v
-                        for k, v in self.config.items()
-                        if k not in ["ner", "relation"]
-                    },
-                )
-                entities = ner.extract_entities(text, **options)
+                if self._ner_extractor is None:
+                    self._ner_extractor = NERExtractor(
+                        **ner_config,
+                        **{
+                            k: v
+                            for k, v in self.config.items()
+                            if k not in ["ner", "relation"]
+                        },
+                    )
+                entities = self._ner_extractor.extract_entities(text, **options)
 
             # Extract relations if not provided
             if relations is None:
@@ -373,15 +398,16 @@ class SemanticNetworkExtractor:
                 # Pass method if specified
                 if "relation_method" in self.config:
                     rel_config["method"] = self.config["relation_method"]
-                rel_extractor = RelationExtractor(
-                    **rel_config,
-                    **{
-                        k: v
-                        for k, v in self.config.items()
-                        if k not in ["ner", "relation"]
-                    },
-                )
-                relations = rel_extractor.extract_relations(text, entities, **options)
+                if self._relation_extractor is None:
+                    self._relation_extractor = RelationExtractor(
+                        **rel_config,
+                        **{
+                            k: v
+                            for k, v in self.config.items()
+                            if k not in ["ner", "relation"]
+                        },
+                    )
+                relations = self._relation_extractor.extract_relations(text, entities, **options)
 
             # Build network
             total_steps = 2  # Create nodes, create edges

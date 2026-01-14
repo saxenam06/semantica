@@ -197,8 +197,12 @@ class NERExtractor:
                     message=f"Starting batch extraction... 0/{total_items}"
                 )
                 
-                # Determine max_workers
-                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
+                from .config import resolve_max_workers
+                max_workers = resolve_max_workers(
+                    explicit=kwargs.get("max_workers"),
+                    local_config=self.config,
+                    methods=self.method,
+                )
                 
                 # Helper function for single item processing
                 def process_item(idx, item):
@@ -297,12 +301,18 @@ class NERExtractor:
         else:
             return self.extract_entities(text, **kwargs)
 
-    def extract_entities(self, text: str, **options) -> List[Entity]:
+    def extract_entities(
+        self,
+        text: Union[str, List[Dict[str, Any]], List[str]],
+        pipeline_id: Optional[str] = None,
+        **options,
+    ) -> Union[List[Entity], List[List[Entity]]]:
         """
         Extract named entities from text.
 
         Args:
             text: Input text
+            pipeline_id: Optional pipeline ID for progress tracking (batch mode)
             **options: Extraction options:
                 - entity_types: Filter by entity types (list)
                 - min_confidence: Minimum confidence threshold
@@ -311,6 +321,9 @@ class NERExtractor:
         Returns:
             list: List of extracted entities
         """
+        if isinstance(text, list):
+            return self.extract(text, pipeline_id=pipeline_id, **options)
+
         tracking_id = self.progress_tracker.start_tracking(
             module="semantic_extract",
             submodule="NERExtractor",

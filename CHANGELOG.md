@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Added `max_workers` configuration parameter (default: 1) to all extractor `extract()` methods, allowing users to tune concurrency based on available CPU cores or API rate limits.
     - **Parallel Chunking**: Implemented parallel processing for large document chunking in `_extract_entities_chunked` and `_extract_relations_chunked`, significantly reducing latency for long-form text analysis.
     - **Thread-Safe Progress Tracking**: Enhanced `ProgressTracker` to handle concurrent updates from multiple threads without race conditions during batch processing.
+- **Semantic Extract Performance & Regression**:
+    - Added edge-case regression suite covering max worker defaults, LLM prompt entity filtering, and extractor reuse.
+    - Added a runnable real-use-case benchmark script for batch latency across `NERExtractor`, `RelationExtractor`, `TripletExtractor`, `EventDetector`, `SemanticAnalyzer`, and `SemanticNetworkExtractor`.
+    - Added Groq LLM smoke tests that exercise LLM-based entities/relations/triplets when `GROQ_API_KEY` is available via environment configuration.
 
 ### Security
 - **Credential Sanitization**:
@@ -29,12 +33,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dependency Resolution**:
     - Pinned `opentelemetry-api` and `opentelemetry-sdk` to `1.37.0` to resolve pip conflicts.
     - Updated `protobuf` and `grpcio` constraints for better stability.
+- **Entity Filtering Scope**:
+    - Removed entity filtering from non-LLM extraction flows to avoid accuracy regressions.
+    - Applied entity downselection only to LLM relation prompt construction, while matching returned entities against the full original entity list.
+- **Batch Concurrency Defaults**:
+    - Standardized `max_workers` defaulting across `semantic_extract` and tuned for low-latency: ML-backed methods default to single-worker, while pattern/regex/rules/LLM/huggingface methods use a higher parallelism default capped by CPU.
+    - Raised the global `optimization.max_workers` default to 8 for better throughput on batch workloads.
 
 ### Performance
 - **Bottleneck Optimization (GitHub Issue #186)**:
     - **Resolved Bottleneck #1 (Sequential Processing)**: Replaced sequential `for` loops with parallel execution for both document-level batches and intra-document chunks.
     - **Performance Gains**: Achieved **~1.89x speedup** in real-world extraction scenarios (tested with Groq `llama-3.3-70b-versatile` on standard datasets).
     - **Initialization Optimization**: Refactored test suite to use class-level `setUpClass` for LLM provider initialization, eliminating redundant API client creation overhead.
+- **Low-Latency Entity Matching**:
+    - Avoided heavyweight embedding stack imports on common matches by improving fast matching heuristics and short-circuiting before embedding similarity.
+    - Optimized entity matching to prioritize exact/substring/word-boundary matches and only fall back to embedding similarity when needed, reducing CPU overhead in LLM relation/triplet mapping.
 
 
 ## [0.2.1] - 2026-01-12

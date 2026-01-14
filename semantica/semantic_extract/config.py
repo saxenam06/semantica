@@ -40,6 +40,7 @@ License: MIT
 """
 
 import os
+import multiprocessing
 from pathlib import Path
 from typing import Dict, Optional, Any
 
@@ -57,7 +58,7 @@ class Config:
         self._configs["optimization"] = {
             "enable_cache": True,
             "cache_size": 1000,
-            "max_workers": 5,
+            "max_workers": 8,
             "enable_batching": True,
             "batch_size": 10,
             "max_tokens_per_batch": 2000
@@ -151,3 +152,43 @@ class Config:
 
 # Global config instance
 config = Config()
+
+
+def resolve_max_workers(
+    explicit: Optional[int] = None,
+    local_config: Optional[Dict[str, Any]] = None,
+    methods: Optional[Any] = None,
+) -> int:
+    def to_int(val: Any, default: int) -> int:
+        try:
+            return int(val)
+        except Exception:
+            return default
+
+    if isinstance(methods, str):
+        normalized_methods = [methods]
+    elif isinstance(methods, (list, tuple, set)):
+        normalized_methods = [m for m in methods if isinstance(m, str)]
+    else:
+        normalized_methods = []
+
+    if explicit is not None:
+        value = to_int(explicit, 1)
+    elif local_config and "max_workers" in local_config:
+        value = to_int(local_config.get("max_workers", 1), 1)
+    else:
+        value = to_int(config.get("max_workers", 5), 5)
+
+    if "ml" in normalized_methods and explicit is None and not (local_config and "max_workers" in local_config):
+        value = 1
+
+    if value < 1:
+        value = 1
+
+    cpu_count = multiprocessing.cpu_count() or 1
+    if value > cpu_count:
+        value = cpu_count
+    if value > 32:
+        value = 32
+
+    return value

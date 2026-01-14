@@ -221,8 +221,12 @@ class RelationExtractor:
                     message=f"Starting batch extraction... 0/{min_len}"
                 )
                 
-                # Determine max_workers
-                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
+                from .config import resolve_max_workers
+                max_workers = resolve_max_workers(
+                    explicit=kwargs.get("max_workers"),
+                    local_config=self.config,
+                    methods=self.method,
+                )
 
                 def process_item(i, doc_item, ent_item):
                     try:
@@ -325,14 +329,19 @@ class RelationExtractor:
             return []
 
     def extract_relations(
-        self, text: str, entities: List[Entity], **options
-    ) -> List[Relation]:
+        self,
+        text: Union[str, List[Dict[str, Any]], List[str]],
+        entities: Union[List[Entity], List[List[Entity]]],
+        pipeline_id: Optional[str] = None,
+        **options,
+    ) -> Union[List[Relation], List[List[Relation]]]:
         """
         Extract relations between entities.
 
         Args:
             text: Input text
             entities: List of extracted entities
+            pipeline_id: Optional pipeline ID for progress tracking (batch mode)
             **options: Extraction options:
                 - method: Override method (if not set in __init__)
                 - min_confidence: Minimum confidence threshold
@@ -341,6 +350,17 @@ class RelationExtractor:
         Returns:
             list: List of extracted relations
         """
+        if isinstance(text, list):
+            if entities is None:
+                entities_batch = [[] for _ in range(len(text))]
+            elif isinstance(entities, list) and (not entities):
+                entities_batch = [[] for _ in range(len(text))]
+            elif isinstance(entities, list) and all(isinstance(e, Entity) for e in entities):
+                entities_batch = [entities for _ in range(len(text))]
+            else:
+                entities_batch = entities
+            return self.extract(text, entities_batch, pipeline_id=pipeline_id, **options)
+
         from .methods import get_relation_method, match_entity
 
         tracking_id = self.progress_tracker.start_tracking(

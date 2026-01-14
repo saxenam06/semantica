@@ -287,6 +287,12 @@ def find_best_match_index(text: str, candidates: List[str]) -> Tuple[int, float]
                     best_idx = i
     
     # 2. Substring Match (Fast)
+    word_pat = None
+    try:
+        word_pat = re.compile(rf"\b{re.escape(text_lower)}\b")
+    except Exception:
+        word_pat = None
+
     for i, cand in enumerate(candidates_lower):
         if not cand: continue
         score = 0.0
@@ -294,12 +300,18 @@ def find_best_match_index(text: str, candidates: List[str]) -> Tuple[int, float]
             # Calculate length ratio
             ratio = min(len(text_lower), len(cand)) / max(len(text_lower), len(cand))
             score = 0.9 * ratio + 0.1
+
+            if word_pat and word_pat.search(cand):
+                score = max(score, 0.88)
         
         if score > best_score:
             best_score = score
             best_idx = i
 
     # 3. Text Embeddings (High Accuracy Semantic) - Batch Optimized
+    if best_score >= 0.85:
+        return best_idx, float(best_score)
+
     embedder = get_text_embedder()
     embedding_idx = -1
     embedding_score = 0.0
@@ -415,6 +427,86 @@ def match_entity(text: str, entities: List[Entity], threshold: float = 0.8) -> O
         return entities[best_idx]
         
     return None
+
+
+def filter_entities_for_text(
+    text: str,
+    entities: List[Entity],
+    max_keep: int = 80,
+) -> List[Entity]:
+    if not text or not entities:
+        return []
+
+    if max_keep < 1:
+        return []
+
+    if len(entities) <= max_keep:
+        return entities
+
+    text_lower = text.lower()
+    stop_tokens = {
+        "inc",
+        "incorporated",
+        "corp",
+        "corporation",
+        "co",
+        "company",
+        "ltd",
+        "llc",
+        "plc",
+        "group",
+        "holdings",
+        "limited",
+        "the",
+        "and",
+        "or",
+        "of",
+        "in",
+        "on",
+        "at",
+        "for",
+        "to",
+        "a",
+        "an",
+    }
+
+    seen = set()
+    matched: List[Entity] = []
+    for entity in entities:
+        ent_text = getattr(entity, "text", "")
+        if not ent_text:
+            continue
+
+        key = ent_text.lower().strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+
+        if key in text_lower:
+            matched.append(entity)
+            continue
+
+        tokens = re.findall(r"[a-z0-9]+", key)
+        keep = False
+        for tok in tokens:
+            if len(tok) < 2:
+                continue
+            if tok in stop_tokens:
+                continue
+            if tok in text_lower:
+                keep = True
+                break
+        if keep:
+            matched.append(entity)
+
+    if matched:
+        if len(matched) > max_keep:
+            matched.sort(key=lambda e: len(getattr(e, "text", "")), reverse=True)
+            return matched[:max_keep]
+        return matched
+
+    entities_sorted = sorted(entities, key=lambda e: len(getattr(e, "text", "")), reverse=True)
+    return entities_sorted[:max_keep]
 
 
 def calculate_weighted_confidence(
@@ -907,8 +999,8 @@ def _extract_entities_chunked(
     
     all_entities = []
     
-    # Process chunks in parallel
-    max_workers = kwargs.get("max_workers", 5)
+    from .config import resolve_max_workers
+    max_workers = resolve_max_workers(explicit=kwargs.get("max_workers"))
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_chunk = {}
@@ -1513,7 +1605,22 @@ def extract_relations_llm(
             **kwargs
         )
 
-    entities_str = ", ".join([f"{e.text} ({e.label})" for e in entities])
+    original_entities = entities
+    max_entities_prompt = kwargs.get("max_entities_prompt", kwargs.get("max_entities", 80))
+    try:
+        max_entities_prompt = int(max_entities_prompt)
+    except Exception:
+        max_entities_prompt = 80
+
+    prompt_entities = original_entities
+    if max_entities_prompt > 0 and len(original_entities) > max_entities_prompt:
+        prompt_entities = filter_entities_for_text(
+            text,
+            original_entities,
+            max_keep=max_entities_prompt,
+        )
+
+    entities_str = ", ".join([f"{e.text} ({e.label})" for e in prompt_entities])
     
     # Use custom relation types if provided
     relation_types = kwargs.get("relation_types")
@@ -1562,8 +1669,8 @@ Entities found in text: {entities_str}"""
         relations = []
         for r_out in result_obj.relations:
             # Find matching entities using hybrid similarity
-            subject_entity = match_entity(r_out.subject, entities)
-            object_entity = match_entity(r_out.object, entities)
+            subject_entity = match_entity(r_out.subject, original_entities)
+            object_entity = match_entity(r_out.object, original_entities)
             
             if subject_entity and object_entity:
                 relations.append(Relation(
@@ -1689,8 +1796,8 @@ def _extract_relations_chunked(
     
     all_relations = []
     
-    # Process chunks in parallel
-    max_workers = kwargs.get("max_workers", 5)
+    from .config import resolve_max_workers
+    max_workers = resolve_max_workers(explicit=kwargs.get("max_workers"))
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_chunk = {}
@@ -2093,8 +2200,8 @@ def _extract_triplets_chunked(
     
     all_triplets = []
     
-    # Process chunks in parallel
-    max_workers = kwargs.get("max_workers", 5)
+    from .config import resolve_max_workers
+    max_workers = resolve_max_workers(explicit=kwargs.get("max_workers"))
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_chunk = {}

@@ -143,6 +143,13 @@ class TripletExtractor:
         if not self.progress_tracker.enabled:
             self.progress_tracker.enabled = True
 
+        if method is not None:
+            self.config["ner_method"] = method
+            self.config["relation_method"] = method
+
+        self._ner_extractor = None
+        self._relation_extractor = None
+
         # Store parameters
         self.triplet_types = triplet_types
         self.include_temporal = include_temporal
@@ -210,8 +217,12 @@ class TripletExtractor:
                     message=f"Starting batch extraction... 0/{total_items}"
                 )
 
-                # Determine max_workers
-                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
+                from .config import resolve_max_workers
+                max_workers = resolve_max_workers(
+                    explicit=kwargs.get("max_workers"),
+                    local_config=self.config,
+                    methods=self.method,
+                )
 
                 def process_item(idx, item):
                     try:
@@ -307,11 +318,12 @@ class TripletExtractor:
 
     def extract_triplets(
         self,
-        text: str,
-        entities: Optional[List[Entity]] = None,
-        relations: Optional[List[Relation]] = None,
+        text: Union[str, List[str], List[Dict[str, Any]]],
+        entities: Optional[Union[List[Entity], List[List[Entity]]]] = None,
+        relations: Optional[Union[List[Relation], List[List[Relation]]]] = None,
+        pipeline_id: Optional[str] = None,
         **options,
-    ) -> List[Triplet]:
+    ) -> Union[List[Triplet], List[List[Triplet]]]:
         """
         Extract RDF triplets from text.
 
@@ -319,11 +331,29 @@ class TripletExtractor:
             text: Input text
             entities: Pre-extracted entities (optional)
             relations: Pre-extracted relations (optional)
+            pipeline_id: Optional pipeline ID for progress tracking (batch mode)
             **options: Extraction options
 
         Returns:
             list: List of extracted triplets
         """
+        if isinstance(text, list):
+            entities_batch = entities
+            if entities is not None and isinstance(entities, list) and (not entities or all(isinstance(e, Entity) for e in entities)):
+                entities_batch = [entities for _ in range(len(text))] if entities else [[] for _ in range(len(text))]
+
+            relations_batch = relations
+            if relations is not None and isinstance(relations, list) and (not relations or all(isinstance(r, Relation) for r in relations)):
+                relations_batch = [relations for _ in range(len(text))] if relations else [[] for _ in range(len(text))]
+
+            return self.extract(
+                text,
+                entities=entities_batch,
+                relations=relations_batch,
+                pipeline_id=pipeline_id,
+                **options,
+            )
+
         from .methods import get_triplet_method
 
         tracking_id = self.progress_tracker.start_tracking(
@@ -341,16 +371,38 @@ class TripletExtractor:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Extracting entities..."
                 )
-                ner = NERExtractor(**self.config.get("ner", {}))
-                entities = ner.extract_entities(text)
+                if self._ner_extractor is None:
+                    ner_config = self.config.get("ner", {})
+                    if "ner_method" in self.config:
+                        ner_config = {**ner_config, "method": self.config["ner_method"]}
+                    self._ner_extractor = NERExtractor(
+                        **ner_config,
+                        **{
+                            k: v
+                            for k, v in self.config.items()
+                            if k not in ["ner", "relation", "validator", "serializer", "quality"]
+                        },
+                    )
+                entities = self._ner_extractor.extract_entities(text)
 
             # Extract relations if not provided
             if relations is None:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Extracting relations..."
                 )
-                rel_extractor = RelationExtractor(**self.config.get("relation", {}))
-                relations = rel_extractor.extract_relations(text, entities)
+                if self._relation_extractor is None:
+                    rel_config = self.config.get("relation", {})
+                    if "relation_method" in self.config:
+                        rel_config = {**rel_config, "method": self.config["relation_method"]}
+                    self._relation_extractor = RelationExtractor(
+                        **rel_config,
+                        **{
+                            k: v
+                            for k, v in self.config.items()
+                            if k not in ["ner", "relation", "validator", "serializer", "quality"]
+                        },
+                    )
+                relations = self._relation_extractor.extract_relations(text, entities)
 
             # Use method-based extraction
             methods = options.get("method", self.method)

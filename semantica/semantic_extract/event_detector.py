@@ -185,7 +185,12 @@ class EventDetector:
                     message=f"Starting batch detection... 0/{total_items} (remaining: {total_items})"
                 )
 
-                max_workers = kwargs.get("max_workers", self.config.get("max_workers", 1))
+                from .config import resolve_max_workers
+                max_workers = resolve_max_workers(
+                    explicit=kwargs.get("max_workers"),
+                    local_config=self.config,
+                    methods=[self.config.get("ner_method"), self.config.get("relation_method"), self.config.get("method")],
+                )
 
                 def process_item(idx, item):
                     try:
@@ -269,17 +274,26 @@ class EventDetector:
             # Single item
             return self.detect_events(text, **kwargs)
 
-    def detect_events(self, text: str, **options) -> List[Event]:
+    def detect_events(
+        self,
+        text: Union[str, List[str], List[Dict[str, Any]]],
+        pipeline_id: Optional[str] = None,
+        **options,
+    ) -> Union[List[Event], List[List[Event]]]:
         """
         Detect events in text content.
 
         Args:
             text: Input text
+            pipeline_id: Optional pipeline ID for progress tracking (batch mode)
             **options: Detection options
 
         Returns:
             list: List of detected events
         """
+        if isinstance(text, list):
+            return self.extract(text, pipeline_id=pipeline_id, **options)
+
         tracking_id = self.progress_tracker.start_tracking(
             module="semantic_extract",
             submodule="EventDetector",

@@ -148,8 +148,9 @@ class SemanticAnalyzer:
             )
 
             try:
-                results = []
+                results = [None] * len(text)
                 total_items = len(text)
+                processed_count = 0
                 
                 # Determine update interval
                 if total_items <= 10:
@@ -165,40 +166,83 @@ class SemanticAnalyzer:
                     message=f"Starting batch analysis... 0/{total_items} (remaining: {total_items})"
                 )
 
-                for idx, item in enumerate(text):
-                    # Prepare arguments for single item
-                    doc_text = item["content"] if isinstance(item, dict) and "content" in item else str(item)
-                    
-                    # Analyze
-                    analysis = self.analyze_semantics(doc_text, **kwargs)
+                from .config import resolve_max_workers
+                max_workers = resolve_max_workers(
+                    explicit=kwargs.get("max_workers"),
+                    local_config=self.config,
+                )
 
-                    # Add provenance metadata
-                    analysis["batch_index"] = idx
-                    if isinstance(item, dict) and "id" in item:
-                        analysis["document_id"] = item["id"]
-                        
-                    # Also inject into semantic roles if present
-                    if "semantic_roles" in analysis:
-                        for role in analysis["semantic_roles"]:
-                            # role is a dict here because analyze_semantics converts it
-                            if "metadata" not in role:
-                                role["metadata"] = {}
-                            
-                            role["metadata"]["batch_index"] = idx
-                            if isinstance(item, dict) and "id" in item:
-                                role["metadata"]["document_id"] = item["id"]
+                def process_item(idx, item):
+                    try:
+                        doc_text = item["content"] if isinstance(item, dict) and "content" in item else str(item)
+                        analysis = self.analyze_semantics(doc_text, **kwargs)
 
-                    results.append(analysis)
+                        analysis["batch_index"] = idx
+                        if isinstance(item, dict) and "id" in item:
+                            analysis["document_id"] = item["id"]
 
-                    # Update progress
-                    if (idx + 1) % update_interval == 0 or (idx + 1) == total_items:
-                        remaining = total_items - (idx + 1)
-                        self.progress_tracker.update_progress(
-                            tracking_id,
-                            processed=idx + 1,
-                            total=total_items,
-                            message=f"Processing... {idx + 1}/{total_items} (remaining: {remaining})"
+                        if "semantic_roles" in analysis:
+                            for role in analysis["semantic_roles"]:
+                                if "metadata" not in role:
+                                    role["metadata"] = {}
+
+                                role["metadata"]["batch_index"] = idx
+                                if isinstance(item, dict) and "id" in item:
+                                    role["metadata"]["document_id"] = item["id"]
+
+                        return idx, analysis
+                    except Exception as e:
+                        self.logger.warning(f"Failed to analyze item {idx}: {e}")
+                        return idx, {"error": str(e), "batch_index": idx}
+
+                if max_workers > 1:
+                    import concurrent.futures
+
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        future_to_idx = {
+                            executor.submit(process_item, idx, item): idx
+                            for idx, item in enumerate(text)
+                        }
+
+                        for future in concurrent.futures.as_completed(future_to_idx):
+                            idx, analysis = future.result()
+                            results[idx] = analysis
+                            processed_count += 1
+
+                            should_update = (
+                                processed_count % update_interval == 0
+                                or processed_count == total_items
+                                or processed_count == 1
+                                or total_items <= 10
+                            )
+                            if should_update:
+                                remaining = total_items - processed_count
+                                self.progress_tracker.update_progress(
+                                    tracking_id,
+                                    processed=processed_count,
+                                    total=total_items,
+                                    message=f"Processing... {processed_count}/{total_items} (remaining: {remaining})"
+                                )
+                else:
+                    for idx, item in enumerate(text):
+                        _, analysis = process_item(idx, item)
+                        results[idx] = analysis
+                        processed_count += 1
+
+                        should_update = (
+                            processed_count % update_interval == 0
+                            or processed_count == total_items
+                            or processed_count == 1
+                            or total_items <= 10
                         )
+                        if should_update:
+                            remaining = total_items - processed_count
+                            self.progress_tracker.update_progress(
+                                tracking_id,
+                                processed=processed_count,
+                                total=total_items,
+                                message=f"Processing... {processed_count}/{total_items} (remaining: {remaining})"
+                            )
 
                 self.progress_tracker.stop_tracking(
                     tracking_id,
