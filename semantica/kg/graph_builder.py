@@ -161,7 +161,14 @@ class GraphBuilder:
             }
             all_relationships.append(rel_dict)
         elif isinstance(item, dict):
-            # Detect and normalize Entity objects inside dict
+            if "source_id" in item and "source" not in item:
+                item["source"] = item["source_id"]
+            if "target_id" in item and "target" not in item:
+                item["target"] = item["target_id"]
+            if "subject" in item and "source" not in item:
+                item["source"] = item["subject"]
+            if "object" in item and "target" not in item:
+                item["target"] = item["object"]
             if "source" in item and not isinstance(item["source"], str):
                 src = item["source"]
                 item["source"] = getattr(src, "id", getattr(src, "text", str(src)))
@@ -347,6 +354,21 @@ class GraphBuilder:
         elif not isinstance(sources, list):
             sources = [sources]
 
+        # Count input relationships for warning if all are dropped
+        input_relationships_count = 0
+        if isinstance(source_dict, dict):
+            rels = source_dict.get("relationships", [])
+            if isinstance(rels, list):
+                input_relationships_count += len(rels)
+            elif rels is not None:
+                input_relationships_count += 1
+        if explicit_relationships:
+            for rel_item in explicit_relationships:
+                if isinstance(rel_item, list):
+                    input_relationships_count += len(rel_item)
+                else:
+                    input_relationships_count += 1
+
         # Track graph building
         build_start_time = time.time()
         
@@ -468,11 +490,12 @@ class GraphBuilder:
                         pipeline_id=pipeline_id,
                     )
                     
-                    # Check if relationships are already in dictionary format
                     sample_rel = relationships_list[0] if relationships_list else None
                     is_dict_format = isinstance(sample_rel, dict) and (
-                        "source" in sample_rel and "target" in sample_rel
-                    ) and not hasattr(sample_rel, "__dict__") # Ensure it's not a class instance
+                        ("source" in sample_rel and "target" in sample_rel)
+                        or ("source_id" in sample_rel and "target_id" in sample_rel)
+                        or ("subject" in sample_rel and "object" in sample_rel)
+                    ) and not hasattr(sample_rel, "__dict__")
                     
                     if is_dict_format:
                         # Fast path: directly append dictionaries after normalizing source/target
@@ -481,8 +504,15 @@ class GraphBuilder:
                             batch = relationships_list[i:i + batch_size]
                             for item in batch:
                                 if isinstance(item, dict):
-                                    # Normalize source/target if they are objects
                                     rel_dict = item.copy()
+                                    if "source_id" in rel_dict and "source" not in rel_dict:
+                                        rel_dict["source"] = rel_dict["source_id"]
+                                    if "target_id" in rel_dict and "target" not in rel_dict:
+                                        rel_dict["target"] = rel_dict["target_id"]
+                                    if "subject" in rel_dict and "source" not in rel_dict:
+                                        rel_dict["source"] = rel_dict["subject"]
+                                    if "object" in rel_dict and "target" not in rel_dict:
+                                        rel_dict["target"] = rel_dict["object"]
                                     if "source" in rel_dict and not isinstance(rel_dict["source"], str):
                                         src = rel_dict["source"]
                                         rel_dict["source"] = getattr(src, "id", getattr(src, "text", str(src)))
@@ -570,6 +600,14 @@ class GraphBuilder:
                 self.logger.info(
                     f"Entity resolution complete: {len(all_entities)} -> {len(resolved_entities)} unique entities"
                 )
+
+            if input_relationships_count > 0 and len(all_relationships) == 0:
+                warning_msg = (
+                    f"All relationships were dropped during graph building: "
+                    f"{input_relationships_count} input relationships, 0 in final graph"
+                )
+                self.logger.warning(warning_msg)
+                print(f"Warning: {warning_msg}")
 
             # Build graph structure
             print("Building graph structure...")
@@ -681,6 +719,14 @@ class GraphBuilder:
                 tracking_id, status="failed", message=str(e)
             )
             raise
+
+    def build_single_source(
+        self,
+        kg_data: Dict[str, Any],
+        pipeline_id: Optional[str] = None,
+        **options,
+    ) -> Dict[str, Any]:
+        return self.build(kg_data, pipeline_id=pipeline_id, **options)
 
     def add_temporal_edge(
         self,
