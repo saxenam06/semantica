@@ -408,8 +408,12 @@ class RelationExtractor:
                         method_options["relation_types"] = relation_types
 
                     if method_name == "huggingface":
-                        method_options["model"] = all_options.get(
-                            "huggingface_model", all_options.get("model")
+                        # Prioritize runtime options over config/defaults
+                        method_options["model"] = (
+                            options.get("huggingface_model") 
+                            or options.get("model")
+                            or self.config.get("huggingface_model") 
+                            or self.config.get("model")
                         )
                         method_options["device"] = all_options.get("device")
                     elif method_name == "llm":

@@ -113,9 +113,17 @@ extractor = NERExtractor(method="ml")
 entities = extractor.extract(text)
 print(f"ML method: {len(entities)} entities")
 
-# HuggingFace model extraction
+# HuggingFace model extraction (Bring Your Own Model)
 extractor = NERExtractor(method="huggingface")
-entities = extractor.extract(text, model="dslim/bert-base-NER")
+
+# Use a specific model and aggregation strategy at runtime
+# Runtime options override configuration defaults
+entities = extractor.extract(
+    text, 
+    model="dslim/bert-base-NER", 
+    aggregation_strategy="max", # Options: "simple", "first", "average", "max"
+    device="cpu" # or "cuda"
+)
 print(f"HuggingFace method: {len(entities)} entities")
 
 # LLM-based extraction with advanced options
@@ -229,9 +237,18 @@ relations = extractor.extract(text, entities=entities)
 extractor = RelationExtractor(method="cooccurrence")
 relations = extractor.extract(text, entities=entities)
 
-# HuggingFace model
+# HuggingFace model (Bring Your Own Model)
 extractor = RelationExtractor(method="huggingface")
-relations = extractor.extract(text, entities=entities, model="microsoft/DialoGPT-medium")
+
+# Use a sequence classification model trained for relations
+# The extractor automatically formats input with entity markers: 
+# "Steve Jobs founded Apple" -> "<subj> Steve Jobs </subj> founded <obj> Apple </obj>"
+relations = extractor.extract(
+    text, 
+    entities=entities, 
+    model="semantica/relation-model-v1", # Replace with your model ID
+    device="cpu"
+)
 
 # LLM-based relation extraction
 extractor = RelationExtractor(method="llm")
@@ -294,9 +311,16 @@ triplets = extractor.extract_triplets(text)
 extractor = TripletExtractor(method="rules")
 triplets = extractor.extract_triplets(text)
 
-# HuggingFace model
+# HuggingFace model (Seq2Seq / REBEL)
 extractor = TripletExtractor(method="huggingface")
-triplets = extractor.extract_triplets(text, model="t5-base")
+
+# Use a Seq2Seq model like REBEL for end-to-end triplet extraction
+# This method generates triplets directly from text without needing separate NER/RE steps
+triplets = extractor.extract_triplets(
+    text, 
+    model="Babelscape/rebel-large",
+    device="cpu"
+)
 
 # LLM-based triplet extraction
 extractor = TripletExtractor(method="llm")

@@ -19,6 +19,7 @@ Relation Extraction:
     - "pattern": Pattern-based relation extraction
     - "regex": Advanced regex-based relation extraction
     - "cooccurrence": Co-occurrence based relation detection
+    - "similarity": Similarity-based relation extraction
     - "dependency": Dependency parsing-based relation extraction
     - "huggingface": HuggingFace relation extraction models
     - "llm": LLM-based relation extraction
@@ -717,24 +718,148 @@ def extract_entities_huggingface(
     device: Optional[str] = None,
     **kwargs,
 ) -> List[Entity]:
-    """HuggingFace entity extraction."""
+    """
+    Extract entities using HuggingFace transformers.
+    
+    Args:
+        text: Input text
+        model: Model name or path
+        device: Device to use (cpu, cuda, mps)
+        **kwargs: Additional arguments passed to the pipeline (e.g., aggregation_strategy)
+    """
     loader = HuggingFaceModelLoader(device=device)
-    model_obj = loader.load_ner_model(model)
+    # Pass kwargs (like aggregation_strategy) to load_ner_model
+    model_obj = loader.load_ner_model(model, **kwargs)
     results = loader.extract_entities(model_obj, text)
 
     entities = []
-    for result in results:
-        if isinstance(result, dict):
-            entities.append(
-                Entity(
-                    text=result.get("word", result.get("entity", "")),
-                    label=result.get("entity_group", result.get("label", "UNKNOWN")),
-                    start_char=result.get("start", 0),
-                    end_char=result.get("end", 0),
-                    confidence=result.get("score", 1.0),
-                    metadata={"model": model, "extraction_method": "huggingface"},
+    
+    # Check if manual aggregation is needed (raw IOB tags detected)
+    needs_manual_aggregation = False
+    if results and isinstance(results[0], dict):
+        first_label = results[0].get("label", "")
+        # If we see B- tags and no entity_group (which implies aggregation wasn't done), we aggregate manually
+        if (first_label.startswith("B-") or first_label.startswith("I-")) and "entity_group" not in results[0]:
+            needs_manual_aggregation = True
+
+    if needs_manual_aggregation:
+        current_entity = None
+        for result in results:
+            label = result.get("label", "")
+            word = result.get("word", result.get("entity", ""))
+            score = result.get("score", 1.0)
+            start = result.get("start", 0)
+            end = result.get("end", 0)
+            
+            # Clean word (handle BERT ## and RoBERTa Ġ)
+            clean_word = word.replace("##", "").replace("Ġ", "")
+            if not clean_word:
+                continue
+
+            # Determine tag type and entity type
+            tag_prefix = label[:2] if len(label) > 2 else ""
+            entity_type = label[2:] if len(label) > 2 else label
+
+            if tag_prefix == "B-":
+                # Save previous entity
+                if current_entity:
+                    entities.append(current_entity)
+                
+                # Start new entity
+                current_entity = Entity(
+                    text=clean_word,
+                    label=entity_type,
+                    start_char=start,
+                    end_char=end,
+                    confidence=score,
+                    metadata={
+                        "model": model, 
+                        "extraction_method": "huggingface",
+                        "source": "huggingface",
+                        "raw_iob": True
+                    },
                 )
-            )
+            
+            elif tag_prefix == "I-" and current_entity:
+                # Check if type matches (loose check allows for some noise, strict check enforces type)
+                # We'll be lenient and allow continuation if it makes sense contextually, 
+                # but ideally types should match.
+                if current_entity.label == entity_type:
+                    # Append text
+                    # Use offsets to determine spacing
+                    if start > current_entity.end_char:
+                        # If there's a gap, add space (unless it was a subword that got split but has gap? Unlikely)
+                        # Usually gap means space.
+                        # However, for ## subwords, start usually equals end.
+                        # For Ġ, it implies space.
+                        current_entity.text += " " + clean_word
+                    else:
+                        current_entity.text += clean_word
+                    
+                    current_entity.end_char = end
+                    # Update confidence (average)
+                    current_entity.confidence = (current_entity.confidence + score) / 2
+                else:
+                    # Type mismatch - treat as new entity or ignore?
+                    # Treating as new B- is safer to avoid losing data
+                    if current_entity:
+                        entities.append(current_entity)
+                    
+                    current_entity = Entity(
+                        text=clean_word,
+                        label=entity_type,
+                        start_char=start,
+                        end_char=end,
+                        confidence=score,
+                        metadata={
+                            "model": model, 
+                            "extraction_method": "huggingface",
+                            "source": "huggingface",
+                            "raw_iob": True
+                        },
+                    )
+            
+            else:
+                # O tag or I- without B or other cases
+                if current_entity:
+                    entities.append(current_entity)
+                    current_entity = None
+        
+        # Append last entity
+        if current_entity:
+            entities.append(current_entity)
+
+    else:
+        # Standard processing for aggregated results or simple output
+        for result in results:
+            if isinstance(result, dict):
+                # Handle different output formats based on aggregation strategy
+                label = result.get("entity_group", result.get("label", "UNKNOWN"))
+                text_content = result.get("word", result.get("entity", ""))
+                
+                # Clean up text content (remove ## for subwords if raw)
+                if "##" in text_content and "aggregation_strategy" not in kwargs:
+                     text_content = text_content.replace("##", "")
+                if "Ġ" in text_content: # RoBERTa
+                     text_content = text_content.replace("Ġ", " ").strip()
+                     
+                entities.append(
+                    Entity(
+                        text=text_content,
+                        label=label,
+                        start_char=result.get("start", 0),
+                        end_char=result.get("end", 0),
+                        confidence=result.get("score", 1.0),
+                        metadata={
+                            "model": model, 
+                            "extraction_method": "huggingface",
+                            "source": "huggingface"
+                        },
+                    )
+                )
+            elif isinstance(result, list):
+                 # Handle list of lists (sometimes returned by pipeline)
+                 pass
 
     return entities
 
@@ -1494,14 +1619,26 @@ def extract_relations_huggingface(
 ) -> List[Relation]:
     """HuggingFace relation extraction."""
     loader = HuggingFaceModelLoader(device=device)
-    model_obj = loader.load_relation_model(model)
+    model_obj = loader.load_relation_model(model, **kwargs)
 
-    # This is simplified - actual implementation would depend on model architecture
-    results = loader.extract_relations(model_obj, text, entities)
+    # Pass kwargs (e.g. threshold)
+    results = loader.extract_relations(model_obj, text, entities, **kwargs)
 
     relations = []
-    # Parse results based on model output format
-    # This is a placeholder - actual parsing would depend on the model
+    for result in results:
+        relations.append(
+            Relation(
+                subject=result["subject"],
+                predicate=result["relation"],
+                object=result["object"],
+                confidence=result.get("score", 1.0),
+                context=text,
+                metadata={
+                    "model": model,
+                    "extraction_method": "huggingface"
+                }
+            )
+        )
     return relations
 
 
@@ -1986,16 +2123,46 @@ def extract_triplets_huggingface(
 ) -> List[Triplet]:
     """HuggingFace triplet extraction."""
     loader = HuggingFaceModelLoader(device=device)
-    model_obj = loader.load_triplet_model(model)
+    model_obj = loader.load_triplet_model(model, **kwargs)
+    
+    # REBEL needs special tokens to be preserved
+    if "skip_special_tokens" not in kwargs:
+        kwargs["skip_special_tokens"] = False
+        
     results = loader.extract_triplets(model_obj, text, **kwargs)
 
     triplets = []
     for result in results:
-        # Parse result based on model output format
-        # This is a placeholder - actual parsing would depend on the model
         if "triplet" in result:
-            # Parse triplet string (format depends on model)
-            pass
+            decoded_text = result["triplet"]
+            
+            # Clean up common special tokens that might interfere or are noise
+            decoded_text = decoded_text.replace("<s>", "").replace("</s>", "").replace("<pad>", "")
+            
+            # Parse REBEL format: <triplet> subject <subj> predicate <obj> object
+            # We use a non-greedy match and lookahead for next triplet or end of string
+            import re
+            pattern = r"<triplet>(?P<head>.*?)<subj>(?P<relation>.*?)<obj>(?P<tail>.*?)(?=<triplet>|$)"
+            
+            matches = re.finditer(pattern, decoded_text)
+            for match in matches:
+                head = match.group("head").strip()
+                relation = match.group("relation").strip()
+                tail = match.group("tail").strip()
+                
+                if head and relation and tail:
+                    triplets.append(
+                        Triplet(
+                            subject=head,
+                            predicate=relation,
+                            object=tail,
+                            confidence=0.9, # Model generation doesn't provide per-triplet confidence
+                            metadata={
+                                "model": model,
+                                "extraction_method": "huggingface_rebel"
+                            }
+                        )
+                    )
 
     return triplets
 

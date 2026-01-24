@@ -364,8 +364,11 @@ class NERExtractor:
                     # Prepare method-specific options
                     method_options = all_options.copy()
                     if method_name == "huggingface":
-                        method_options["model"] = all_options.get(
-                            "huggingface_model", self.huggingface_model
+                        # Prioritize runtime options over config/defaults
+                        method_options["model"] = (
+                            options.get("huggingface_model") 
+                            or options.get("model") 
+                            or self.huggingface_model
                         )
                         method_options["device"] = all_options.get("device")
                     elif method_name == "llm":

@@ -184,18 +184,15 @@ Core entity extraction implementation used by notebooks and lower-level integrat
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `method` | str or list | `"ml"` | Method(s): "ml", "llm", "pattern", "regex", "huggingface" |
-| `silent_fail` | bool | `False` | Return empty list on error instead of raising (LLM only) |
-| `max_text_length` | int | `64000` | Max text length for auto-chunking (LLM only) |
-| `max_tokens` | int | `None` | Max output tokens for LLM generation |
-| `max_workers` | int | `1` | Threads for parallel batch processing |
-| `**config` | dict | `{}` | Method-specific config (e.g., `model`, `provider`) |
+| `entity_types` | list | `None` | Filter for specific entity types |
+| `**config` | dict | `{}` | Method-specific config (e.g., `model`, `aggregation_strategy`, `device`) |
 
 **Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `extract(text)` | Alias for `extract_entities`. Get list of entities. |
-| `extract_entities(text)` | Get list of entities |
+| `extract(text, pipeline_id=None, **kwargs)` | Alias for `extract_entities`. Supports `max_workers`. |
+| `extract_entities(text, pipeline_id=None, **kwargs)` | Get list of entities. Supports `max_workers`. |
 
 **Example:**
 
@@ -231,18 +228,19 @@ Extracts relationships between entities.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `method` | str | `"dependency"` | Method: "dependency", "pattern", "cooccurrence", "huggingface", "llm" |
 | `relation_types` | list | `None` | Specific relation types to extract |
 | `bidirectional` | bool | `False` | Extract bidirectional relations |
 | `confidence_threshold` | float | `0.6` | Minimum confidence score |
 | `max_distance` | int | `50` | Max token distance between entities |
-| `max_workers` | int | `1` | Threads for parallel batch processing |
+| `**config` | dict | `{}` | Method-specific config (e.g., `model`, `device` for HuggingFace) |
 
 **Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `extract(text, entities)` | Alias for `extract_relations`. Find links. |
-| `extract_relations(text, entities)` | Find links |
+| `extract(text, entities, pipeline_id=None, **kwargs)` | Alias for `extract_relations`. Supports `max_workers`. |
+| `extract_relations(text, entities, pipeline_id=None, **kwargs)` | Find links. Supports `max_workers`. |
 
 **Example:**
 
@@ -341,19 +339,18 @@ Extracts RDF triplets (Subject-Predicate-Object).
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `method` | str | `"pattern"` | Extraction method ("pattern", "rules", "huggingface", "llm") |
+| `triplet_types` | list | `None` | Specific triplet types/predicates to extract |
 | `include_temporal` | bool | `False` | Include time information |
 | `include_provenance` | bool | `False` | Track source sentences |
-| `method` | str | `"pattern"` | Extraction method ("pattern", "rules", "huggingface", "llm") |
-| `silent_fail` | bool | `False` | Return empty list on error instead of raising (LLM only) |
-| `max_text_length` | int | `64000` | Max text length for auto-chunking (LLM only) |
-| `max_tokens` | int | `None` | Max output tokens for LLM generation |
-| `max_workers` | int | `1` | Threads for parallel batch processing |
+| `**kwargs` | dict | `{}` | Configuration options (e.g., `model`, `device`) |
 
 **Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `extract_triplets(text)` | Get (S, P, O) tuples |
+| `extract(text, entities=None, relations=None, pipeline_id=None, **kwargs)` | Alias for `extract_triplets`. Supports `max_workers`. |
+| `extract_triplets(text, entities=None, relations=None, pipeline_id=None, **kwargs)` | Get (S, P, O) tuples. Supports `max_workers`. |
 
 **Example:**
 

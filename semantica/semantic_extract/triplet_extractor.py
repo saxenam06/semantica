@@ -366,8 +366,17 @@ class TripletExtractor:
             from .ner_extractor import NERExtractor
             from .relation_extractor import RelationExtractor
 
+            # Use method-based extraction
+            methods = options.get("method", self.method)
+            if isinstance(methods, str):
+                methods = [methods]
+
+            # Determine if we need to extract entities/relations based on method
+            # HuggingFace (Seq2Seq) does not need pre-extracted entities/relations
+            needs_entities_relations = any(m not in ["huggingface"] for m in methods)
+
             # Extract entities if not provided
-            if entities is None:
+            if entities is None and needs_entities_relations:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Extracting entities..."
                 )
@@ -375,18 +384,23 @@ class TripletExtractor:
                     ner_config = self.config.get("ner", {})
                     if "ner_method" in self.config:
                         ner_config = {**ner_config, "method": self.config["ner_method"]}
+                    
+                    # Filter out 'model' and 'huggingface_model' from shared config
+                    # to prevent passing triplet model to NER extractor
+                    shared_config = {
+                        k: v
+                        for k, v in self.config.items()
+                        if k not in ["ner", "relation", "validator", "serializer", "quality", "model", "huggingface_model"]
+                    }
+
                     self._ner_extractor = NERExtractor(
                         **ner_config,
-                        **{
-                            k: v
-                            for k, v in self.config.items()
-                            if k not in ["ner", "relation", "validator", "serializer", "quality"]
-                        },
+                        **shared_config,
                     )
                 entities = self._ner_extractor.extract_entities(text)
 
             # Extract relations if not provided
-            if relations is None:
+            if relations is None and needs_entities_relations:
                 self.progress_tracker.update_tracking(
                     tracking_id, message="Extracting relations..."
                 )
@@ -394,20 +408,19 @@ class TripletExtractor:
                     rel_config = self.config.get("relation", {})
                     if "relation_method" in self.config:
                         rel_config = {**rel_config, "method": self.config["relation_method"]}
+                    
+                    # Filter out 'model' and 'huggingface_model' from shared config
+                    shared_config = {
+                        k: v
+                        for k, v in self.config.items()
+                        if k not in ["ner", "relation", "validator", "serializer", "quality", "model", "huggingface_model"]
+                    }
+
                     self._relation_extractor = RelationExtractor(
                         **rel_config,
-                        **{
-                            k: v
-                            for k, v in self.config.items()
-                            if k not in ["ner", "relation", "validator", "serializer", "quality"]
-                        },
+                        **shared_config,
                     )
                 relations = self._relation_extractor.extract_relations(text, entities)
-
-            # Use method-based extraction
-            methods = options.get("method", self.method)
-            if isinstance(methods, str):
-                methods = [methods]
 
             triplet_types = options.get("triplet_types", self.triplet_types)
             
@@ -450,8 +463,12 @@ class TripletExtractor:
                         method_options["triplet_types"] = triplet_types
 
                     if method_name == "huggingface":
-                        method_options["model"] = all_options.get(
-                            "huggingface_model", all_options.get("model")
+                        # Prioritize runtime options over config/defaults
+                        method_options["model"] = (
+                            options.get("huggingface_model") 
+                            or options.get("model")
+                            or self.config.get("huggingface_model") 
+                            or self.config.get("model")
                         )
                         method_options["device"] = all_options.get("device")
                     elif method_name == "llm":

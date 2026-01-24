@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Bring Your Own Model (BYOM) Support**:
+    - Enabled full support for custom Hugging Face models in `NERExtractor`, `RelationExtractor`, and `TripletExtractor`.
+    - Added support for custom tokenizers in `HuggingFaceModelLoader` to handle models with non-standard tokenization requirements.
+    - Implemented robust fallback logic for model selection: runtime options (`extract(model=...)`) now correctly override configuration defaults.
+- **Enhanced NER Implementation**:
+    - Added configurable aggregation strategies (`simple`, `first`, `average`, `max`) to `extract_entities_huggingface` for better sub-word token handling.
+    - Implemented robust IOB/BILOU parsing to reconstruct entities from raw model outputs when structured output is unavailable.
+    - Added confidence scoring for aggregated entities.
+- **Relation Extraction Improvements**:
+    - Implemented standard entity marker technique (wrapping subject/object with `<subj>`, `<obj>` tags) in `extract_relations_huggingface` for compatibility with sequence classification models.
+    - Added structured output parsing to convert raw model predictions into validated `Relation` objects.
+- **Triplet Extraction Completion**:
+    - Added specialized parsing for Seq2Seq models (e.g., REBEL) in `extract_triplets_huggingface` to generate structured triplets directly from text.
+    - Implemented post-processing logic to clean and validate generated triplets.
+
+### Fixed
+- **Model Parameter Precedence**:
+    - Fixed issue where configuration defaults took precedence over runtime arguments in Hugging Face extractors. Runtime options now correctly override config values.
+- **Import Handling**:
+    - Fixed circular import issues in test suites by implementing robust mocking strategies.
+
 ## [0.2.4] - 2026-01-22
 
 ### Added

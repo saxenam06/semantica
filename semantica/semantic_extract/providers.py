@@ -1186,25 +1186,32 @@ class HuggingFaceModelLoader:
         # Import torch at method level to ensure it's available
         import torch
         
-        cache_key = f"{model_name}_ner"
+        # Include aggregation_strategy in cache key
+        agg_strategy = kwargs.get("aggregation_strategy", "simple")
+        cache_key = f"{model_name}_ner_{agg_strategy}"
         if cache_key in self._cache:
             return self._cache[cache_key]
 
         try:
             from transformers import pipeline
+        except ImportError:
+            raise ImportError(
+                "transformers library not installed. Install with: pip install semantica[models-huggingface]"
+            )
 
+        try:
             nlp = pipeline(
                 "ner",
                 model=model_name,
                 device=self.device if torch.cuda.is_available() else -1,
-                aggregation_strategy="simple",
+                aggregation_strategy=agg_strategy,
+                tokenizer=kwargs.get("tokenizer") # Allow custom tokenizer
             )
             self._cache[cache_key] = nlp
             return nlp
-        except (ImportError, OSError):
-            raise ImportError(
-                "transformers library not installed. Install with: pip install semantica[models-huggingface]"
-            )
+        except OSError as e:
+            self.logger.error(f"Failed to load NER model '{model_name}': {e}")
+            raise ValueError(f"Could not load HuggingFace model '{model_name}'. Check if model name is correct. Error: {e}")
         except Exception as e:
             self.logger.error(f"Failed to load NER model {model_name}: {e}")
             raise
@@ -1219,19 +1226,31 @@ class HuggingFaceModelLoader:
             return self._cache[cache_key]
 
         try:
-            from transformers import pipeline
-
-            nlp = pipeline(
-                "text-classification",
-                model=model_name,
-                device=self.device if torch.cuda.is_available() else -1,
-            )
-            self._cache[cache_key] = nlp
-            return nlp
-        except (ImportError, OSError):
+            from transformers import pipeline, AutoTokenizer
+        except ImportError:
             raise ImportError(
                 "transformers library not installed. Install with: pip install semantica[models-huggingface]"
             )
+
+        try:
+            # Allow custom tokenizer
+            tokenizer = kwargs.get("tokenizer")
+            if not tokenizer and kwargs.get("tokenizer_name"):
+                tokenizer = AutoTokenizer.from_pretrained(kwargs.get("tokenizer_name"))
+
+            pipeline_kwargs = {
+                "model": model_name,
+                "device": self.device if torch.cuda.is_available() else -1,
+            }
+            if tokenizer:
+                pipeline_kwargs["tokenizer"] = tokenizer
+
+            nlp = pipeline("text-classification", **pipeline_kwargs)
+            self._cache[cache_key] = nlp
+            return nlp
+        except OSError as e:
+            self.logger.error(f"Failed to load relation model '{model_name}': {e}")
+            raise ValueError(f"Could not load HuggingFace model '{model_name}'. Check if model name is correct. Error: {e}")
         except Exception as e:
             self.logger.error(f"Failed to load relation model {model_name}: {e}")
             raise
@@ -1244,18 +1263,27 @@ class HuggingFaceModelLoader:
 
         try:
             from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
+        except ImportError:
+            raise ImportError(
+                "transformers library not installed. Install with: pip install semantica[models-huggingface]"
+            )
 
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+        try:
+            # Allow custom tokenizer
+            tokenizer = kwargs.get("tokenizer")
+            if not tokenizer:
+                tokenizer_name = kwargs.get("tokenizer_name", model_name)
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
             model.to(self.device)
 
             nlp = {"tokenizer": tokenizer, "model": model, "device": self.device}
             self._cache[cache_key] = nlp
             return nlp
-        except (ImportError, OSError):
-            raise ImportError(
-                "transformers library not installed. Install with: pip install semantica[models-huggingface]"
-            )
+        except OSError as e:
+            self.logger.error(f"Failed to load triplet model '{model_name}': {e}")
+            raise ValueError(f"Could not load HuggingFace model '{model_name}'. Check if model name is correct. Error: {e}")
         except Exception as e:
             self.logger.error(f"Failed to load triplet model {model_name}: {e}")
             raise
@@ -1264,10 +1292,84 @@ class HuggingFaceModelLoader:
         """Extract entities using loaded model."""
         return model(text)
 
-    def extract_relations(self, model, text: str, entities: List) -> List[Dict]:
-        """Extract relations using loaded model."""
-        # This would need to be customized based on the model architecture
-        return model(text)
+    def extract_relations(self, model, text: str, entities: List, **kwargs) -> List[Dict]:
+        """
+        Extract relations using loaded model.
+        Iterates through entity pairs and classifies the relationship.
+        """
+        results = []
+        
+        # Sort entities by position
+        sorted_entities = sorted(entities, key=lambda e: e.start_char)
+        
+        # Marker configuration
+        subj_start = kwargs.get("subj_start_marker", "<subj>")
+        subj_end = kwargs.get("subj_end_marker", "</subj>")
+        obj_start = kwargs.get("obj_start_marker", "<obj>")
+        obj_end = kwargs.get("obj_end_marker", "</obj>")
+        
+        # Iterate through all pairs
+        import itertools
+        for i, e1 in enumerate(sorted_entities):
+            for e2 in sorted_entities:
+                if e1 == e2:
+                    continue
+                
+                # Check distance (optional optimization)
+                # if abs(e1.start_char - e2.start_char) > 200: continue
+                
+                # Format text with markers
+                # Strategy: [CLS] text with <subj>...</subj> and <obj>...</obj> [SEP]
+                # We need to insert markers into the original text
+                
+                # Create a copy of text with markers inserted
+                # We need to handle offsets correctly. 
+                # Simplest way: reconstruct string pieces
+                
+                p1_start, p1_end = e1.start_char, e1.end_char
+                p2_start, p2_end = e2.start_char, e2.end_char
+                
+                if p1_start < p2_start:
+                    formatted_text = (
+                        text[:p1_start] + 
+                        f"{subj_start} " + text[p1_start:p1_end] + f" {subj_end}" + 
+                        text[p1_end:p2_start] + 
+                        f"{obj_start} " + text[p2_start:p2_end] + f" {obj_end}" + 
+                        text[p2_end:]
+                    )
+                else:
+                     formatted_text = (
+                        text[:p2_start] + 
+                        f"{obj_start} " + text[p2_start:p2_end] + f" {obj_end}" + 
+                        text[p2_end:p1_start] + 
+                        f"{subj_start} " + text[p1_start:p1_end] + f" {subj_end}" + 
+                        text[p1_end:]
+                    )
+                
+                # Predict
+                try:
+                    # Pipeline returns [{'label': 'LABEL', 'score': 0.99}]
+                    prediction = model(formatted_text, top_k=1)
+                    
+                    if prediction:
+                        res = prediction[0] if isinstance(prediction, list) else prediction
+                        if isinstance(res, list): res = res[0] # top_k=1 returns list of dicts
+                        
+                        label = res.get("label")
+                        score = res.get("score")
+                        
+                        # Filter "no_relation" or low confidence
+                        if label != "no_relation" and score > kwargs.get("threshold", 0.5):
+                            results.append({
+                                "subject": e1,
+                                "object": e2,
+                                "relation": label,
+                                "score": score
+                            })
+                except Exception as e:
+                    self.logger.warning(f"Relation prediction failed for pair {e1.text}-{e2.text}: {e}")
+                    
+        return results
 
     def extract_triplets(self, model, text: str, **kwargs) -> List[Dict]:
         """Extract triplets using loaded model."""
@@ -1279,15 +1381,13 @@ class HuggingFaceModelLoader:
         max_input_length = kwargs.get("max_input_length", 512)
         max_length = kwargs.get("max_length", 128)
         
-        # Allow max_new_tokens as well
         generate_kwargs = {"max_length": max_length}
         if "max_new_tokens" in kwargs:
             generate_kwargs["max_new_tokens"] = kwargs["max_new_tokens"]
-            # If max_new_tokens is set, we might want to remove max_length or ensure they don't conflict
-            # For Seq2Seq, max_length usually refers to the total length of the target sequence
             
-        # Pass other generation args
-        for param in ["num_beams", "temperature", "top_p", "top_k", "do_sample"]:
+        # Pass other generation args including beams and penalties
+        for param in ["num_beams", "temperature", "top_p", "top_k", "do_sample", 
+                      "length_penalty", "repetition_penalty"]:
             if param in kwargs:
                 generate_kwargs[param] = kwargs[param]
 
@@ -1296,10 +1396,10 @@ class HuggingFaceModelLoader:
         ).to(device)
         
         outputs = model_obj.generate(**inputs, **generate_kwargs)
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Allow controlling skip_special_tokens (important for REBEL which uses special tokens for delimiters)
+        skip_special_tokens = kwargs.get("skip_special_tokens", True)
+        decoded = tokenizer.decode(outputs[0], skip_special_tokens=skip_special_tokens)
 
-        # Parse decoded output (format depends on model)
-        # This is a placeholder - actual parsing would depend on model output format
         return [{"triplet": decoded}]
 
 
