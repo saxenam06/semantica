@@ -114,6 +114,16 @@ graph-all = [
   "semantica[graph-neo4j,graph-falkordb,graph-amazon-neptune]"
 ]
 
+# ---- Vector Store Backends ----
+vectorstore-qdrant = ["qdrant-client>=1.0.0"]
+vectorstore-weaviate = ["weaviate-client>=4.0.0"]
+vectorstore-pinecone = ["pinecone-client>=3.0.0"]
+vectorstore-milvus = ["pymilvus>=2.0.0"]
+
+vectorstore-all = [
+  "semantica[vectorstore-qdrant,vectorstore-weaviate,vectorstore-pinecone,vectorstore-milvus]"
+]
+
 # ---- Infra / Queues / Workers ----
 infra = [
   "redis>=4.3.0",
@@ -177,7 +187,7 @@ dev = [
 
 # ---- Everything ----
 all = [
-  "semantica[dev,viz,gpu,infra,cloud,monitoring,llm-all,models-huggingface,split-all,graph-all,parse-docling]"
+  "semantica[dev,viz,gpu,infra,cloud,monitoring,llm-all,models-huggingface,split-all,graph-all,vectorstore-all,parse-docling]"
 ]
 
 # ---------------- ENTRYPOINTS ----------------

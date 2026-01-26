@@ -60,7 +60,7 @@ class VectorStore:
     • Provides vector store operations
     """
 
-    SUPPORTED_BACKENDS = {"faiss", "weaviate", "qdrant", "milvus", "inmemory"}
+    SUPPORTED_BACKENDS = {"faiss", "weaviate", "qdrant", "milvus", "pinecone", "inmemory"}
 
     def __init__(self, backend="faiss", config=None, max_workers: int = 6, **kwargs):
         """Initialize vector store."""

@@ -3,7 +3,7 @@ Vector Store Management Module
 
 This module provides comprehensive vector storage and retrieval capabilities for the
 Semantica framework, including support for multiple vector store backends (FAISS,
-Weaviate, Qdrant, Milvus), hybrid search combining vector similarity and
+Weaviate, Qdrant, Pinecone, Milvus), hybrid search combining vector similarity and
 metadata filtering, metadata management, and namespace isolation.
 
 Algorithms Used:
@@ -73,7 +73,7 @@ Dependencies:
     - pymilvus
 
 Key Features:
-    - Multi-backend vector store support (FAISS, Weaviate, Qdrant, Milvus)
+    - Multi-backend vector store support (FAISS, Weaviate, Qdrant, Pinecone, Milvus)
     - Vector indexing and similarity search
     - Metadata indexing and filtering
     - Hybrid search combining vector and metadata queries
@@ -91,6 +91,7 @@ Main Classes:
     - FAISSStore: FAISS integration for local vector storage
     - WeaviateStore: Weaviate vector database integration
     - QdrantStore: Qdrant vector database integration
+    - PineconeStore: Pinecone vector database integration
     - MilvusStore: Milvus vector database integration
     - HybridSearch: Hybrid vector and metadata search
     - MetadataStore: Metadata indexing and management
@@ -145,6 +146,7 @@ from .methods import (
 )
 from .milvus_store import MilvusStore, MilvusClient, MilvusCollection, MilvusSearch
 from .namespace_manager import Namespace, NamespaceManager
+from .pinecone_store import PineconeStore, PineconeClient, PineconeIndex, PineconeSearch
 from .qdrant_store import QdrantStore, QdrantClient, QdrantCollection, QdrantSearch
 from .registry import MethodRegistry, method_registry
 from .vector_store import VectorIndexer, VectorManager, VectorRetriever, VectorStore
@@ -181,6 +183,11 @@ __all__ = [
     "MilvusClient",
     "MilvusCollection",
     "MilvusSearch",
+    # Pinecone
+    "PineconeStore",
+    "PineconeClient",
+    "PineconeIndex",
+    "PineconeSearch",
     # Hybrid search
     "HybridSearch",
     "MetadataFilter",
