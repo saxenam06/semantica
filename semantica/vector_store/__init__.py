@@ -58,6 +58,7 @@ Supported Backends:
     - FAISS: In-memory/local disk (Facebook AI Similarity Search)
     - Weaviate: Cloud/Self-hosted (Schema-aware vector database)
     - Qdrant: Cloud/Self-hosted (Vector database for the next generation of AI)
+    - Pinecone: Cloud-managed (Managed vector database service)
     - Milvus: Cloud/Self-hosted (Highly scalable vector database)
     - InMemory: Simple list-based storage for testing/small datasets
 
