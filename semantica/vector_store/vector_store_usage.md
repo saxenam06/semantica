@@ -1,6 +1,6 @@
 # Vector Store Module Usage Guide
 
-This comprehensive guide demonstrates how to use the vector store module for vector storage and retrieval, supporting multiple vector store backends (FAISS, Weaviate, Qdrant, Milvus), hybrid search combining vector similarity and metadata filtering, metadata management, and namespace isolation.
+This comprehensive guide demonstrates how to use the vector store module for vector storage and retrieval, supporting multiple vector store backends (FAISS, Weaviate, Qdrant, Pinecone, Milvus), hybrid search combining vector similarity and metadata filtering, metadata management, and namespace isolation.
 
 ## Table of Contents
 
@@ -749,6 +749,39 @@ results = store.search(
     query_vector,
     top=10,
     query_filter={"must": [{"key": "category", "match": {"value": "science"}}]}
+)
+
+print(f"Found {len(results)} results")
+```
+
+### Pinecone Store
+
+```python
+from semantica.vector_store import PineconeStore
+import numpy as np
+
+# Create Pinecone store
+store = PineconeStore(api_key="your-api-key")
+
+# Connect
+store.connect()
+
+# Create index
+store.create_index("my-index", dimension=768, metric="cosine")
+
+# Upsert vectors
+vectors = [np.random.rand(768).tolist() for _ in range(100)]
+ids = [f"vec_{i}" for i in range(100)]
+metadata = [{"category": "science"} for _ in range(100)]
+store.upsert_vectors(vectors, ids, metadata=metadata, namespace="my-namespace")
+
+# Search
+query_vector = np.random.rand(768).tolist()
+results = store.search_vectors(
+    query_vector,
+    k=10,
+    filter={"category": {"$eq": "science"}},
+    namespace="my-namespace"
 )
 
 print(f"Found {len(results)} results")
