@@ -907,12 +907,6 @@ git push origin feature/your-feature
 4. **Feature Requests** - [Request feature](https://github.com/Hawksight-AI/semantica/issues/new)
 
 
-###  Contributors
-
-<a href="https://github.com/Hawksight-AI/semantica/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Hawksight-AI/semantica" alt="Contributors" />
-</a>
-
 ## 📜 License
 
 Semantica is licensed under the **MIT License** - see the [LICENSE](https://github.com/Hawksight-AI/semantica/blob/main/LICENSE) file for details.
