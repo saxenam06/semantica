@@ -25,6 +25,8 @@
 
 **Semantica** is an **open-source semantic intelligence framework** that transforms raw, unstructured data into **validated, explainable, and auditable knowledge** for modern AI systems.
 
+**A framework for building semantic layers and enriching knowledge** — Semantica provides the tools and infrastructure to construct robust semantic layers that add meaning, context, and structure to your data, transforming it into actionable, trustworthy knowledge.
+
 It provides the **semantic foundation** for:
 - **GraphRAG systems**
 - **AI Agents & Multi-Agent Systems**
@@ -32,6 +34,20 @@ It provides the **semantic foundation** for:
 - **High-stakes enterprise AI platforms**
 
 Semantica is built for environments where **every answer must be explainable, traceable, and governed**.
+
+### 🎯 Not Just Another Agentic Framework
+
+**Semantica is not an agentic framework** — it's a **semantic intelligence layer** that **complements** existing agent frameworks to make them more:
+
+- **🔍 Auditable** — Complete provenance tracking from source documents to final decisions, enabling full audit trails for compliance and governance
+- **💡 Explainable** — Transparent reasoning paths showing how answers were derived, with explicit entity relationships and ontology rules
+- **📊 Provenance-Aware** — End-to-end traceability linking every AI response back to source documents, extraction timestamps, and confidence scores
+- **✅ Validated** — Built-in conflict detection, deduplication, and quality assurance to ensure reliable, consistent knowledge
+- **🛡️ Governed** — Rule-based validation, ontology enforcement, and semantic consistency checks for high-stakes environments
+
+Whether you're using LangChain, LlamaIndex, AutoGen, CrewAI, Google ADK (Agent Development Kit), Agno, or any other agent framework, **Semantica enhances your agents** by providing the semantic intelligence layer that transforms them from black-box systems into **trustworthy, accountable AI systems**.
+
+**Critical for high-stakes use cases** where decisions impact lives, finances, security, or legal outcomes — from healthcare diagnostics and financial fraud detection to legal research and cybersecurity threat analysis.
 
 
 ---
@@ -130,13 +146,15 @@ Every AI response can be traced back to:
 
 ## 🏥 Built for High-Stakes Domains
 
-Semantica is designed for domains where **mistakes have real consequences**:
+Semantica is designed for domains where **mistakes have real consequences** and **every decision must be accountable**:
 
-- **Healthcare & Life Sciences** — Clinical reasoning, audit trails  
-- **Finance & Risk** — Explainable decisions, regulatory compliance  
-- **Legal & Compliance** — Evidence-backed reasoning  
-- **Cybersecurity & Intelligence** — Attribution and provenance  
-- **Government & Defense** — Governed, auditable AI systems  
+- **🏥 Healthcare & Life Sciences** — Clinical decision support with full audit trails, drug interaction analysis, medical literature reasoning, patient safety compliance
+- **💰 Finance & Risk** — Fraud detection with explainable reasoning paths, regulatory compliance (SOX, GDPR, MiFID II), credit risk assessment, algorithmic trading validation
+- **⚖️ Legal & Compliance** — Evidence-backed legal research, contract analysis with provenance tracking, regulatory change management, case law reasoning
+- **🔒 Cybersecurity & Intelligence** — Threat attribution with full provenance, incident response with traceable reasoning, security audit trails, intelligence analysis
+- **🏛️ Government & Defense** — Governed AI systems for policy decisions, classified information handling, public service automation with accountability, defense intelligence systems
+- **🏭 Critical Infrastructure** — Power grid management, transportation safety systems, water treatment monitoring, emergency response coordination
+- **🚗 Autonomous Systems** — Self-driving vehicle decision logs, drone navigation reasoning, robotics safety validation, industrial automation compliance  
 
 ---
 
