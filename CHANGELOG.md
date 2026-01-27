@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-01-27
+
 ### Added
 - **Pinecone Vector Store Support**:
     - Implemented native Pinecone support (`PineconeStore`) with full CRUD capabilities.

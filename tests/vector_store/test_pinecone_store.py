@@ -16,6 +16,7 @@ try:
         PineconeSearch,
         PINECONE_AVAILABLE
     )
+    from semantica.utils.exceptions import ProcessingError
 except ImportError:
     # If we can't import, we can't run these tests
     # But we should not crash silently.
@@ -55,7 +56,7 @@ class TestPineconeStore(unittest.TestCase):
     def test_connect_unavailable(self):
         """Test connecting when Pinecone is not available."""
         store = PineconeStore(api_key="test-key")
-        with self.assertRaises(ImportError):
+        with self.assertRaises(ProcessingError):
             store.connect()
 
     @patch('semantica.vector_store.pinecone_store.PINECONE_AVAILABLE', True)
