@@ -193,114 +193,114 @@ class PandasIngestor:
             raise ProcessingError(f"Failed to ingest DataFrame: {e}") from e
 
     
-       def from_csv(
-            self,
-            file_path: Union[str, Path],
-            chunksize: Optional[int] = None,
-            **pandas_options,
-        ) -> PandasData:
-            file_path = Path(file_path)
-    
-            if not file_path.exists():
-                raise ValidationError(f"CSV file not found: {file_path}")
-    
-            tracking_id = self.progress_tracker.start_tracking(
-                file=str(file_path),
-                module="ingest",
-                submodule="PandasIngestor",
-                message=f"Ingesting CSV: {file_path.name}",
+          def from_csv(
+        self,
+        file_path: Union[str, Path],
+        chunksize: Optional[int] = None,
+        **pandas_options,
+    ) -> PandasData:
+        file_path = Path(file_path)
+
+        if not file_path.exists():
+            raise ValidationError(f"CSV file not found: {file_path}")
+
+        tracking_id = self.progress_tracker.start_tracking(
+            file=str(file_path),
+            module="ingest",
+            submodule="PandasIngestor",
+            message=f"Ingesting CSV: {file_path.name}",
+        )
+
+        try:
+            import csv
+            import chardet
+
+            # ---------- Encoding Detection ----------
+            with open(file_path, "rb") as f:
+                raw = f.read(100_000)
+                encoding_info = chardet.detect(raw)
+            encoding = encoding_info.get("encoding") or "utf-8"
+
+        
+            # ---------- Delimiter & Header Detection ----------
+            with open(file_path, "r", encoding=encoding, errors="replace") as f:
+                sample = f.read(10000)
+                sniffer = csv.Sniffer()
+
+                try:
+                    dialect = sniffer.sniff(sample, delimiters=[",", ";", "\t", "|"])
+                    delimiter = dialect.delimiter
+                    quotechar = dialect.quotechar
+                except Exception:
+                    delimiter = ","
+                    quotechar = '"'
+
+            has_header = True   # Always treat first row as header
+
+
+            skipped_rows = 0
+            dataframes = []
+
+            # ---------- CSV Reading (Chunked if needed) ----------
+            reader = pd.read_csv(
+                file_path,
+                sep=delimiter,
+                encoding=encoding,
+                encoding_errors="replace",
+                quoting=csv.QUOTE_MINIMAL,
+                header=0 if has_header else None,
+                quotechar=quotechar,
+                escapechar="\\",
+                engine="python",
+                on_bad_lines="warn",
+                chunksize=chunksize,
+                **pandas_options,
             )
-    
-            try:
-                import csv
-                import chardet
-    
-                # ---------- Encoding Detection ----------
-                with open(file_path, "rb") as f:
-                    raw = f.read(100_000)
-                    encoding_info = chardet.detect(raw)
-                encoding = encoding_info.get("encoding") or "utf-8"
-    
-                # ---------- Delimiter & Header Detection ----------
-                # ---------- Delimiter & Header Detection ----------
-                with open(file_path, "r", encoding=encoding, errors="replace") as f:
-                    sample = f.read(10000)
-                    sniffer = csv.Sniffer()
-    
-                    try:
-                        dialect = sniffer.sniff(sample, delimiters=[",", ";", "\t", "|"])
-                        delimiter = dialect.delimiter
-                        quotechar = dialect.quotechar
-                    except Exception:
-                        delimiter = ","
-                        quotechar = '"'
-    
-                has_header = True   # Always treat first row as header
-    
-    
-                skipped_rows = 0
-                dataframes = []
-    
-                # ---------- CSV Reading (Chunked if needed) ----------
-                reader = pd.read_csv(
-                    file_path,
-                    sep=delimiter,
-                    encoding=encoding,
-                    encoding_errors="replace",
-                    quoting=csv.QUOTE_MINIMAL,
-                    header=0 if has_header else None,
-                    quotechar=quotechar,
-                    escapechar="\\",
-                    engine="python",
-                    on_bad_lines="warn",
-                    chunksize=chunksize,
-                    **pandas_options,
-                )
-    
-                if chunksize:
-                    for chunk in reader:
-                        dataframes.append(chunk)
-                else:
-                    dataframes.append(reader)
-    
-                dataframe = pd.concat(dataframes, ignore_index=True)
-    
-                self.progress_tracker.update_tracking(
-                    tracking_id,
-                    message="CSV parsed successfully, ingesting DataFrame...",
-                )
-    
-                # ---------- Ingest ----------
-                pandas_data = self.ingest_dataframe(dataframe)
-    
-                # ---------- Metadata ----------
-                pandas_data.metadata.update(
-                    {
-                        "source": "csv",
-                        "file": str(file_path),
-                        "detected_encoding": encoding,
-                        "encoding_confidence": encoding_info.get("confidence"),
-                        "detected_delimiter": delimiter,
-                        "header_detected": has_header,
-                        "chunksize": chunksize,
-                        "malformed_rows_skipped": skipped_rows,
-                    }
-                )
-    
-                self.progress_tracker.stop_tracking(
-                    tracking_id,
-                    status="completed",
-                    message=f"CSV ingestion completed: {pandas_data.row_count} rows",
-                )
-    
-                return pandas_data
-    
-            except Exception as e:
-                self.progress_tracker.stop_tracking(
-                    tracking_id, status="failed", message=str(e)
-                )
-                self.logger.error(f"Failed to ingest CSV {file_path}: {e}")
-                raise ProcessingError(f"Failed to ingest CSV: {e}") from e
+
+            if chunksize:
+                for chunk in reader:
+                    dataframes.append(chunk)
+            else:
+                dataframes.append(reader)
+
+            dataframe = pd.concat(dataframes, ignore_index=True)
+
+            self.progress_tracker.update_tracking(
+                tracking_id,
+                message="CSV parsed successfully, ingesting DataFrame...",
+            )
+
+            # ---------- Ingest ----------
+            pandas_data = self.ingest_dataframe(dataframe)
+
+            # ---------- Metadata ----------
+            pandas_data.metadata.update(
+                {
+                    "source": "csv",
+                    "file": str(file_path),
+                    "detected_encoding": encoding,
+                    "encoding_confidence": encoding_info.get("confidence"),
+                    "detected_delimiter": delimiter,
+                    "header_detected": has_header,
+                    "chunksize": chunksize,
+                    "malformed_rows_skipped": skipped_rows,
+                }
+            )
+
+            self.progress_tracker.stop_tracking(
+                tracking_id,
+                status="completed",
+                message=f"CSV ingestion completed: {pandas_data.row_count} rows",
+            )
+
+            return pandas_data
+
+        except Exception as e:
+            self.progress_tracker.stop_tracking(
+                tracking_id, status="failed", message=str(e)
+            )
+            self.logger.error(f"Failed to ingest CSV {file_path}: {e}")
+            raise ProcessingError(f"Failed to ingest CSV: {e}") from e
 
     def from_json(
         self,
