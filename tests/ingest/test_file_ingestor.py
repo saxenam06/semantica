@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 # and we must populate the attributes that the code tries to import/patch.
 
 module_names = [
+    "boto3",
     "google",
     "google.cloud",
     "google.cloud.storage",
@@ -23,6 +24,7 @@ for name in module_names:
 # Explicitly add the classes that will be patched/used
 sys.modules["google.cloud.storage"].Client = MagicMock()
 sys.modules["azure.storage.blob"].BlobServiceClient = MagicMock()
+sys.modules["boto3"].client = MagicMock()
 
 from pathlib import Path  # noqa: E402
 from unittest.mock import patch  # noqa: E402
