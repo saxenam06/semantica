@@ -1,0 +1,115 @@
+{
+  "entities": [
+    {
+      "id": "Apple Inc.",
+      "name": "Apple Inc.",
+      "type": "ORG",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "batch_index": 0
+      }
+    },
+    {
+      "id": "Apple Inc.",
+      "name": "Apple Inc.",
+      "type": "ORG",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "batch_index": 0
+      }
+    },
+    {
+      "id": "Steve Jobs",
+      "name": "Steve Jobs",
+      "type": "PERSON",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "batch_index": 0
+      }
+    },
+    {
+      "id": "Steve Wozniak",
+      "name": "Steve Wozniak",
+      "type": "PERSON",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "batch_index": 0
+      }
+    },
+    {
+      "id": "Ronald Wayne",
+      "name": "Ronald Wayne",
+      "type": "PERSON",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "batch_index": 0
+      }
+    },
+    {
+      "id": "Steve Jobs",
+      "name": "Steve Jobs",
+      "type": "PERSON",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "batch_index": 0
+      }
+    },
+    {
+      "id": "Steve Wozniak",
+      "name": "Steve Wozniak",
+      "type": "PERSON",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "batch_index": 0
+      }
+    },
+    {
+      "id": "Ronald Wayne",
+      "name": "Ronald Wayne",
+      "type": "PERSON",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "batch_index": 0
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Apple Inc.",
+      "target": "Steve Jobs",
+      "type": "founded_by",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "pattern": "(?P<subject>(?:Steve\\ Wozniak|Ronald\\ Wayne|Apple\\ Inc\\.|Steve\\ Jobs))(?:[.,])?\\s+(?:was\\s+)?founded\\s+by\\s+(?P<object>(?:Steve\\ Wozniak|Ronald\\ Wayne|Apple\\ Inc\\.|Steve\\ Jobs))",
+        "batch_index": 0
+      }
+    },
+    {
+      "source": "Apple Inc.",
+      "target": "Steve Jobs",
+      "type": "founded_by",
+      "confidence": 0.7,
+      "metadata": {
+        "extraction_method": "pattern",
+        "pattern": "(?P<subject>(?:Steve\\ Wozniak|Ronald\\ Wayne|Apple\\ Inc\\.|Steve\\ Jobs))(?:[.,])?\\s+(?:was\\s+)?founded\\s+by\\s+(?P<object>(?:Steve\\ Wozniak|Ronald\\ Wayne|Apple\\ Inc\\.|Steve\\ Jobs))",
+        "batch_index": 0
+      }
+    }
+  ],
+  "metadata": {
+    "num_entities": 8,
+    "num_relationships": 2,
+    "temporal_enabled": false,
+    "timestamp": "2026-01-26T22:21:25.221776",
+    "entity_resolution_applied": false
+  }
+}

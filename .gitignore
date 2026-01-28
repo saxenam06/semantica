@@ -95,7 +95,7 @@ sample_data/
 *.test.sqlite
 *.test.sqlite3
 *.db-journal
-
+synthetic-data/*
 # Temporary files
 *.tmp
 *.bak

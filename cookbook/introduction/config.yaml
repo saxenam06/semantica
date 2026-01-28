@@ -1,5 +1,5 @@
 api_keys:
-  openai: your_key_here
+  openai: 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
   anthropic: your_key_here
 embedding:
   provider: openai
