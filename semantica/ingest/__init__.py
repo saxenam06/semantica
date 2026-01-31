@@ -120,6 +120,7 @@ from .db_ingestor import DatabaseConnector, DataExporter, DBIngestor, TableData
 from .email_ingestor import AttachmentProcessor, EmailData, EmailIngestor
 from .email_ingestor import EmailParser as EmailIngestorParser
 from .feed_ingestor import FeedData, FeedIngestor, FeedItem, FeedMonitor, FeedParser
+from .pandas_ingestor import PandasIngestor
 from .file_ingestor import (
     CloudStorageIngestor,
     FileIngestor,
@@ -190,6 +191,7 @@ __all__ = [
     "FeedData",
     "FeedParser",
     "FeedMonitor",
+    "PandasIngestor",
     # Stream ingestion
     "StreamIngestor",
     "StreamMessage",
