@@ -32,6 +32,8 @@ For enterprise support, custom development, or consulting services:
 
 ## Sponsorship
 
+### Sponsor this project
+
 Support Semantica development:
 - [GitHub Sponsors](https://github.com/sponsors/Hawksight-AI)
 

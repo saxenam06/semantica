@@ -42,7 +42,7 @@ from typing import Any, Dict, List, Optional
 from ..utils.exceptions import ProcessingError, ValidationError
 from ..utils.logging import get_logger
 from ..utils.progress_tracker import get_progress_tracker
-from .namespace_manager import NamespaceManager
+from ..ontology.namespace_manager import NamespaceManager
 
 
 @dataclass
@@ -198,14 +198,14 @@ class VersionManager:
 
     def compare_versions(self, version1: str, version2: str) -> Dict[str, Any]:
         """
-        Compare two ontology versions.
+        Compare two ontology versions with detailed structural analysis.
 
         Args:
             version1: First version
             version2: Second version
 
         Returns:
-            Comparison results
+            Detailed comparison results including structural differences
         """
         if version1 not in self.versions:
             raise ValidationError(f"Version not found: {version1}")
@@ -215,19 +215,85 @@ class VersionManager:
         v1 = self.versions[version1]
         v2 = self.versions[version2]
 
-        # Basic comparison
-        changes = []
+        # Basic metadata comparison
+        metadata_changes = {}
         if v1.ontology_iri != v2.ontology_iri:
-            changes.append("Ontology IRI changed")
+            metadata_changes["ontology_iri"] = {"from": v1.ontology_iri, "to": v2.ontology_iri}
         if v1.version_info != v2.version_info:
-            changes.append("Version info changed")
+            metadata_changes["version_info"] = {"from": v1.version_info, "to": v2.version_info}
+
+        # Structural comparison (if ontology data is available in metadata)
+        structural_diff = self._compare_ontology_structures(v1, v2)
 
         return {
             "version1": version1,
             "version2": version2,
-            "changes": changes,
-            "v1_iri": v1.ontology_iri,
-            "v2_iri": v2.ontology_iri,
+            "metadata_changes": metadata_changes,
+            **structural_diff
+        }
+
+    def _compare_ontology_structures(self, v1: OntologyVersion, v2: OntologyVersion) -> Dict[str, Any]:
+        """
+        Compare structural elements between two ontology versions.
+        
+        Args:
+            v1: First ontology version
+            v2: Second ontology version
+            
+        Returns:
+            Dictionary with structural differences
+        """
+        # Extract structural information from metadata if available
+        v1_structure = v1.metadata.get("structure", {})
+        v2_structure = v2.metadata.get("structure", {})
+        
+        # Compare classes
+        v1_classes = set(v1_structure.get("classes", []))
+        v2_classes = set(v2_structure.get("classes", []))
+        
+        classes_added = list(v2_classes - v1_classes)
+        classes_removed = list(v1_classes - v2_classes)
+        
+        # Compare properties
+        v1_properties = set(v1_structure.get("properties", []))
+        v2_properties = set(v2_structure.get("properties", []))
+        
+        properties_added = list(v2_properties - v1_properties)
+        properties_removed = list(v1_properties - v2_properties)
+        
+        # Compare individuals
+        v1_individuals = set(v1_structure.get("individuals", []))
+        v2_individuals = set(v2_structure.get("individuals", []))
+        
+        individuals_added = list(v2_individuals - v1_individuals)
+        individuals_removed = list(v1_individuals - v2_individuals)
+        
+        # Compare axioms/rules if available
+        v1_axioms = set(v1_structure.get("axioms", []))
+        v2_axioms = set(v2_structure.get("axioms", []))
+        
+        axioms_added = list(v2_axioms - v1_axioms)
+        axioms_removed = list(v1_axioms - v2_axioms)
+        
+        return {
+            "classes_added": classes_added,
+            "classes_removed": classes_removed,
+            "properties_added": properties_added,
+            "properties_removed": properties_removed,
+            "individuals_added": individuals_added,
+            "individuals_removed": individuals_removed,
+            "axioms_added": axioms_added,
+            "axioms_removed": axioms_removed,
+            "summary": {
+                "classes_added": len(classes_added),
+                "classes_removed": len(classes_removed),
+                "properties_added": len(properties_added),
+                "properties_removed": len(properties_removed),
+                "individuals_added": len(individuals_added),
+                "individuals_removed": len(individuals_removed),
+                "axioms_added": len(axioms_added),
+                "axioms_removed": len(axioms_removed)
+            }
         }
 
     def get_version(self, version: str) -> Optional[OntologyVersion]:
