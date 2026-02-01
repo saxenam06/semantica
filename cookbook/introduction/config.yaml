@@ -1,6 +1,6 @@
 api_keys:
-  openai: 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
-  anthropic: your_key_here
+  openai: your_openai_key_here  # Set via OPENAI_API_KEY environment variable
+  anthropic: your_anthropic_key_here  # Set via ANTHROPIC_API_KEY environment variable
 embedding:
   provider: openai
   model: text-embedding-3-large
