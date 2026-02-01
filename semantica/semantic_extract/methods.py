@@ -1011,7 +1011,7 @@ Text to extract from:
 {text}"""
         
         # Use typed generation with Pydantic schema
-        result_obj = llm.generate_typed(prompt, schema=EntitiesResponse, **kwargs)
+        result_obj = llm.generate_typed(prompt, **kwargs)
         
         # Convert back to internal Entity format
         entities = []
@@ -2001,7 +2001,7 @@ def _extract_relations_chunked(
             logger.debug(f"Scheduling relation extraction for chunk {i+1}/{len(chunks)} with {len(chunk_entities)} entities")
             
             # Only pass minimal kwargs downstream
-            limited_kwargs = {k: kwargs[k] for k in ("relation_types", "temperature", "verbose") if k in kwargs}
+            limited_kwargs = {k: kwargs[k] for k in ("relation_types", "verbose") if k in kwargs}
             future = executor.submit(
                 extract_relations_llm,
                 chunk.text,

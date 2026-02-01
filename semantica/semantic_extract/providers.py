@@ -383,7 +383,8 @@ class BaseProvider:
                         "messages": [{"role": "user", "content": prompt}],
                         "response_model": schema,
                         "max_retries": max_retries,
-                        "temperature": kwargs.get("temperature", 0.1), # Low temp for structured
+                        "max_completion_tokens": 120000,
+                        "timeout": 600.0
                     }
                     
                     verbose_mode = kwargs.get("verbose", False)
@@ -548,17 +549,16 @@ class OpenAIProvider(BaseProvider):
         create_kwargs = {
             "model": kwargs.get("model", self.model),
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": kwargs.get("temperature", 0.3),
         }
-        
+
         # Support max_tokens and max_completion_tokens (for o1 models)
         if "max_completion_tokens" in kwargs:
             create_kwargs["max_completion_tokens"] = kwargs["max_completion_tokens"]
         elif "max_tokens" in kwargs:
             create_kwargs["max_tokens"] = kwargs["max_tokens"]
-            
-        # Pass through other common parameters
-        for param in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "logit_bias", "user"]:
+
+        # Pass through other common parameters (including temperature if explicitly provided)
+        for param in ["temperature", "top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "logit_bias", "user"]:
             if param in kwargs:
                 create_kwargs[param] = kwargs[param]
             
@@ -574,17 +574,16 @@ class OpenAIProvider(BaseProvider):
             "model": kwargs.get("model", self.model),
             "messages": [{"role": "user", "content": prompt}],
             "response_format": {"type": "json_object"},
-            "temperature": kwargs.get("temperature", 0.3),
         }
-        
+
         # Support max_tokens and max_completion_tokens
         if "max_completion_tokens" in kwargs:
             create_kwargs["max_completion_tokens"] = kwargs["max_completion_tokens"]
         elif "max_tokens" in kwargs:
             create_kwargs["max_tokens"] = kwargs["max_tokens"]
 
-        # Pass through other common parameters
-        for param in ["top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "logit_bias", "user"]:
+        # Pass through other common parameters (including temperature if explicitly provided)
+        for param in ["temperature", "top_p", "frequency_penalty", "presence_penalty", "seed", "stop", "logit_bias", "user"]:
             if param in kwargs:
                 create_kwargs[param] = kwargs[param]
 
