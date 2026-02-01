@@ -1011,7 +1011,7 @@ Text to extract from:
 {text}"""
         
         # Use typed generation with Pydantic schema
-        result_obj = llm.generate_typed(prompt, **kwargs)
+        result_obj = llm.generate_typed(prompt, schema= EntitiesResponse, **kwargs)
         
         # Convert back to internal Entity format
         entities = []
